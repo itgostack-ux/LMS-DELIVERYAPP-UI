@@ -12,12 +12,14 @@ import { LocationTypeMaster } from './pages/locationtype-master/locationtype-mas
 import { LocationMaster } from './pages/locations/locations';
 import { RoleMaster } from './pages/role-master/role-master';
 import { UserMaster } from './pages/user-master/user-master';
+import { CourierMaster } from './pages/courier-master/courier-master';
+import { DeliveryLifecycleMaster } from './pages/delivery-lifecycle-master/delivery-lifecycle-master';
 
 export const routes: Routes = [
 
   {
     path: '',
-    redirectTo: 'dashboard',
+    redirectTo: 'login',
     pathMatch: 'full'
   },
 
@@ -70,8 +72,18 @@ export const routes: Routes = [
              {
             path: 'user-master',
             component: UserMaster
+          },
+          {
+            path: 'courier',
+            component: CourierMaster
+          },
+
+           {
+            path: 'lifecycle',
+            component: DeliveryLifecycleMaster
           }
         ]
+        
 
       }
 

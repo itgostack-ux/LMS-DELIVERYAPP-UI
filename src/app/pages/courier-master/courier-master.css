@@ -1,0 +1,392 @@
+/* ==============================
+   LOCATION MASTER
+=================================*/
+
+:host{
+    display:block;
+    font-family:'Poppins',sans-serif;
+}
+
+.container-fluid{
+
+    width:100%;
+
+    padding:25px 32px;
+
+    background:#F8FAFC;
+
+}
+
+/*==============================
+LAYOUT UTILITIES
+===============================*/
+
+.d-flex{
+    display:flex;
+}
+
+.justify-content-between{
+    justify-content:space-between;
+}
+
+.align-items-center{
+    align-items:center;
+}
+
+.mb-4{
+    margin-bottom:24px;
+}
+
+.mt-4{
+    margin-top:24px;
+}
+
+.text-center{
+    text-align:center;
+}
+
+.row{
+    display:flex;
+    flex-wrap:wrap;
+    margin:0 -12px;
+}
+
+.row > [class*="col-"]{
+    padding:0 12px;
+    box-sizing:border-box;
+    margin-bottom:16px;
+}
+
+.col-md-4{
+    flex:0 0 33.3333%;
+    max-width:33.3333%;
+}
+
+/*==============================
+HEADER
+===============================*/
+
+.page-title{
+
+    font-size:30px;
+
+    font-weight:700;
+
+    color:#1E3A8A;
+
+    margin-bottom:4px;
+
+}
+
+.d-flex small{
+
+    color:#64748B;
+
+    font-size:14px;
+
+}
+
+/*==============================
+BUTTON
+===============================*/
+
+.btn{
+
+    display:inline-flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    height:42px;
+
+    border-radius:8px;
+
+    border:1px solid transparent;
+
+    font-size:14px;
+
+    font-weight:600;
+
+    padding:0 18px;
+
+    cursor:pointer;
+
+    transition:.2s;
+
+    white-space:nowrap;
+
+}
+
+.btn-primary{
+
+    background:#F97316;
+
+    border-color:#F97316;
+
+    color:#fff;
+
+}
+
+.btn-primary:hover{
+
+    background:#EA580C;
+
+    border-color:#EA580C;
+
+}
+
+/*==============================
+CARD
+===============================*/
+
+.card{
+
+    background:#fff;
+
+    border:none!important;
+
+    border-radius:12px;
+
+    box-shadow:0 2px 12px rgba(15,23,42,.06);
+
+}
+
+.card-header{
+
+    background:#fff;
+
+    border-bottom:1px solid #E5E7EB;
+
+    padding:18px 22px;
+
+}
+
+.card-header h5{
+
+    font-size:16px;
+
+    font-weight:600;
+
+    color:#1F2937;
+
+    margin:0;
+
+}
+
+.card-body{
+
+    padding:24px;
+
+}
+
+/*==============================
+LABEL
+===============================*/
+
+label{
+
+    display:block;
+
+    font-size:14px;
+
+    font-weight:600;
+
+    color:#374151;
+
+    margin-bottom:6px;
+
+}
+
+/*==============================
+SELECT
+===============================*/
+
+.form-select{
+
+    width:100%;
+
+    height:46px;
+
+    border-radius:8px;
+
+    border:1px solid #D1D5DB;
+
+    font-size:14px;
+
+    padding:0 36px 0 14px;
+
+    background:#fff;
+
+    color:#1F2937;
+
+    appearance:none;
+
+    background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2'%3e%3cpath d='M6 9l6 6 6-6'/%3e%3c/svg%3e");
+
+    background-repeat:no-repeat;
+
+    background-position:right 14px center;
+
+    background-size:16px;
+
+    transition:.25s;
+
+}
+
+.form-select:focus{
+
+    outline:none;
+
+    border-color:#1E3A8A;
+
+    box-shadow:0 0 0 .15rem rgba(30,58,138,.12);
+
+}
+
+/*==============================
+TABLE
+===============================*/
+
+.table-responsive{
+
+    border-radius:0 0 12px 12px;
+
+    overflow:auto;
+
+}
+
+.table{
+
+    width:100%;
+
+    margin:0;
+
+    font-size:14px;
+
+    border-collapse:collapse;
+
+}
+
+.table thead th{
+
+    background:#F1F5F9;
+
+    color:#334155;
+
+    font-size:13px;
+
+    font-weight:600;
+
+    text-transform:uppercase;
+
+    letter-spacing:.5px;
+
+    text-align:left;
+
+    border:none;
+
+    padding:16px;
+
+    white-space:nowrap;
+
+}
+
+.table tbody td{
+
+    padding:16px;
+
+    vertical-align:middle;
+
+    color:#1F2937;
+
+    border-top:1px solid #EEF2F7;
+
+}
+
+.table-hover tbody tr:hover{
+
+    background:#F8FAFC;
+
+}
+
+.table tbody td.text-center{
+
+    color:#64748B;
+
+    padding:40px 16px;
+
+}
+
+/*==============================
+SCROLLBAR
+===============================*/
+
+::-webkit-scrollbar{
+
+    width:8px;
+
+    height:8px;
+
+}
+
+::-webkit-scrollbar-thumb{
+
+    background:#CBD5E1;
+
+    border-radius:20px;
+
+}
+
+::-webkit-scrollbar-thumb:hover{
+
+    background:#94A3B8;
+
+}
+
+/*==============================
+RESPONSIVE
+===============================*/
+
+@media(max-width:992px){
+
+    .col-md-4{
+
+        flex:0 0 100%;
+
+        max-width:100%;
+
+    }
+
+}
+
+@media(max-width:768px){
+
+    .container-fluid{
+
+        padding:15px;
+
+    }
+
+    .d-flex.justify-content-between{
+
+        flex-direction:column;
+
+        align-items:flex-start;
+
+        gap:12px;
+
+    }
+
+    .card-body{
+
+        padding:18px;
+
+    }
+
+    .table{
+
+        font-size:13px;
+
+    }
+}

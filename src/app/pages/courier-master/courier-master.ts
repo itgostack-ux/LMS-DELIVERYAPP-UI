@@ -2,19 +2,21 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 import { LogisticsService } from '../../services/logistics-service';
-import { Role } from '../../services/models/common-master-model';
+import { Courier } from '../../services/models/common-master-model';
 
 @Component({
-  selector: 'app-role-master',
+  selector: 'app-courier-master',
   standalone: true,
-  imports: [CommonModule],
-  templateUrl: './role-master.html',
-  styleUrl: './role-master.css'
+  imports: [
+    CommonModule
+  ],
+  templateUrl: './courier-master.html',
+  styleUrl: './courier-master.css'
 })
-export class RoleMaster implements OnInit {
+export class CourierMaster implements OnInit {
 
-  roles: Role[] = [];
-  pagedRoles: Role[] = [];
+  couriers: Courier[] = [];
+  pagedCouriers: Courier[] = [];
 
   isLoading = false;
 
@@ -27,20 +29,20 @@ export class RoleMaster implements OnInit {
   ) { }
 
   ngOnInit(): void {
-    this.loadRoles();
+    this.loadCouriers();
   }
 
-  loadRoles(): void {
+  loadCouriers(): void {
 
     this.isLoading = true;
 
-    this.logisticsService.getRoles().subscribe({
+    this.logisticsService.getCouriers().subscribe({
 
       next: (res) => {
 
-        this.roles = res.sort((a, b) => a.roleID - b.roleID);
+        this.couriers = res.sort((a, b) => a.courierId - b.courierId);
 
-        this.totalPages = Math.ceil(this.roles.length / this.pageSize);
+        this.totalPages = Math.ceil(this.couriers.length / this.pageSize);
 
         this.setPage(1);
 
@@ -50,7 +52,7 @@ export class RoleMaster implements OnInit {
 
       error: (err) => {
 
-        console.error(err);
+        console.log(err);
 
         this.isLoading = false;
 
@@ -70,22 +72,16 @@ export class RoleMaster implements OnInit {
     const start = (page - 1) * this.pageSize;
     const end = start + this.pageSize;
 
-    this.pagedRoles = this.roles.slice(start, end);
+    this.pagedCouriers = this.couriers.slice(start, end);
 
   }
 
   previousPage(): void {
-
-    if (this.currentPage > 1)
-      this.setPage(this.currentPage - 1);
-
+    this.setPage(this.currentPage - 1);
   }
 
   nextPage(): void {
-
-    if (this.currentPage < this.totalPages)
-      this.setPage(this.currentPage + 1);
-
+    this.setPage(this.currentPage + 1);
   }
 
 }

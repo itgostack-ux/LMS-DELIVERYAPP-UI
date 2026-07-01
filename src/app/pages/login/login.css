@@ -1,0 +1,132 @@
+/*=========================================================
+  Login Component Styles
+  Consistent with LMS Enterprise Design System
+==========================================================*/
+
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: var(--bg);
+    padding: 20px;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 400px;
+    background: var(--white);
+    padding: 40px 36px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Accent bar on top for brand identity */
+.login-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), var(--primary-light));
+}
+
+.login-card h2 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--primary);
+    letter-spacing: .5px;
+    margin-bottom: 4px;
+}
+
+.login-card p {
+    font-size: 13px;
+    color: var(--text-light);
+    margin-bottom: 24px;
+}
+
+/* Error message */
+.error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #FEF2F2;
+    color: var(--danger);
+    border: 1px solid #FCA5A5;
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 18px;
+}
+
+/* Inputs */
+input {
+    width: 100%;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    outline: none;
+    transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+}
+
+input::placeholder {
+    color: var(--text-light);
+}
+
+input:hover {
+    border-color: var(--primary-light);
+}
+
+input:focus {
+    background: var(--white);
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+}
+
+/* Buttons */
+button {
+    width: 100%;
+    padding: 12px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: .3px;
+    color: var(--white);
+    background: linear-gradient(135deg, var(--primary-light), var(--primary));
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: filter var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+
+button:hover:not(:disabled) {
+    filter: brightness(1.08);
+    box-shadow: 0 6px 16px rgba(30, 58, 138, .25);
+}
+
+button:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+button:disabled {
+    background: var(--text-light);
+    cursor: not-allowed;
+    opacity: .7;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .login-card {
+        padding: 32px 24px;
+    }
+}

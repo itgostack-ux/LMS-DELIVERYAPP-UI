@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-
+import { DeliveryLifecycle } from './models/common-master-model';
 @Injectable({
   providedIn: 'root'
 })
@@ -67,5 +67,25 @@ export class LogisticsService {
     );
 
   }
+
+    getCouriers(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/couriers`);
+  }
+
+  getDeliveryLifecycles(): Observable<DeliveryLifecycle[]> {
+    return this.http.get<DeliveryLifecycle[]>(
+      `${this.apiUrl}/delivery-lifecycle`
+    );
+  }
+
+  saveDeliveryLifecycle(model: DeliveryLifecycle): Observable<any> {
+  return this.http.post<any>(
+    `${this.apiUrl}/delivery-lifecycle`,
+    model
+  );
+}
+
+  
+
 
 }

@@ -1,0 +1,78 @@
+<div class="container-fluid">
+
+    <div class="d-flex justify-content-between mb-4">
+
+        <div>
+
+            <h3 class="page-title">
+
+                Role Master
+
+            </h3>
+
+            <small>
+
+                Manage Application Roles
+
+            </small>
+
+        </div>
+
+    </div>
+
+    <div class="card">
+
+        <div class="card-header d-flex justify-content-between align-items-center">
+
+            <h5>
+
+                Role List
+
+            </h5>
+
+
+        </div>
+
+        <div class="table-responsive">
+
+            <table class="table table-hover">
+
+
+
+                <thead>
+                    <tr>
+                        <th>S.No</th>
+                        <th>Role ID</th>
+                        <th>Role Name</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    <tr *ngFor="let role of roles; let i = index">
+
+                        <td>{{ i + 1 }}</td>
+
+                        <td>{{ role.roleID }}</td>
+
+                        <td>{{ role.roleName }}</td>
+
+                    </tr>
+
+                    <tr *ngIf="roles.length == 0">
+
+                        <td colspan="3" class="text-center">
+                            No Roles Found
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>

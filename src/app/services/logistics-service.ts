@@ -7,23 +7,65 @@ import { Observable } from 'rxjs';
 })
 export class LogisticsService {
 
-  private apiUrl = 'http://localhost:5089/api/Logistics';
+  private readonly apiUrl = 'http://localhost:5089/api/Logistics';
 
   constructor(private http: HttpClient) { }
 
+  // =============================
   // Company
+  // =============================
+
   getCompanies(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/companies`);
   }
 
+  // =============================
   // Location Type
+  // =============================
+
   getLocationTypes(companyId: number): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/location-types/${companyId}`);
+    return this.http.get<any[]>(
+      `${this.apiUrl}/location-types/${companyId}`
+    );
   }
 
+  // =============================
   // Location
-  getLocations(companyId: number, locationTypeId: number): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/locations/${companyId}/${locationTypeId}`);
+  // =============================
+
+  getLocations(
+    companyId: number,
+    locationTypeId: number
+  ): Observable<any[]> {
+
+    return this.http.get<any[]>(
+      `${this.apiUrl}/locations/${companyId}/${locationTypeId}`
+    );
+
+  }
+
+  // =============================
+  // Role
+  // =============================
+
+  getRoles(): Observable<any[]> {
+
+    return this.http.get<any[]>(
+      `${this.apiUrl}/roles`
+    );
+
+  }
+
+  // =============================
+  // User
+  // =============================
+
+  getUsers(): Observable<any[]> {
+
+    return this.http.get<any[]>(
+      `${this.apiUrl}/users`
+    );
+
   }
 
 }

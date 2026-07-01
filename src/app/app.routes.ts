@@ -10,6 +10,8 @@ import { MasterManagement } from './pages/master-management/master-management';
 import { CompanyMaster } from './pages/company-master/company-master';
 import { LocationTypeMaster } from './pages/locationtype-master/locationtype-master';
 import { LocationMaster } from './pages/locations/locations';
+import { RoleMaster } from './pages/role-master/role-master';
+import { UserMaster } from './pages/user-master/user-master';
 
 export const routes: Routes = [
 
@@ -59,8 +61,16 @@ export const routes: Routes = [
           {
             path: 'location',
             component: LocationMaster
-          }
+          },
 
+            {
+            path: 'role',
+            component: RoleMaster
+          },
+             {
+            path: 'user-master',
+            component: UserMaster
+          }
         ]
 
       }

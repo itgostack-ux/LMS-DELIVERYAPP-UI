@@ -17,3 +17,25 @@ export interface Location {
   compId: number;
   locationTypeId: number;
 }
+
+export interface Role {
+
+    roleID: number;
+
+    roleName: string;
+
+}
+
+export interface User {
+
+    userId: number;
+
+    fullName: string;
+
+    loginName: string;
+
+    emailId: string;
+
+    mobileNo: string;
+
+}

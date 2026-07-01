@@ -1,0 +1,326 @@
+/*=========================================
+USER MASTER
+=========================================*/
+
+:host{
+    display:block;
+    font-family:'Inter',sans-serif;
+}
+
+.container-fluid{
+    width:100%;
+    padding:24px 30px;
+    background:#F8FAFC;
+}
+
+/*=========================================
+HEADER
+=========================================*/
+
+.page-title{
+    font-size:28px;
+    font-weight:700;
+    color:#1E3A8A;
+    margin:0;
+}
+
+.page-subtitle{
+    color:#64748B;
+    font-size:14px;
+    margin-top:4px;
+}
+
+.d-flex{
+    display:flex;
+}
+
+.justify-content-between{
+    justify-content:space-between;
+}
+
+.align-items-center{
+    align-items:center;
+}
+
+.mb-4{
+    margin-bottom:24px;
+}
+
+/*=========================================
+BUTTONS
+=========================================*/
+
+.btn{
+    height:42px;
+    border-radius:8px;
+    font-size:14px;
+    font-weight:600;
+    padding:0 18px;
+    border:none;
+    cursor:pointer;
+    transition:.3s;
+}
+
+.btn-primary{
+    background:#F97316;
+    color:#fff;
+}
+
+.btn-primary:hover{
+    background:#EA580C;
+}
+
+.btn-outline-secondary{
+    background:#fff;
+    border:1px solid #CBD5E1;
+}
+
+.btn-outline-primary{
+    background:#fff;
+    border:1px solid #1E3A8A;
+    color:#1E3A8A;
+}
+
+.btn-outline-primary:hover{
+    background:#1E3A8A;
+    color:#fff;
+}
+
+/*=========================================
+CARD
+=========================================*/
+
+.card{
+    background:#fff;
+    border-radius:12px;
+    border:none;
+    box-shadow:0 2px 12px rgba(15,23,42,.08);
+    overflow:hidden;
+}
+
+.card-header{
+    padding:18px 22px;
+    background:#fff;
+    border-bottom:1px solid #E5E7EB;
+}
+
+.card-header h5{
+    margin:0;
+    font-size:16px;
+    font-weight:600;
+    color:#1F2937;
+}
+
+.card-footer{
+    padding:16px 20px;
+    background:#fff;
+    border-top:1px solid #E5E7EB;
+}
+
+/*=========================================
+SEARCH
+=========================================*/
+
+.search-box{
+    width:320px;
+    height:42px;
+    border:1px solid #D1D5DB;
+    border-radius:8px;
+    padding:0 14px;
+    font-size:14px;
+}
+
+.search-box:focus{
+    outline:none;
+    border-color:#1E3A8A;
+    box-shadow:0 0 0 3px rgba(30,58,138,.12);
+}
+
+/*=========================================
+TABLE
+=========================================*/
+
+.table-responsive{
+    overflow:auto;
+}
+
+.table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:14px;
+}
+
+.table thead{
+    position:sticky;
+    top:0;
+    z-index:2;
+}
+
+.table thead th{
+    background:#F1F5F9;
+    color:#334155;
+    font-size:13px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    padding:14px 16px;
+    white-space:nowrap;
+}
+
+.table tbody td{
+    padding:14px 16px;
+    border-top:1px solid #EEF2F7;
+    color:#1F2937;
+    vertical-align:middle;
+}
+
+.table tbody tr:nth-child(even){
+    background:#FAFBFC;
+}
+
+.table tbody tr:hover{
+    background:#EFF6FF;
+}
+
+/*=========================================
+S.NO COLUMN
+=========================================*/
+
+.table th:first-child,
+.table td:first-child{
+    width:70px;
+    min-width:70px;
+    text-align:center;
+    font-weight:600;
+    color:#1E3A8A;
+}
+
+/*=========================================
+ACTION BUTTONS
+=========================================*/
+
+.action-btn{
+    width:34px;
+    height:34px;
+    border-radius:6px;
+    border:none;
+    cursor:pointer;
+    margin-right:6px;
+    transition:.2s;
+}
+
+.edit-btn{
+    background:#DBEAFE;
+    color:#2563EB;
+}
+
+.delete-btn{
+    background:#FEE2E2;
+    color:#DC2626;
+}
+
+.edit-btn:hover{
+    background:#BFDBFE;
+}
+
+.delete-btn:hover{
+    background:#FECACA;
+}
+
+/*=========================================
+PAGINATION
+=========================================*/
+
+.pagination{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.pagination-info{
+    font-size:14px;
+    color:#64748B;
+}
+
+.pagination-buttons{
+    display:flex;
+    gap:10px;
+}
+
+/*=========================================
+LOADING
+=========================================*/
+
+.loading{
+    padding:40px;
+    text-align:center;
+    color:#64748B;
+}
+
+/*=========================================
+NO RECORDS
+=========================================*/
+
+.no-data{
+    text-align:center;
+    padding:40px;
+    color:#94A3B8;
+    font-size:15px;
+}
+
+/*=========================================
+SCROLLBAR
+=========================================*/
+
+::-webkit-scrollbar{
+    width:8px;
+    height:8px;
+}
+
+::-webkit-scrollbar-thumb{
+    background:#CBD5E1;
+    border-radius:20px;
+}
+
+::-webkit-scrollbar-thumb:hover{
+    background:#94A3B8;
+}
+
+/*=========================================
+RESPONSIVE
+=========================================*/
+
+@media(max-width:992px){
+
+    .d-flex.justify-content-between{
+        flex-direction:column;
+        align-items:flex-start;
+        gap:15px;
+    }
+
+    .search-box{
+        width:100%;
+    }
+
+}
+
+@media(max-width:768px){
+
+    .container-fluid{
+        padding:15px;
+    }
+
+    .table{
+        font-size:13px;
+    }
+
+    .btn{
+        width:100%;
+    }
+
+    .pagination{
+        flex-direction:column;
+        gap:12px;
+    }
+
+}

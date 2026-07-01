@@ -1,0 +1,155 @@
+<div class="container-fluid">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h3>User Master</h3>
+
+            <small>Manage Application Users</small>
+
+        </div>
+
+
+    </div>
+
+    <div class="card shadow-sm">
+
+        <div class="card-header">
+
+            <h5>User List</h5>
+
+        </div>
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered table-hover align-middle mb-0">
+
+                <thead class="table-light">
+
+                    <tr>
+
+                        <th width="80">S.No</th>
+
+                        <th>User ID</th>
+
+                        <th>Full Name</th>
+
+                        <th>Login Name</th>
+
+                        <th>Email</th>
+
+                        <th>Mobile</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    <tr *ngFor="let user of pagedUsers; let i = index">
+
+                        <td>
+
+                            {{ ((currentPage-1) * pageSize) + i + 1 }}
+
+                        </td>
+
+                        <td>
+
+                            {{ user.userId }}
+
+                        </td>
+
+                        <td>
+
+                            {{ user.fullName }}
+
+                        </td>
+
+                        <td>
+
+                            {{ user.loginName }}
+
+                        </td>
+
+                        <td>
+
+                            {{ user.emailId }}
+
+                        </td>
+
+                        <td>
+
+                            {{ user.mobileNo }}
+
+                        </td>
+
+                    </tr>
+
+                    <tr *ngIf="pagedUsers.length==0">
+
+                        <td colspan="6" class="text-center">
+
+                            No Users Found
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        <div class="card-footer">
+
+            <div class="d-flex justify-content-between align-items-center">
+
+                <div>
+
+                    Showing
+
+                    {{ ((currentPage-1) * pageSize) + 1 }}
+
+                    -
+
+                    {{ ((currentPage-1) * pageSize) + pagedUsers.length }}
+
+                    of
+
+                    {{ users.length }}
+
+                </div>
+
+                <div>
+
+                    <button class="btn btn-outline-secondary me-2" (click)="previousPage()" [disabled]="currentPage==1">
+
+                        Previous
+
+                    </button>
+
+                    <span class="mx-2">
+
+                        Page {{currentPage}} of {{totalPages}}
+
+                    </span>
+
+                    <button class="btn btn-outline-primary ms-2" (click)="nextPage()"
+                        [disabled]="currentPage==totalPages">
+
+                        Next
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>

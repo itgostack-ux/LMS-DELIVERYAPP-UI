@@ -1,0 +1,183 @@
+<div class="container-fluid">
+
+    <div class="d-flex justify-content-between mb-4">
+
+        <div>
+
+            <h3 class="page-title">
+
+                Location Master
+
+            </h3>
+
+            <small>
+
+                Manage Company Locations
+
+            </small>
+
+        </div>
+
+        <button class="btn btn-primary">
+
+            + New Location
+
+        </button>
+
+    </div>
+
+    <div class="card">
+
+        <div class="card-body">
+
+            <div class="row">
+
+                <div class="col-md-4">
+
+                    <label>Company</label>
+
+                    <select
+                        class="form-select"
+                        [(ngModel)]="selectedCompanyId"
+                        (change)="onCompanyChange()">
+
+                        <option [ngValue]="0">
+
+                            Select Company
+
+                        </option>
+
+                        <option
+                            *ngFor="let company of companies"
+                            [ngValue]="company.compId">
+
+                            {{company.compName}}
+
+                        </option>
+
+                    </select>
+
+                </div>
+
+                <div class="col-md-4">
+
+                    <label>Location Type</label>
+
+                    <select
+                        class="form-select"
+                        [(ngModel)]="selectedLocationTypeId"
+                        (change)="onLocationTypeChange()">
+
+                        <option [ngValue]="0">
+
+                            Select Location Type
+
+                        </option>
+
+                        <option
+                            *ngFor="let item of locationTypes"
+                            [ngValue]="item.locationTypeId">
+
+                            {{item.locationTypeDesc}}
+
+                        </option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="card mt-4">
+
+        <div class="card-header">
+
+            <h5>
+
+                Location List
+
+            </h5>
+
+        </div>
+
+        <div class="table-responsive">
+
+            <table class="table table-hover">
+
+                <thead>
+
+                    <tr>
+
+                        <th>ID</th>
+
+                        <th>Location Name</th>
+
+                        <th>Company Id</th>
+
+                        <th>Location Type</th>
+
+                        <th>State</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    <tr *ngFor="let location of locations">
+
+                        <td>
+
+                            {{location.locId}}
+
+                        </td>
+
+                        <td>
+
+                            {{location.locDesc}}
+
+                        </td>
+
+                        <td>
+
+                            {{location.compId}}
+
+                        </td>
+
+                        <td>
+
+                            {{location.locationTypeId}}
+
+                        </td>
+
+                        <td>
+
+                            {{location.stateId}}
+
+                        </td>
+
+                    </tr>
+
+                    <tr *ngIf="locations.length==0">
+
+                        <td colspan="5" class="text-center">
+
+                            No Locations Found
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>

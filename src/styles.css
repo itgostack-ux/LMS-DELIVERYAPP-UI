@@ -1,1 +1,82 @@
-/* You can add global styles to this file, and also import other style files */
+/*=========================================================
+  Enterprise Logistics Management System (LMS)
+  Global Styles
+  Theme: SAP Fiori | Dynamics 365 | Oracle Fusion | Zoho
+==========================================================*/
+
+/* Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/*=========================================================
+    CSS Variables
+==========================================================*/
+
+:root{
+
+    --bg:#F8FAFC;
+
+    --primary:#1E3A8A;
+
+    --primary-light:#2563EB;
+
+    --accent:#F97316;
+
+    --success:#16A34A;
+
+    --warning:#F59E0B;
+
+    --danger:#DC2626;
+
+    --info:#0EA5E9;
+
+    --text:#1F2937;
+
+    --text-light:#6B7280;
+
+    --border:#E5E7EB;
+
+    --white:#FFFFFF;
+
+    --radius:8px;
+
+    --shadow:0 4px 16px rgba(15,23,42,.08);
+
+    --transition:.25s ease;
+}
+
+/*=========================================================
+    Reset
+==========================================================*/
+
+*,
+*::before,
+*::after{
+
+    margin:0;
+    padding:0;
+
+    box-sizing:border-box;
+
+}
+
+html{
+
+    scroll-behavior:smooth;
+
+}
+
+body{
+
+    font-family:'Poppins',sans-serif;
+
+    background:var(--bg);
+
+    color:var(--text);
+
+    font-size:14px;
+
+    line-height:1.5;
+
+    overflow-x:hidden;
+
+}

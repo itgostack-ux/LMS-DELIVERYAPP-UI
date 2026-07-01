@@ -1,0 +1,251 @@
+/* ==============================
+   LOCATION TYPE MASTER
+=================================*/
+
+:host{
+    display:block;
+    font-family:'Poppins',sans-serif;
+}
+
+/*==============================
+LAYOUT UTILITIES
+===============================*/
+
+.row{
+    display:flex;
+    flex-wrap:wrap;
+    margin:0 -12px;
+}
+
+.row > [class*="col-"]{
+    padding:0 12px;
+    box-sizing:border-box;
+}
+
+.col-md-4{
+    flex:0 0 33.3333%;
+    max-width:33.3333%;
+}
+
+.mb-3{
+    margin-bottom:16px;
+}
+
+.text-center{
+    text-align:center;
+}
+
+/*==============================
+CARD
+===============================*/
+
+.card{
+
+    background:#fff;
+
+    border:none!important;
+
+    border-radius:12px;
+
+    box-shadow:0 2px 12px rgba(15,23,42,.06);
+
+}
+
+.card-header{
+
+    background:#fff;
+
+    border-bottom:1px solid #E5E7EB;
+
+    padding:18px 22px;
+
+}
+
+.card-header h4{
+
+    font-size:20px;
+
+    font-weight:600;
+
+    color:#1E3A8A;
+
+    margin:0;
+
+}
+
+.card-body{
+
+    padding:24px;
+
+}
+
+/*==============================
+LABEL
+===============================*/
+
+.form-label{
+
+    display:block;
+
+    font-size:14px;
+
+    font-weight:600;
+
+    color:#374151;
+
+    margin-bottom:6px;
+
+}
+
+/*==============================
+SELECT
+===============================*/
+
+.form-select{
+
+    width:100%;
+
+    height:46px;
+
+    border-radius:8px;
+
+    border:1px solid #D1D5DB;
+
+    font-size:14px;
+
+    padding:0 36px 0 14px;
+
+    background:#fff;
+
+    color:#1F2937;
+
+    appearance:none;
+
+    background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2'%3e%3cpath d='M6 9l6 6 6-6'/%3e%3c/svg%3e");
+
+    background-repeat:no-repeat;
+
+    background-position:right 14px center;
+
+    background-size:16px;
+
+    transition:.25s;
+
+}
+
+.form-select:focus{
+
+    outline:none;
+
+    border-color:#1E3A8A;
+
+    box-shadow:0 0 0 .15rem rgba(30,58,138,.12);
+
+}
+
+/*==============================
+LOADING STATE
+===============================*/
+
+.text-center{
+
+    padding:40px 0;
+
+    color:#64748B;
+
+    font-size:14px;
+
+}
+
+/*==============================
+TABLE
+===============================*/
+
+.table{
+
+    width:100%;
+
+    margin:0;
+
+    font-size:14px;
+
+    border-collapse:collapse;
+
+}
+
+.table-bordered{
+
+    border:1px solid #E5E7EB;
+
+}
+
+.table-bordered th,
+.table-bordered td{
+
+    border:1px solid #E5E7EB;
+
+}
+
+.table thead th{
+
+    background:#F1F5F9;
+
+    color:#334155;
+
+    font-size:13px;
+
+    font-weight:600;
+
+    text-transform:uppercase;
+
+    letter-spacing:.5px;
+
+    text-align:left;
+
+    padding:14px 16px;
+
+}
+
+.table tbody td{
+
+    padding:14px 16px;
+
+    vertical-align:middle;
+
+    color:#1F2937;
+
+}
+
+.table-hover tbody tr:hover{
+
+    background:#F8FAFC;
+
+}
+
+/*==============================
+RESPONSIVE
+===============================*/
+
+@media(max-width:768px){
+
+    .col-md-4{
+
+        flex:0 0 100%;
+
+        max-width:100%;
+
+    }
+
+    .card-body{
+
+        padding:18px;
+
+    }
+
+    .table{
+
+        font-size:13px;
+
+    }
+
+}

@@ -1,0 +1,211 @@
+<div class="container-fluid">
+
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h3 class="fw-bold text-primary mb-1">
+                Company Master
+            </h3>
+
+            <small class="text-muted">
+                Enterprise Company & Location Management
+            </small>
+
+        </div>
+
+        <div>
+
+            <button class="btn btn-outline-primary me-2">
+                <i class="fa-solid fa-download"></i>
+                Export
+            </button>
+
+            <button class="btn btn-outline-secondary me-2">
+                <i class="fa-solid fa-upload"></i>
+                Import
+            </button>
+
+            <button class="btn btn-primary">
+                <i class="fa-solid fa-plus"></i>
+                New Company
+            </button>
+
+        </div>
+
+    </div>
+
+    <!-- Filter Card -->
+
+
+
+
+<!-- Toolbar -->
+
+<div class="card shadow-sm border-0 rounded-3 mb-4">
+
+    <div class="card-body">
+
+        <div class="row">
+
+            <div class="col-lg-4">
+
+                <input class="form-control" placeholder="Search Company">
+
+            </div>
+
+            <div class="col-lg-8 text-end">
+
+                <button class="btn btn-outline-success me-2">
+
+                    Refresh
+
+                </button>
+
+                <button class="btn btn-outline-dark">
+
+                    Print
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Company Table -->
+
+<div class="card shadow-sm border-0 rounded-3">
+
+    <div class="card-header bg-white">
+
+        <h5 class="mb-0">
+
+            Company List
+
+        </h5>
+
+    </div>
+
+    <div class="card-body p-0">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead class="table-light">
+
+                    <tr>
+
+                        <th width="70">
+
+                            ID
+
+                        </th>
+
+                        <th>
+
+                            Short Code
+
+                        </th>
+
+                        <th>
+
+                            Company Name
+
+                        </th>
+
+                        <th>
+
+                            Trade Name
+
+                        </th>
+
+                 
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    <tr *ngFor="let company of companies">
+
+                        <td>
+
+                            {{company.compId}}
+
+                        </td>
+
+                        <td>
+
+                            {{company.compShortCode}}
+
+                        </td>
+
+                        <td>
+
+                            {{company.compName}}
+
+                        </td>
+
+                        <td>
+
+                            {{company.tradeName}}
+
+                        </td>
+
+                     
+
+                    </tr>
+
+                    <tr *ngIf="companies.length==0">
+
+                        <td colspan="5" class="text-center py-5">
+
+                            No Company Records Found
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+    <div class="card-footer bg-white">
+
+        <div class="d-flex justify-content-between">
+
+            <div>
+
+                Total Companies :
+                <strong>
+
+                    {{companies.length}}
+
+                </strong>
+
+            </div>
+
+            <div>
+
+                Page 1 of 1
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+</div>

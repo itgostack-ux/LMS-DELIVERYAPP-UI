@@ -1,0 +1,112 @@
+/* =====================================================
+   Enterprise LMS Layout
+===================================================== */
+
+:host {
+    display: block;
+    background: #F8FAFC;
+    min-height: 100vh;
+}
+
+/* Leave space for fixed header */
+
+.app-layout {
+    padding-top: 70px;
+    padding-bottom: 45px;
+}
+
+/* Remove Bootstrap spacing */
+
+.row {
+    --bs-gutter-x: 0;
+}
+
+/* Sidebar */
+
+.sidebar-column {
+
+    position: fixed;
+
+    left: 0;
+
+    top: 70px;
+
+    bottom: 40px;
+
+    background: #1E3A8A;
+
+    overflow-y: auto;
+
+    z-index: 1000;
+
+    box-shadow: 2px 0 12px rgba(0,0,0,.08);
+
+}
+
+/* Main Content */
+
+.content-column {
+
+    margin-left: 16.666667%;
+
+    background: #F8FAFC;
+
+    min-height: calc(100vh - 110px);
+
+}
+
+/* Page Body */
+
+.page-content {
+
+    padding: 24px;
+
+}
+
+/* Scrollbar */
+
+.sidebar-column::-webkit-scrollbar {
+
+    width: 6px;
+
+}
+
+.sidebar-column::-webkit-scrollbar-thumb {
+
+    background: rgba(255,255,255,.25);
+
+    border-radius: 10px;
+
+}
+
+/* Responsive */
+
+@media (max-width:991px){
+
+    .sidebar-column{
+
+        position: relative;
+
+        top: 0;
+
+        bottom: auto;
+
+        width: 100%;
+
+        height: auto;
+
+    }
+
+    .content-column{
+
+        margin-left: 0;
+
+    }
+
+    .app-layout{
+
+        padding-top: 70px;
+
+    }
+
+}

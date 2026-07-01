@@ -1,0 +1,84 @@
+<div class="card shadow-sm">
+
+    <div class="card-header">
+
+        <h4>Location Type Master</h4>
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="row mb-3">
+
+            <div class="col-md-4">
+
+                <label class="form-label">
+
+                    Company
+
+                </label>
+
+                <select
+                    class="form-select"
+                    [(ngModel)]="selectedCompanyId"
+                    (change)="onCompanyChange()">
+
+                    <option [ngValue]="0">
+
+                        Select Company
+
+                    </option>
+
+                    <option
+                        *ngFor="let company of companies"
+                        [ngValue]="company.compId">
+
+                        {{company.compName}}
+
+                    </option>
+
+                </select>
+
+            </div>
+
+        </div>
+
+        <div *ngIf="isLoading" class="text-center">
+
+            Loading...
+
+        </div>
+
+        <table
+            class="table table-bordered table-hover"
+            *ngIf="!isLoading">
+
+            <thead>
+
+                <tr>
+
+                    <th style="width:80px;">#</th>
+
+                    <th>Location Type</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                <tr *ngFor="let item of locationTypes; let i=index">
+
+                    <td>{{i+1}}</td>
+
+                    <td>{{item.locationTypeDesc}}</td>
+
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>

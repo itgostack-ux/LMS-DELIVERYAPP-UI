@@ -14,6 +14,9 @@ import { RoleMaster } from './pages/role-master/role-master';
 import { UserMaster } from './pages/user-master/user-master';
 import { CourierMaster } from './pages/courier-master/courier-master';
 import { DeliveryLifecycleMaster } from './pages/delivery-lifecycle-master/delivery-lifecycle-master';
+import { Administration } from './pages/administration/administration';
+import { CompanyRoleLifecycleAccess } from './pages/company-role-lifecycle-access/company-role-lifecycle-access';
+import { RoleLifecyleMapping } from './pages/role-lifecyle-mapping/role-lifecyle-mapping';
 
 export const routes: Routes = [
 
@@ -65,11 +68,11 @@ export const routes: Routes = [
             component: LocationMaster
           },
 
-            {
+          {
             path: 'role',
             component: RoleMaster
           },
-             {
+          {
             path: 'user-master',
             component: UserMaster
           },
@@ -78,16 +81,50 @@ export const routes: Routes = [
             component: CourierMaster
           },
 
-           {
+          {
             path: 'lifecycle',
             component: DeliveryLifecycleMaster
-          }
-        ]
-        
+          },
 
+        ]
+
+
+      },
+
+      {
+        path: 'administration',
+        component: Administration,
+        children: [
+
+          { path: '', redirectTo: 'role', pathMatch: 'full' },
+
+          { path: 'role', component: RoleMaster },
+
+          { path: 'user-master', component: UserMaster },
+
+          { path: 'lifecycle', component: DeliveryLifecycleMaster },
+          { path: 'lifecycleaccess', component: CompanyRoleLifecycleAccess },
+            { path: 'role-cycle', component: RoleLifecyleMapping }
+        ]
       }
 
+
     ]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   },
 
   {

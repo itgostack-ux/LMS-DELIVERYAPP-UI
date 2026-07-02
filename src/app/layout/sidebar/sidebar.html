@@ -1,29 +1,65 @@
 <div class="sidebar">
 
     <div class="logo">
-        <h3>LMS ERP</h3>
+
+        <h2>LMS ERP</h2>
+
+        <span>Enterprise Logistics</span>
+
     </div>
 
-    <ul>
+    <ul class="menu">
 
-        <li routerLink="/dashboard"
-            routerLinkActive="active">
+        <!-- Dashboard -->
+        <li routerLink="/dashboard" routerLinkActive="active">
 
             <i class="fa-solid fa-chart-line"></i>
 
-            Dashboard
+            <span>Dashboard</span>
 
         </li>
 
-        <li routerLink="/master-management"
-            routerLinkActive="active">
+        <!-- Organization -->
+        <li routerLink="/master-management" routerLinkActive="active">
 
-            <i class="fa-solid fa-layer-group"></i>
+            <i class="fa-solid fa-building"></i>
 
-            Masters
+            <span>Organization</span>
+
         </li>
 
-      
+
+        <!-- Administration -->
+        <li routerLink="/administration" routerLinkActive="active">
+
+            <i class="fa-solid fa-user-shield"></i>
+
+            <span>Administration</span>
+
+        </li>
+
+        <!-- Operations -->
+        <li routerLink="/operations" routerLinkActive="active">
+
+            <i class="fa-solid fa-truck-fast"></i>
+
+            <span>Operations</span>
+
+        </li>
+
+
+
+       
+
+        <!-- Logout -->
+        <li routerLink="/login">
+
+            <i class="fa-solid fa-right-from-bracket"></i>
+
+            <span>Logout</span>
+
+        </li>
+
     </ul>
 
 </div>

@@ -66,7 +66,7 @@ export interface DeliveryLifecycle {
     modifiedBy: string;
 
     modifiedDate: Date;
-
+  selected?: boolean
 }
 
 export interface SendOtpRequest {
@@ -103,5 +103,105 @@ export interface Courier {
   courierName: string;
 
   transStateId: number;
+
+}
+export interface CompanyUserLifecycleAccess {
+
+  mappingId: number;
+
+  companyId: number;
+
+  userId: number;
+
+  roleId: number;
+
+  isActive: boolean;
+
+  createdBy?: string;
+
+  createdDate?: Date;
+
+  modifiedBy?: string;
+
+  modifiedDate?: Date;
+
+}
+
+
+export interface CompanyUserLifecycleAccessView {
+
+  mappingId: number;
+
+  companyId: number;
+
+  companyName: string;
+
+  userId: number;
+
+  userName: string;
+
+  roleId: number;
+
+  roleName: string;
+
+  isActive: boolean;
+
+}
+
+export interface RoleLifecycleMapping {
+
+  mappingId: number;
+
+  roleId: number;
+
+  lifecycleId: number;
+
+  canView: boolean;
+
+  canCreate: boolean;
+
+  canEdit: boolean;
+
+  canDelete: boolean;
+
+  canChangeStatus: boolean;
+
+  isActive: boolean;
+
+  createdBy?: string;
+
+  createdDate?: Date;
+
+  modifiedBy?: string;
+
+  modifiedDate?: Date;
+
+}
+
+export interface RoleLifecycleMappingView {
+
+  mappingId: number;
+
+  roleId: number;
+
+  roleName: string;
+
+  lifecycleId: number;
+
+  statusName: string;
+
+  sequenceNo: number;
+
+  canView: boolean;
+
+  canCreate: boolean;
+
+  canEdit: boolean;
+
+  canDelete: boolean;
+
+  canChangeStatus: boolean;
+
+  isActive: boolean;
 
 }

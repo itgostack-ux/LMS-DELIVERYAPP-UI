@@ -1,0 +1,252 @@
+<div class="card">
+
+    <div class="card-header">
+
+        <h5>
+
+            {{model.mappingId==0 ? 'New Company User Role Mapping' : 'Update Company User Role Mapping'}}
+
+        </h5>
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="row">
+
+            <!-- User -->
+
+            <div class="col-md-4 mb-3">
+
+                <label class="form-label">
+
+                    User
+
+                </label>
+
+                <select class="form-select"
+                        [(ngModel)]="model.userId"
+                        (change)="userChanged()">
+
+                    <option [ngValue]="0">
+
+                        Select User
+
+                    </option>
+
+                    <option *ngFor="let u of users"
+                            [ngValue]="u.userId">
+
+                        {{u.fullName}}
+
+                    </option>
+
+                </select>
+
+            </div>
+
+            <!-- Company -->
+
+            <div class="col-md-4 mb-3">
+
+                <label class="form-label">
+
+                    Company
+
+                </label>
+
+                <select class="form-select"
+                        [(ngModel)]="model.companyId"
+                        (change)="companyChanged()">
+
+                    <option [ngValue]="0">
+
+                        Select Company
+
+                    </option>
+
+                    <option *ngFor="let c of companies"
+                            [ngValue]="c.compId">
+
+                        {{c.compName}}
+
+                    </option>
+
+                </select>
+
+            </div>
+
+            <!-- Role -->
+
+            <div class="col-md-4 mb-3">
+
+                <label class="form-label">
+
+                    Role
+
+                </label>
+
+                <select class="form-select"
+                        [(ngModel)]="model.roleId">
+
+                    <option [ngValue]="0">
+
+                        Select Role
+
+                    </option>
+
+                    <option *ngFor="let r of roles"
+                            [ngValue]="r.roleID">
+
+                        {{r.roleName}}
+
+                    </option>
+
+                </select>
+
+            </div>
+
+        </div>
+
+        <hr>
+
+        <div class="text-end">
+
+            <button class="btn btn-primary me-2"
+                    (click)="save()">
+
+                {{model.mappingId==0 ? 'Save' : 'Update'}}
+
+            </button>
+
+            <button class="btn btn-secondary"
+                    (click)="reset()">
+
+                Cancel
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Company User Role Mapping List -->
+
+<div class="card mt-4">
+
+    <div class="card-header">
+
+        <h5>
+
+            Company User Role Mapping List
+
+        </h5>
+
+    </div>
+
+    <div class="table-responsive">
+
+        <table class="table table-bordered table-hover align-middle">
+
+            <thead class="table-light">
+
+                <tr>
+
+                    <th width="60">S.No</th>
+
+                    <th>User</th>
+
+                    <th>Company</th>
+
+                    <th>Role</th>
+
+                    <th width="100">Status</th>
+
+                    <th width="180">Action</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                <tr *ngFor="let item of accessList; let i = index">
+
+                    <td>
+
+                        {{ i + 1 }}
+
+                    </td>
+
+                    <td>
+
+                        {{ item.userName }}
+
+                    </td>
+
+                    <td>
+
+                        {{ item.companyName }}
+
+                    </td>
+
+                    <td>
+
+                        {{ item.roleName }}
+
+                    </td>
+
+                    <td>
+
+                        <span class="badge"
+                              [ngClass]="item.isActive ? 'bg-success' : 'bg-danger'">
+
+                            {{ item.isActive ? 'Active' : 'Inactive' }}
+
+                        </span>
+
+                    </td>
+
+                    <td>
+
+                        <button
+                            class="btn btn-warning btn-sm me-2"
+                            (click)="edit(item)">
+
+                            <i class="bi bi-pencil"></i>
+                            Edit
+
+                        </button>
+
+                        <button
+                            class="btn btn-danger btn-sm"
+                            (click)="delete(item)">
+
+                            <i class="bi bi-trash"></i>
+                            Delete
+
+                        </button>
+
+                    </td>
+
+                </tr>
+
+                <tr *ngIf="accessList.length === 0">
+
+                    <td colspan="6" class="text-center">
+
+                        No Records Found
+
+                    </td>
+
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>

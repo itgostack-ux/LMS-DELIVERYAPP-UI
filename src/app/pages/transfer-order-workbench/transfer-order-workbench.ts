@@ -1,48 +1,19 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 
 import { LogisticsService } from '../../services/logistics-service';
 import {
   Company,
   Location,
-  LocationType
+  LocationType,
+  DeliveryLifecycle,
+  DeliveryOrderTransaction,
+  TransferStockLogDetail,
 
 } from '../../services/models/common-master-model';
 
-import {
-  DeliveryLifecycle
-} from '../../services/models/common-master-model';
-
-export class TransferStockLogDetail {
-
-  transitID!: number;
-  transferOutDate!: Date;
-  transferOutTime!: Date;
-  sourceBranch!: string;
-  deliveryNoteNo!: string;
-  itemName!: string;
-  itemCode!: string;
-  imei!: string;
-  transferredOutBy!: string;
-  transferStatus!: string;
-  transferQty!: number;
-  destinationBranch!: string;
-  transferInTime!: Date;
-  inwardDoneBy!: string;
-  transferDuration!: string;
-
-  logisticsStatus: string = '';
-  lifecycleId: number = 10;
-
-  selected: boolean = false;
-
-  deliveryLifecycles: DeliveryLifecycle[] = [];
-
-  currentLifecycle?: DeliveryLifecycle;
-
-
-}
 @Component({
   selector: 'app-transfer-order-workbench',
   standalone: true,
@@ -72,9 +43,9 @@ export class TransferOrderWorkbench implements OnInit {
   transferLogs: TransferStockLogDetail[] = [];
 
   loading = false;
+  saving = false;
 
   selectAll = false;
-  selected?: boolean;
 
   validationMessage = '';
 
@@ -84,13 +55,30 @@ export class TransferOrderWorkbench implements OnInit {
   // ===== Pagination state =====
   currentPage = 1;
   pageSize = 10;
+
   deliveryLifecycles: DeliveryLifecycle[] = [];
+
+  // ===== Pickup Assignment modal state =====
+  showPickupModal = false;
+  pickupValidationMessage = '';
+  private pendingNextLifecycle: DeliveryLifecycle | undefined;
+
+  pickupLoadMode: 'Direct' | 'Courier' = 'Direct';
+
+  // Direct fields
+  pickupDriverName = '';
+  pickupVehicleInfo = '';
+
+  // Courier fields
+  pickupCourierName = '';
+  pickupAwbNo = '';
+
+  pickupRemarks = '';
 
   constructor(private logisticsService: LogisticsService) { }
 
   ngOnInit(): void {
     this.loadCompanies();
-
     this.loadDeliveryLifecycles();
   }
 
@@ -98,24 +86,17 @@ export class TransferOrderWorkbench implements OnInit {
     return new Date().toISOString().split('T')[0];
   }
 
+  loadDeliveryLifecycles(): void {
+    this.logisticsService.getDeliveryLifecycles().subscribe({
+      next: (res) => {
+        this.deliveryLifecycles = res
+          .filter(x => x.isActive)
+          .sort((a, b) => a.sequenceNo - b.sequenceNo);
+      },
+      error: err => console.error('Failed to load delivery lifecycles:', err)
+    });
+  }
 
-loadDeliveryLifecycles(): void {
-
-  this.logisticsService.getDeliveryLifecycles().subscribe({
-
-    next: (res) => {
-
-      this.deliveryLifecycles = res
-        .filter(x => x.isActive)
-        .sort((a, b) => a.sequenceNo - b.sequenceNo);
-
-    },
-
-    error: err => console.log(err)
-
-  });
-
-}
   // ===== Master data loading =====
 
   loadCompanies(): void {
@@ -145,7 +126,6 @@ loadDeliveryLifecycles(): void {
       return;
     }
 
-    // Serve from cache instantly if we already fetched this company
     const cached = this.locationTypeCache.get(this.selectedCompanyId);
     if (cached) {
       this.locationTypes = cached;
@@ -163,11 +143,6 @@ loadDeliveryLifecycles(): void {
       });
   }
 
-
-
-  toggleSelectAll() {
-    this.pagedLogs.forEach(x => x.selected = this.selectAll);
-  }
   onLocationTypeChange(): void {
 
     this.locations = [];
@@ -198,10 +173,22 @@ loadDeliveryLifecycles(): void {
         error: (err) => console.error('Failed to load locations:', err)
       });
   }
-  
+
+  // ===== Selection =====
+
+  // Only rows with a logistics status (In Transit) are selectable;
+  // Received rows have blank status and are excluded from the workflow.
+  toggleSelectAll(): void {
+    this.pagedLogs
+      .filter(x => !!x.logisticsStatus)
+      .forEach(x => x.selected = this.selectAll);
+  }
+
+  // ===== Load grid =====
+
   loadTransferLogs(): void {
 
-    if (this.selectedCompanyId == 0) {
+    if (this.selectedCompanyId === 0) {
       this.validationMessage = 'Please select a company before searching.';
       return;
     }
@@ -229,27 +216,96 @@ loadDeliveryLifecycles(): void {
           }
 
           this.transferLogs = data
-            .map(item => ({
+            .map((item: any): TransferStockLogDetail => ({
 
-              ...item,
+              transferOrderId: item.transferOrderId ?? 0,
+
+              transitID: item.transitID,
+              deliveryNoteNo: item.deliveryNoteNo ?? '',
+
+              transferOutDate: item.transferOutDate,
+              transferOutTime: item.transferOutTime,
+
+              sourceLocationId: item.sourceLocationId ?? 0,
+              sourceLocationName: item.sourceLocationName ?? item.sourceBranch ?? '',
+              sourceBranch: item.sourceBranch ?? '',
+
+              destinationLocationId: item.destinationLocationId ?? 0,
+              destinationLocationName: item.destinationLocationName ?? item.destinationBranch ?? '',
+              destinationBranch: item.destinationBranch ?? '',
+
+              itemCode: item.itemCode ?? '',
+              itemName: item.itemName ?? '',
+              imei: item.imei ?? '',
+
+              transferQty: item.transferQty ?? 0,
+
+              transferStatus: item.transferStatus ?? '',
+
+              // SP returns TransferOutByUserId / TransferredOutBy —
+              // map them onto the DeliveryOrderTransaction field names
+              transferOutById: item.transferOutById ?? item.transferOutByUserId ?? 0,
+              transferOutByName: item.transferOutByName ?? item.transferredOutBy ?? '',
+
+              transferInTime: item.transferInTime ?? undefined,
+
+              inwardDoneById: item.inwardDoneById ?? item.inwardDoneByUserId ?? 0,
+              inwardDoneByName: item.inwardDoneByName ?? item.inwardDoneBy ?? '',
+
+              transferDuration: item.transferDuration ?? '',
+
+              // Lifecycle comes straight from the SP (#DOT join)
+              lifecycleId: item.lifecycleId ?? 10,
+              lifecycleSequenceNo: item.lifecycleSequenceNo ?? 1,
+              lifecycleCode: item.lifecycleCode ?? 'OPEN',
+              lifecycleName: item.lifecycleName ?? 'Open',
+
+              transferModeId: item.transferModeId ?? 0,
+              transferModeName: item.transferModeName ?? '',
+
+              assignedUserId: item.assignedUserId ?? 0,
+              assignedUserName: item.assignedUserName ?? '',
+
+              courierId: item.courierId ?? 0,
+              courierName: item.courierName ?? '',
+
+              awbBillNo: item.awbBillNo ?? '',
+
+              remarks: item.remarks ?? '',
+
+              isActive: item.isActive ?? true,
+
+              createdBy: item.createdBy ?? 1,
+              createdByName: item.createdByName ?? '',
+              createdDate: item.createdDate || new Date().toISOString(),
+
+              modifiedBy: item.modifiedBy ?? 0,
+              modifiedByName: item.modifiedByName ?? '',
+              modifiedDate: item.modifiedDate ?? undefined,
+
+              // ===== UI =====
+              // Straight from the API — the SP decides:
+              //   Received                        -> ''   (blank, not selectable)
+              //   In Transit + lifecycle row      -> stage name
+              //   In Transit + no lifecycle row   -> 'Open'
+              logisticsStatus: item.logisticsStatus ?? '',
 
               selected: false,
 
-              logisticsStatus:
-                item.transferStatus?.trim() === 'In Transit'
-                  ? 'Open'
-                  : ''
+              deliveryLifecycles: [],
+              currentLifecycle: undefined
 
             }))
             .sort((a, b) => {
 
-              const aTransit = a.transferStatus?.trim() === 'In Transit';
-              const bTransit = b.transferStatus?.trim() === 'In Transit';
+              // Workflow rows (with a logistics status) first
+              const aActive = !!a.logisticsStatus;
+              const bActive = !!b.logisticsStatus;
 
-              if (aTransit && !bTransit) return -1;
-              if (!aTransit && bTransit) return 1;
+              if (aActive && !bActive) return -1;
+              if (!aActive && bActive) return 1;
 
-              return 0;
+              return a.transitID - b.transitID;
 
             });
 
@@ -257,14 +313,13 @@ loadDeliveryLifecycles(): void {
           this.loading = false;
 
         },
+
         error: (error) => {
 
           console.error(error);
 
           this.transferLogs = [];
-
           this.currentPage = 1;
-
           this.loading = false;
 
         }
@@ -323,11 +378,311 @@ loadDeliveryLifecycles(): void {
   trackByTransitId(index: number, item: TransferStockLogDetail): number {
     return item.transitID;
   }
-  get selectedOrders() {
+
+  // ===== Selection getters =====
+
+  get selectedOrders(): TransferStockLogDetail[] {
     return this.transferLogs.filter(x => x.selected);
   }
 
-  get selectedCount() {
+  get selectedCount(): number {
     return this.selectedOrders.length;
+  }
+
+  get selectedStatus(): string {
+
+    if (this.selectedOrders.length === 0) {
+      return '';
+    }
+
+    return this.selectedOrders[0].logisticsStatus;
+
+  }
+
+  get isSameStatus(): boolean {
+
+    if (this.selectedOrders.length <= 1) {
+      return true;
+    }
+
+    const status = this.selectedOrders[0].logisticsStatus;
+
+    return this.selectedOrders.every(x => x.logisticsStatus === status);
+
+  }
+
+  get actionButtonText(): string {
+
+    if (!this.selectedStatus) {
+      return '';
+    }
+
+    const current = this.deliveryLifecycles.find(
+      x => x.statusName === this.selectedStatus
+    );
+
+    if (!current || !current.nextStatusCode) {
+      return '';
+    }
+
+    const next = this.deliveryLifecycles.find(
+      x => x.statusCode === current.nextStatusCode
+    );
+
+    return next ? next.statusName : '';
+
+  }
+
+  // ===== Save flow =====
+
+  /**
+   * Builds a clean, backend-safe payload. Field names in
+   * TransferStockLogDetail now match DeliveryOrderTransaction,
+   * so the mapping is direct. Every field gets an explicit value —
+   * nothing goes out as undefined (HttpClient drops undefined keys)
+   * and no DateTime field is ever sent as ''.
+   *
+   * `extra` lets a caller (e.g. the Pickup Assignment modal) override
+   * specific fields — such as transferModeName, assignedUserName,
+   * courierName, awbBillNo, remarks — that aren't already sitting on
+   * the row before this transition.
+   */
+  private buildRequest(
+    order: TransferStockLogDetail,
+    nextLifecycle: DeliveryLifecycle,
+    extra: Partial<TransferStockLogDetail> = {}
+  ): DeliveryOrderTransaction {
+
+    return {
+
+      // Existing lifecycle record id (0 = first action on this item)
+      transferOrderId: order.transferOrderId ?? 0,
+
+      transitID: order.transitID,
+      deliveryNoteNo: order.deliveryNoteNo ?? '',
+
+      transferOutDate: order.transferOutDate,
+      transferOutTime: order.transferOutTime,
+
+      sourceLocationId: order.sourceLocationId ?? 0,
+      sourceLocationName: order.sourceLocationName ?? '',
+
+      destinationLocationId: order.destinationLocationId ?? 0,
+      destinationLocationName: order.destinationLocationName ?? '',
+
+      itemCode: order.itemCode ?? '',
+      itemName: order.itemName ?? '',
+      imei: order.imei ?? '',
+
+      transferQty: order.transferQty ?? 0,
+
+      lifecycleId: nextLifecycle.lifecycleId,
+      lifecycleSequenceNo: nextLifecycle.sequenceNo,
+      lifecycleCode: nextLifecycle.statusCode,
+      lifecycleName: nextLifecycle.statusName,
+
+      transferModeId: extra.transferModeId ?? order.transferModeId ?? 0,
+      transferModeName: extra.transferModeName ?? order.transferModeName ?? '',
+
+      transferOutById: order.transferOutById ?? 0,
+      transferOutByName: order.transferOutByName ?? '',
+
+      assignedUserId: extra.assignedUserId ?? order.assignedUserId ?? 0,
+      assignedUserName: extra.assignedUserName ?? order.assignedUserName ?? '',
+
+      courierId: extra.courierId ?? order.courierId ?? 0,
+      courierName: extra.courierName ?? order.courierName ?? '',
+
+      awbBillNo: extra.awbBillNo ?? order.awbBillNo ?? '',
+
+      transferInTime: order.transferInTime ?? undefined,
+
+      inwardDoneById: order.inwardDoneById ?? 0,
+      inwardDoneByName: order.inwardDoneByName ?? '',
+
+      transferDuration: order.transferDuration ?? '',
+
+      remarks: extra.remarks ?? order.remarks ?? '',
+
+      isActive: true,
+
+      createdBy: order.createdBy || 1,
+      createdByName: order.createdByName || '',
+      createdDate: order.createdDate || new Date().toISOString(),
+
+      // TODO: replace with the logged-in user once auth is wired up
+      modifiedBy: 1,
+      modifiedByName: 'Admin',
+      modifiedDate: new Date().toISOString()
+
+    };
+
+  }
+
+  processSelectedOrders(): void {
+
+    if (this.selectedOrders.length === 0) {
+      alert('Please select at least one order.');
+      return;
+    }
+
+    if (!this.isSameStatus) {
+      alert('Please select orders with the same Logistics Status.');
+      return;
+    }
+
+    const currentLifecycle = this.deliveryLifecycles.find(
+      x => x.statusName === this.selectedStatus
+    );
+
+    if (!currentLifecycle) {
+      alert('Current lifecycle not found.');
+      return;
+    }
+
+    const nextLifecycle = this.deliveryLifecycles.find(
+      x => x.statusCode === currentLifecycle.nextStatusCode
+    );
+
+    if (!nextLifecycle) {
+      alert('Next lifecycle not found.');
+      return;
+    }
+
+    // Moving INTO "Pickup Assigned" needs Direct/Courier details first —
+    // open the popup instead of saving right away.
+    if (nextLifecycle.statusCode === 'PICKUP_ASSIGNED') {
+      this.pendingNextLifecycle = nextLifecycle;
+      this.openPickupAssignModal();
+      return;
+    }
+
+    this.saveWithLifecycle(nextLifecycle);
+
+  }
+
+  private saveWithLifecycle(
+    nextLifecycle: DeliveryLifecycle,
+    extra: Partial<TransferStockLogDetail> = {}
+  ): void {
+
+    const requests = this.selectedOrders.map(order => {
+      const payload = this.buildRequest(order, nextLifecycle, extra);
+      console.log('Sending payload:', payload);
+      return this.logisticsService.saveDeliveryOrderTransaction(payload);
+    });
+
+    this.saving = true;
+
+    // Wait for ALL saves to complete before alerting and reloading —
+    // otherwise the grid refreshes with stale data.
+    forkJoin(requests).subscribe({
+
+      next: (results) => {
+        console.log('All saved:', results);
+        this.saving = false;
+
+        alert(`Status updated to ${nextLifecycle.statusName}`);
+
+        this.clearSelection();
+        this.loadTransferLogs();
+      },
+
+      error: (err) => {
+        this.saving = false;
+        console.error('Save failed:', err);
+
+        if (err?.error?.errors) {
+          console.error('Validation errors:', err.error.errors);
+        }
+
+        alert('Failed to update one or more orders. Check the console / Network tab for details.');
+
+        this.loadTransferLogs();
+      }
+
+    });
+
+  }
+
+  clearSelection(): void {
+
+    this.selectAll = false;
+
+    this.transferLogs.forEach(x => x.selected = false);
+
+  }
+
+  // ===== Pickup Assignment modal =====
+
+  openPickupAssignModal(): void {
+    this.pickupLoadMode = 'Direct';
+    this.pickupDriverName = '';
+    this.pickupVehicleInfo = '';
+    this.pickupCourierName = '';
+    this.pickupAwbNo = '';
+    this.pickupRemarks = '';
+    this.pickupValidationMessage = '';
+    this.showPickupModal = true;
+  }
+
+  closePickupModal(): void {
+    this.showPickupModal = false;
+    this.pendingNextLifecycle = undefined;
+  }
+
+  setLoadMode(mode: 'Direct' | 'Courier'): void {
+    this.pickupLoadMode = mode;
+    this.pickupValidationMessage = '';
+  }
+
+  confirmPickupAssignment(): void {
+
+    this.pickupValidationMessage = '';
+
+    if (this.pickupLoadMode === 'Direct') {
+      if (!this.pickupDriverName.trim()) {
+        this.pickupValidationMessage = 'Please select a driver.';
+        return;
+      }
+    } else {
+      if (!this.pickupCourierName.trim()) {
+        this.pickupValidationMessage = 'Please enter the courier name.';
+        return;
+      }
+      if (!this.pickupAwbNo.trim()) {
+        this.pickupValidationMessage = 'Please enter the AWB / Bill No.';
+        return;
+      }
+    }
+
+    if (!this.pendingNextLifecycle) {
+      this.showPickupModal = false;
+      return;
+    }
+
+    const extra: Partial<TransferStockLogDetail> = {
+      transferModeId: this.pickupLoadMode === 'Direct' ? 1 : 2,
+      transferModeName: this.pickupLoadMode
+    };
+
+    if (this.pickupLoadMode === 'Direct') {
+      extra.assignedUserName = this.pickupDriverName.trim();
+      extra.assignedUserId = 0;
+      extra.remarks = this.pickupVehicleInfo.trim();
+    } else {
+      extra.courierName = this.pickupCourierName.trim();
+      extra.courierId = 0;
+      extra.awbBillNo = this.pickupAwbNo.trim();
+      extra.remarks = this.pickupRemarks.trim();
+    }
+
+    const nextLifecycle = this.pendingNextLifecycle;
+
+    this.showPickupModal = false;
+    this.pendingNextLifecycle = undefined;
+
+    this.saveWithLifecycle(nextLifecycle, extra);
+
   }
 }

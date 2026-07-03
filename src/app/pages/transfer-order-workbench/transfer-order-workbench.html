@@ -1,7 +1,7 @@
 <div class="page">
 
     <div class="page-header">
-        <h2>Delivery Orders Mangement</h2>
+        <h2>Delivery Orders Management</h2>
         <span class="record-count" *ngIf="!loading && transferLogs.length > 0">
             {{transferLogs.length}} records
         </span>
@@ -67,23 +67,53 @@
 
         <div class="action-toolbar" *ngIf="selectedCount > 0">
 
-            <div>
-                <strong>{{selectedCount}}</strong> Order(s) Selected
+            <div class="left-section">
+
+                <div class="count">
+                    <strong>{{selectedCount}}</strong> Order(s) Selected
+                </div>
+
+                <div *ngIf="isSameStatus" class="status-flow">
+
+                    <span class="label">Current</span>
+
+                    <span class="status current">
+                        {{selectedStatus}}
+                    </span>
+
+                    <span class="arrow">➜</span>
+
+                    <span class="label">Next</span>
+
+                    <span class="status next">
+                        {{actionButtonText}}
+                    </span>
+
+                </div>
+
+                <div class="text-danger" *ngIf="!isSameStatus">
+                    Please select orders with the same Logistics Status.
+                </div>
+
             </div>
 
-            <div class="actions">
+            <div class="right-section">
 
-                <button class="btn btn-primary">
-                    Verify
+                <button class="btn-action"
+                        [disabled]="!isSameStatus || saving"
+                        (click)="processSelectedOrders()">
+                    {{ saving ? 'Saving...' : actionButtonText }}
                 </button>
 
-                <button class="btn btn-outline-secondary" (click)="toggleSelectAll()">
+                <button class="btn-clear" (click)="clearSelection()">
                     Clear Selection
                 </button>
 
             </div>
 
         </div>
+
+
     </div>
 
     <div *ngIf="loading" class="loading">
@@ -104,14 +134,16 @@
                         <th>Transit ID</th>
                         <th>Transfer Date</th>
                         <th>Transfer Out Time</th>
+
+                        <th>Status</th>
+                        <th>Logistics Status</th>
                         <th>Source</th>
                         <th>Destination</th>
                         <th>Delivery Note</th>
                         <th>Item</th>
                         <th>Item Code</th>
                         <th>IMEI</th>
-                        <th>Status</th>
-                        <th>Logictics Status</th>
+
                         <th class="num">Qty</th>
                         <th>Transferred By</th>
                         <th>Transfer In Time</th>
@@ -125,7 +157,11 @@
                     <tr *ngFor="let item of pagedLogs; let i = index; trackBy: trackByTransitId">
 
                         <td>
-                            <input type="checkbox" [(ngModel)]="item.selected">
+                            <!-- Received rows have blank logisticsStatus and are not
+                                 part of the delivery workflow, so they can't be selected -->
+                            <input type="checkbox"
+                                   [(ngModel)]="item.selected"
+                                   [disabled]="!item.logisticsStatus">
                         </td>
 
                         <td>{{startIndex + i + 1}}</td>
@@ -135,6 +171,19 @@
                         <td>{{item.transferOutDate | date:'dd-MM-yyyy'}}</td>
 
                         <td>{{item.transferOutTime | date:'dd-MM-yyyy HH:mm:ss'}}</td>
+
+                        <td>
+                            <span class="status" [ngClass]="{
+                received: item.transferStatus.trim() === 'Received',
+                pending: item.transferStatus.trim() !== 'Received'
+              }">
+                                {{item.transferStatus}}
+                            </span>
+                        </td>
+
+                        <td>
+                            {{ item.logisticsStatus || '-' }}
+                        </td>
 
                         <td>{{item.sourceBranch}}</td>
 
@@ -148,32 +197,21 @@
 
                         <td class="mono">{{item.imei}}</td>
 
-                        <td>
-                            <span class="status" [ngClass]="{
-                received: item.transferStatus.trim() === 'Received',
-                pending: item.transferStatus.trim() !== 'Received'
-              }">
-                                {{item.transferStatus}}
-                            </span>
-                        </td>
-                        <td>
-                            {{ item.logisticsStatus }}
-                        </td>
                         <td class="num">{{item.transferQty}}</td>
 
-                        <td>{{item.transferredOutBy}}</td>
+                        <td>{{item.transferOutByName}}</td>
 
                         <td>
                             {{item.transferInTime ? (item.transferInTime | date:'dd-MM-yyyy HH:mm:ss') : '-'}}
                         </td>
 
-                        <td>{{item.inwardDoneBy}}</td>
+                        <td>{{item.inwardDoneByName}}</td>
 
                         <td>{{item.transferDuration}}</td>
 
                     </tr>
                     <tr *ngIf="transferLogs.length == 0">
-                        <td colspan="12" class="empty">
+                        <td colspan="18" class="empty">
                             {{ selectedCompanyId == 0
                             ? 'Select a company and click Search to view transfer logs'
                             : 'No records found for the selected filters' }}
@@ -184,6 +222,7 @@
 
             </table>
         </div>
+
 
         <!-- Pagination -->
         <div class="pagination" *ngIf="transferLogs.length > 0">
@@ -232,6 +271,176 @@
 
         </div>
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
     </div>
 
 </div>
+
+<div *ngIf="showPickupModal"
+     style="position:fixed; inset:0; background:rgba(15,23,42,.45); display:flex; align-items:center; justify-content:center; z-index:1000;">
+
+    <div style="background:#fff; width:520px; max-width:95vw; border-radius:12px; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,.25);">
+
+        <!-- Header -->
+        <div style="background:#eef2ff;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <div style="font-size:22px;font-weight:700;color:#1e3a8a;">
+                    Assign Pickup
+                </div>
+
+                <div style="color:#64748b;font-size:14px;">
+                    {{selectedCount}} Order(s) Selected
+                </div>
+            </div>
+
+            <button
+                (click)="closePickupModal()"
+                style="border:none;background:none;font-size:24px;cursor:pointer;">
+                ×
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div style="padding:22px;">
+
+            <label style="font-size:12px;font-weight:700;color:#475569;">
+                LOAD MODE
+            </label>
+
+            <div style="display:flex;margin-top:8px;margin-bottom:20px;gap:10px;">
+
+                <button
+                    type="button"
+                    (click)="setLoadMode('Direct')"
+                    [style.background]="pickupLoadMode=='Direct' ? '#2563eb' : '#f1f5f9'"
+                    [style.color]="pickupLoadMode=='Direct' ? '#fff' : '#334155'"
+                    style="flex:1;padding:12px;border:none;border-radius:8px;cursor:pointer;font-weight:600;">
+                    🚚 Direct
+                </button>
+
+                <button
+                    type="button"
+                    (click)="setLoadMode('Courier')"
+                    [style.background]="pickupLoadMode=='Courier' ? '#2563eb' : '#f1f5f9'"
+                    [style.color]="pickupLoadMode=='Courier' ? '#fff' : '#334155'"
+                    style="flex:1;padding:12px;border:none;border-radius:8px;cursor:pointer;font-weight:600;">
+                    📦 Courier
+                </button>
+
+            </div>
+
+            <!-- DIRECT -->
+
+            <div *ngIf="pickupLoadMode=='Direct'">
+
+                <label style="font-size:13px;font-weight:600;">
+                    Driver
+                </label>
+
+                <input
+                    type="text"
+                    [(ngModel)]="pickupDriverName"
+                    placeholder="Driver Name"
+                    style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin:6px 0 16px;">
+
+                <label style="font-size:13px;font-weight:600;">
+                    Vehicle
+                </label>
+
+                <input
+                    type="text"
+                    [(ngModel)]="pickupVehicleInfo"
+                    placeholder="Vehicle Number / Vehicle Details"
+                    style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin:6px 0 16px;">
+
+            </div>
+
+            <!-- COURIER -->
+
+            <div *ngIf="pickupLoadMode=='Courier'">
+
+                <label style="font-size:13px;font-weight:600;">
+                    Courier Name
+                </label>
+
+                <input
+                    type="text"
+                    [(ngModel)]="pickupCourierName"
+                    placeholder="Courier Name"
+                    style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin:6px 0 16px;">
+
+                <label style="font-size:13px;font-weight:600;">
+                    AWB Number
+                </label>
+
+                <input
+                    type="text"
+                    [(ngModel)]="pickupAwbNo"
+                    placeholder="AWB / Tracking Number"
+                    style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin:6px 0 16px;">
+
+            </div>
+
+            <!-- REMARKS -->
+
+            <label style="font-size:13px;font-weight:600;">
+                Remarks
+            </label>
+
+            <textarea
+                [(ngModel)]="pickupRemarks"
+                rows="3"
+                placeholder="Enter Remarks..."
+                style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;resize:vertical;">
+            </textarea>
+
+            <div
+                *ngIf="pickupValidationMessage"
+                style="margin-top:10px;color:#dc2626;font-size:13px;">
+
+                {{pickupValidationMessage}}
+
+            </div>
+
+        </div>
+
+        <!-- Footer -->
+
+        <div style="display:flex;justify-content:flex-end;gap:10px;padding:18px 22px;border-top:1px solid #e2e8f0;">
+
+            <button
+                (click)="closePickupModal()"
+                style="padding:10px 18px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;cursor:pointer;">
+
+                Cancel
+
+            </button>
+
+            <button
+                (click)="confirmPickupAssignment()"
+                [disabled]="saving"
+                style="padding:10px 18px;border:none;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer;">
+
+                {{ saving ? 'Saving...' : 'Assign Pickup' }}
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+

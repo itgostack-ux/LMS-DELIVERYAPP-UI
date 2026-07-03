@@ -215,13 +215,14 @@ saveDeliveryOrderTransaction(
   model: DeliveryOrderTransaction
 ): Observable<any> {
 
+  console.log('POST URL:', `${this.apiUrl}/delivery-order-transaction`);
+  console.log(model);
+
   return this.http.post<any>(
     `${this.apiUrl}/delivery-order-transaction`,
     model
   );
-
 }
-
 
 
 // Get Transfer Modes

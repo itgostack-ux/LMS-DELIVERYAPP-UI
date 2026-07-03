@@ -207,45 +207,85 @@ export interface RoleLifecycleMappingView {
   isActive: boolean;
 
 }
+export interface TransferStockLogDetail {
 
-export class TransferStockLogDetail {
+  transferOrderId: number;
 
-    transitID!: number;
-    transferOutDate!: Date;
-    transferOutTime!: Date;
-    sourceBranch!: string;
-    destinationBranch!: string;
+  transitID: number;
 
-    deliveryNoteNo!: string;
+  deliveryNoteNo: string;
 
-    itemName!: string;
-    itemCode!: string;
-    imei!: string;
+  transferOutDate: string;
+  transferOutTime: string;
 
-    transferredOutBy!: string;
+  sourceLocationId: number;
+  sourceLocationName: string;
+  sourceBranch: string;
 
-    transferStatus!: string;
+  destinationLocationId: number;
+  destinationLocationName: string;
+  destinationBranch: string;
 
-    // New
-    logisticsStatus: string = '';
-    lifecycleId: number = 10;
+  itemCode: string;
+  itemName: string;
+  imei: string;
 
-    transferQty!: number;
+  transferQty: number;
 
-    transferInTime!: Date;
+  transferStatus: string;
 
-    inwardDoneBy!: string;
+  // Use same names as DeliveryOrderTransaction
+  transferOutById?: number;
+  transferOutByName?: string;
 
-    transferDuration!: string;
+  transferInTime?: string;
 
-    selected = false;
+  inwardDoneById?: number;
+  inwardDoneByName?: string;
+
+  transferDuration?: string;
+
+  lifecycleId: number;
+  lifecycleSequenceNo: number;
+  lifecycleCode: string;
+  lifecycleName: string;
+
+  transferModeId: number;
+  transferModeName: string;
+
+  assignedUserId?: number;
+  assignedUserName?: string;
+
+  courierId?: number;
+  courierName?: string;
+
+  awbBillNo?: string;
+
+  remarks?: string;
+
+  isActive: boolean;
+
+  createdBy: number;
+  createdByName: string;
+  createdDate: string;
+
+  modifiedBy?: number;
+  modifiedByName?: string;
+  modifiedDate?: string;
+
+  // UI
+  logisticsStatus: string;
+  selected: boolean;
+
+  deliveryLifecycles?: DeliveryLifecycle[];
+  currentLifecycle?: DeliveryLifecycle[];
 }
-
 export interface DeliveryOrderTransaction {
 
   transferOrderId: number;
 
   transitID: number;
+
   deliveryNoteNo: string;
 
   transferOutDate: string;
@@ -270,6 +310,9 @@ export interface DeliveryOrderTransaction {
 
   transferModeId: number;
   transferModeName: string;
+
+  transferOutById?: number;
+  transferOutByName?: string;
 
   assignedUserId?: number;
   assignedUserName?: string;
@@ -297,11 +340,7 @@ export interface DeliveryOrderTransaction {
   modifiedBy?: number;
   modifiedByName?: string;
   modifiedDate?: string;
-
 }
-
-
-
 
 export interface TransferMode {
 

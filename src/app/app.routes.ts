@@ -17,6 +17,7 @@ import { DeliveryLifecycleMaster } from './pages/delivery-lifecycle-master/deliv
 import { Administration } from './pages/administration/administration';
 import { CompanyRoleLifecycleAccess } from './pages/company-role-lifecycle-access/company-role-lifecycle-access';
 import { RoleLifecyleMapping } from './pages/role-lifecyle-mapping/role-lifecyle-mapping';
+import { TransferOrderWorkbench } from './pages/transfer-order-workbench/transfer-order-workbench';
 
 export const routes: Routes = [
 
@@ -94,6 +95,24 @@ export const routes: Routes = [
       {
         path: 'administration',
         component: Administration,
+        children: [
+
+          { path: '', redirectTo: 'role', pathMatch: 'full' },
+
+          { path: 'role', component: RoleMaster },
+
+          { path: 'user-master', component: UserMaster },
+
+          { path: 'lifecycle', component: DeliveryLifecycleMaster },
+          { path: 'lifecycleaccess', component: CompanyRoleLifecycleAccess },
+            { path: 'role-cycle', component: RoleLifecyleMapping }
+        ]
+      },
+
+      
+      {
+        path: 'operations',
+        component: TransferOrderWorkbench,
         children: [
 
           { path: '', redirectTo: 'role', pathMatch: 'full' },

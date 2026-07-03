@@ -1,7 +1,12 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { DeliveryLifecycle,CompanyUserLifecycleAccess,CompanyUserLifecycleAccessView,RoleLifecycleMappingView,Company,RoleLifecycleMapping,User,Role } from './models/common-master-model';
+import { HttpParams } from '@angular/common/http';
+import { DeliveryLifecycle,CompanyUserLifecycleAccess,
+  TransferStockLogDetail,CompanyUserLifecycleAccessView,
+  DeliveryOrderTransaction,RoleLifecycleMappingView,
+  
+  TransferMode,Company,RoleLifecycleMapping,User,Role } from './models/common-master-model';
 @Injectable({
   providedIn: 'root'
 })
@@ -172,5 +177,59 @@ getUserRoles(userId: number, companyId: number): Observable<Role[]> {
   return this.http.get<Role[]>(
     `${this.apiUrl}/company-user-role?userId=${userId}&companyId=${companyId}`
   );
+}
+
+getTransferStockLogDetail(
+  companyId: number,
+  fromDate: string,
+  toDate: string
+): Observable<TransferStockLogDetail[]> {
+
+  const params = new HttpParams()
+    .set('companyId', companyId)
+    .set('fromDate', fromDate)
+    .set('toDate', toDate);
+
+  return this.http.get<TransferStockLogDetail[]>(
+    `${this.apiUrl}/transfer-stock-log-detail`,
+    { params }
+  );
+
+}
+
+// ======================================
+// Delivery Order Transaction
+// ======================================
+
+// Get Delivery Orders
+getDeliveryOrderTransactions(): Observable<DeliveryOrderTransaction[]> {
+
+  return this.http.get<DeliveryOrderTransaction[]>(
+    `${this.apiUrl}/delivery-order-transaction`
+  );
+
+}
+
+// Save / Update / Delete Delivery Order
+saveDeliveryOrderTransaction(
+  model: DeliveryOrderTransaction
+): Observable<any> {
+
+  return this.http.post<any>(
+    `${this.apiUrl}/delivery-order-transaction`,
+    model
+  );
+
+}
+
+
+
+// Get Transfer Modes
+getTransferModes(): Observable<TransferMode[]> {
+
+  return this.http.get<TransferMode[]>(
+    `${this.apiUrl}/transfer-mode`
+  );
+
 }
 }

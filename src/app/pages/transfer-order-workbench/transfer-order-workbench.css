@@ -1,0 +1,343 @@
+/*=========================================================
+  Transfer Order Workbench
+  Uses global LMS theme variables (Fiori / D365 style)
+==========================================================*/
+
+/* ===== Page layout ===== */
+.page{
+    padding: 24px;
+    background: var(--bg);
+    min-height: 100vh;
+    color: var(--text);
+}
+
+.page-header{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+h2{
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.record-count{
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-light);
+    background: var(--border);
+    padding: 4px 14px;
+    border-radius: 20px;
+}
+
+/* ===== Cards ===== */
+.card{
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.toolbar-card{
+    padding: 16px 20px;
+    margin-bottom: 20px;
+}
+
+/* ===== Toolbar ===== */
+.toolbar{
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.field{
+    display: flex;
+    flex-direction: column;
+}
+
+.toolbar label{
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-light);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.toolbar input{
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--white);
+    outline: none;
+    transition: var(--transition);
+}
+
+.toolbar input:focus{
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.btn-primary{
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 22px;
+    background: var(--primary);
+    color: var(--white);
+    border: none;
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-primary:hover{
+    background: var(--primary-light);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+
+/* ===== Loading ===== */
+.loading{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 14px;
+    color: var(--text-light);
+    padding: 48px 20px;
+}
+
+.spinner{
+    width: 18px;
+    height: 18px;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary-light);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin{
+    to{ transform: rotate(360deg); }
+}
+
+/* ===== Table ===== */
+.table-card{
+    overflow: hidden;
+}
+
+.table-wrap{
+    overflow-x: auto;
+}
+
+table{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+thead th{
+    position: sticky;
+    top: 0;
+    background: var(--primary);
+    color: var(--white);
+    font-weight: 500;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 12px 14px;
+    text-align: left;
+    border: none;
+}
+
+td{
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+}
+
+.num{
+    text-align: right;
+}
+
+.mono{
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+.item-name{
+    font-weight: 500;
+    color: var(--text);
+}
+
+tbody tr:nth-child(even){
+    background: var(--bg);
+}
+
+tbody tr:hover{
+    background: rgba(37, 99, 235, 0.06);
+}
+
+/* ===== Status badges ===== */
+.status{
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.received{
+    background: rgba(22, 163, 74, 0.12);
+    color: var(--success);
+}
+
+.pending{
+    background: rgba(245, 158, 11, 0.14);
+    color: var(--warning);
+}
+
+/* ===== Empty state ===== */
+.empty{
+    text-align: center;
+    font-weight: 500;
+    color: var(--text-light);
+    padding: 48px 20px !important;
+}
+
+/* ===== Pagination ===== */
+.pagination{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+}
+
+.page-size{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.page-size label{
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+.page-size select{
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--text);
+    background: var(--white);
+    cursor: pointer;
+    outline: none;
+    transition: var(--transition);
+}
+
+.page-size select:focus{
+    border-color: var(--primary-light);
+}
+
+.page-info{
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+.page-controls{
+    display: flex;
+    gap: 5px;
+}
+
+.page-btn{
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    background: var(--white);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.page-btn:hover:not(:disabled):not(.active){
+    background: rgba(37, 99, 235, 0.08);
+    border-color: var(--primary-light);
+    color: var(--primary-light);
+}
+
+.page-btn.active{
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--white);
+    cursor: default;
+}
+
+.page-btn:disabled{
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px){
+    .page{ padding: 14px; }
+    .toolbar{ gap: 10px; }
+    .pagination{ justify-content: center; }
+}
+
+/* ===== Toolbar selects (Company / Location Type / Location) ===== */
+.toolbar select{
+    min-width: 180px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--white);
+    cursor: pointer;
+    outline: none;
+    transition: var(--transition);
+}
+
+.toolbar select:focus{
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.toolbar select:disabled{
+    background: var(--bg);
+    color: var(--text-light);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* ===== Validation hint ===== */
+.hint{
+    margin-top: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--danger);
+}

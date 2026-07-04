@@ -11,7 +11,9 @@ import {
   DeliveryLifecycle,
   DeliveryOrderTransaction,
   TransferStockLogDetail,
-
+  TransferMode,
+  User,
+  Courier
 } from '../../services/models/common-master-model';
 
 @Component({
@@ -40,6 +42,7 @@ export class TransferOrderWorkbench implements OnInit {
   selectedLocationTypeId = 0;
   selectedLocationId = 0;
 
+  transferModes: TransferMode[] = [];
   transferLogs: TransferStockLogDetail[] = [];
 
   loading = false;
@@ -63,23 +66,43 @@ export class TransferOrderWorkbench implements OnInit {
   pickupValidationMessage = '';
   private pendingNextLifecycle: DeliveryLifecycle | undefined;
 
-  pickupLoadMode: 'Direct' | 'Courier' = 'Direct';
+  // Selected transfer mode (id + code drive the modal panels)
+  pickupTransferModeId = 0;
+  pickupLoadMode = '';          // 'DIRECT' | 'COURIER' | 'OTHERS'
 
   // Direct fields
-  pickupDriverName = '';
-  pickupVehicleInfo = '';
+  pickupDriverId = 0;
+
+  // Common field: used by both DIRECT and OTHERS
+  pickupVehicleNo = '';
 
   // Courier fields
-  pickupCourierName = '';
+  pickupCourierId = 0;
   pickupAwbNo = '';
 
+  // Others fields
+  pickupOtherPartyName = '';
+  pickupTransportType = '';
+
   pickupRemarks = '';
+
+  users: User[] = [];
+  couriers: Courier[] = [];
 
   constructor(private logisticsService: LogisticsService) { }
 
   ngOnInit(): void {
+
     this.loadCompanies();
     this.loadDeliveryLifecycles();
+    this.loadTransferModes();
+    this.loadUsers();
+    this.loadCouriers();
+
+    // Default until transfer modes load
+    this.pickupLoadMode = 'DIRECT';
+    this.pickupTransferModeId = 1;
+
   }
 
   private today(): string {
@@ -97,6 +120,14 @@ export class TransferOrderWorkbench implements OnInit {
     });
   }
 
+  setTransferMode(mode: TransferMode): void {
+
+    this.pickupTransferModeId = mode.transferModeId;
+    this.pickupLoadMode = mode.transferModeCode;
+    this.pickupValidationMessage = '';
+
+  }
+
   // ===== Master data loading =====
 
   loadCompanies(): void {
@@ -111,6 +142,53 @@ export class TransferOrderWorkbench implements OnInit {
         }
       },
       error: (err) => console.error('Failed to load companies:', err)
+    });
+  }
+
+  loadUsers(): void {
+    this.logisticsService.getUsers().subscribe({
+      next: (res: any) => {
+        this.users = res;
+      },
+      error: err => console.error('Users API Error', err)
+    });
+  }
+
+  loadTransferModes(): void {
+    this.logisticsService.getTransferModes().subscribe({
+      next: (res) => {
+
+        const order: Record<string, number> = {
+          DIRECT: 1,
+          COURIER: 2,
+          OTHERS: 3
+        };
+
+        this.transferModes = res.sort(
+          (a, b) =>
+            (order[a.transferModeCode] ?? 99) -
+            (order[b.transferModeCode] ?? 99)
+        );
+
+        const direct = this.transferModes.find(
+          x => x.transferModeCode === 'DIRECT'
+        );
+
+        if (direct) {
+          this.setTransferMode(direct);
+        }
+
+      },
+      error: err => console.error(err)
+    });
+  }
+
+  loadCouriers(): void {
+    this.logisticsService.getCouriers().subscribe({
+      next: (res: any) => {
+        this.couriers = res;
+      },
+      error: err => console.error(err)
     });
   }
 
@@ -244,8 +322,8 @@ export class TransferOrderWorkbench implements OnInit {
 
               // SP returns TransferOutByUserId / TransferredOutBy —
               // map them onto the DeliveryOrderTransaction field names
-              transferOutById: item.transferOutById ?? item.transferOutByUserId ?? 0,
-              transferOutByName: item.transferOutByName ?? item.transferredOutBy ?? '',
+              transferOutById: item.transferOutByUserId,
+              transferOutByName: item.transferredOutBy,
 
               transferInTime: item.transferInTime ?? undefined,
 
@@ -263,13 +341,18 @@ export class TransferOrderWorkbench implements OnInit {
               transferModeId: item.transferModeId ?? 0,
               transferModeName: item.transferModeName ?? '',
 
-              assignedUserId: item.assignedUserId ?? 0,
-              assignedUserName: item.assignedUserName ?? '',
+              assignedUserId: item.pickupDriverId ?? 0,
+              assignedUserName: item.fullName ?? '',
 
               courierId: item.courierId ?? 0,
               courierName: item.courierName ?? '',
 
               awbBillNo: item.awbBillNo ?? '',
+
+              // Vehicle / Other party details (common fields)
+              vehicleNo: item.vehicleNo ?? '',
+              otherPartyName: item.otherPartyName ?? '',
+              otherPartyType: item.otherPartyType ?? '',
 
               remarks: item.remarks ?? '',
 
@@ -433,29 +516,14 @@ export class TransferOrderWorkbench implements OnInit {
 
   }
 
-  // ===== Save flow =====
-
-  /**
-   * Builds a clean, backend-safe payload. Field names in
-   * TransferStockLogDetail now match DeliveryOrderTransaction,
-   * so the mapping is direct. Every field gets an explicit value —
-   * nothing goes out as undefined (HttpClient drops undefined keys)
-   * and no DateTime field is ever sent as ''.
-   *
-   * `extra` lets a caller (e.g. the Pickup Assignment modal) override
-   * specific fields — such as transferModeName, assignedUserName,
-   * courierName, awbBillNo, remarks — that aren't already sitting on
-   * the row before this transition.
-   */
   private buildRequest(
     order: TransferStockLogDetail,
     nextLifecycle: DeliveryLifecycle,
-    extra: Partial<TransferStockLogDetail> = {}
+    extra: Partial<DeliveryOrderTransaction> = {}
   ): DeliveryOrderTransaction {
 
     return {
 
-      // Existing lifecycle record id (0 = first action on this item)
       transferOrderId: order.transferOrderId ?? 0,
 
       transitID: order.transitID,
@@ -464,10 +532,10 @@ export class TransferOrderWorkbench implements OnInit {
       transferOutDate: order.transferOutDate,
       transferOutTime: order.transferOutTime,
 
-      sourceLocationId: order.sourceLocationId ?? 0,
+      sourceLocationId: order.sourceLocationId,
       sourceLocationName: order.sourceLocationName ?? '',
 
-      destinationLocationId: order.destinationLocationId ?? 0,
+      destinationLocationId: order.destinationLocationId,
       destinationLocationName: order.destinationLocationName ?? '',
 
       itemCode: order.itemCode ?? '',
@@ -476,26 +544,38 @@ export class TransferOrderWorkbench implements OnInit {
 
       transferQty: order.transferQty ?? 0,
 
+      // Lifecycle
       lifecycleId: nextLifecycle.lifecycleId,
       lifecycleSequenceNo: nextLifecycle.sequenceNo,
       lifecycleCode: nextLifecycle.statusCode,
       lifecycleName: nextLifecycle.statusName,
 
+      // Transfer Mode
       transferModeId: extra.transferModeId ?? order.transferModeId ?? 0,
       transferModeName: extra.transferModeName ?? order.transferModeName ?? '',
 
-      transferOutById: order.transferOutById ?? 0,
-      transferOutByName: order.transferOutByName ?? '',
+      // Original Transfer Out Details (Never Change)
+      transferOutById: order.transferOutById,
+      transferOutByName: order.transferOutByName,
 
+      // Driver Assignment (DIRECT)
       assignedUserId: extra.assignedUserId ?? order.assignedUserId ?? 0,
       assignedUserName: extra.assignedUserName ?? order.assignedUserName ?? '',
 
+      // Courier Assignment (COURIER)
       courierId: extra.courierId ?? order.courierId ?? 0,
       courierName: extra.courierName ?? order.courierName ?? '',
 
       awbBillNo: extra.awbBillNo ?? order.awbBillNo ?? '',
 
-      transferInTime: order.transferInTime ?? undefined,
+      // Vehicle No — common parameter, used by both DIRECT and OTHERS
+      vehicleNo: extra.vehicleNo ?? order.vehicleNo ?? '',
+
+      // Other Party (OTHERS)
+      otherPartyName: extra.otherPartyName ?? order.otherPartyName ?? '',
+      otherPartyType: extra.otherPartyType ?? order.otherPartyType ?? '',
+
+      transferInTime: order.transferInTime,
 
       inwardDoneById: order.inwardDoneById ?? 0,
       inwardDoneByName: order.inwardDoneByName ?? '',
@@ -506,17 +586,14 @@ export class TransferOrderWorkbench implements OnInit {
 
       isActive: true,
 
-      createdBy: order.createdBy || 1,
-      createdByName: order.createdByName || '',
-      createdDate: order.createdDate || new Date().toISOString(),
+      createdBy: order.createdBy,
+      createdByName: order.createdByName,
+      createdDate: order.createdDate,
 
-      // TODO: replace with the logged-in user once auth is wired up
       modifiedBy: 1,
       modifiedByName: 'Admin',
       modifiedDate: new Date().toISOString()
-
     };
-
   }
 
   processSelectedOrders(): void {
@@ -563,7 +640,7 @@ export class TransferOrderWorkbench implements OnInit {
 
   private saveWithLifecycle(
     nextLifecycle: DeliveryLifecycle,
-    extra: Partial<TransferStockLogDetail> = {}
+    extra: Partial<DeliveryOrderTransaction> = {}
   ): void {
 
     const requests = this.selectedOrders.map(order => {
@@ -616,14 +693,26 @@ export class TransferOrderWorkbench implements OnInit {
   // ===== Pickup Assignment modal =====
 
   openPickupAssignModal(): void {
-    this.pickupLoadMode = 'Direct';
-    this.pickupDriverName = '';
-    this.pickupVehicleInfo = '';
-    this.pickupCourierName = '';
-    this.pickupAwbNo = '';
-    this.pickupRemarks = '';
-    this.pickupValidationMessage = '';
+
     this.showPickupModal = true;
+
+    this.pickupValidationMessage = '';
+
+    // Reset all modal fields
+    this.pickupDriverId = 0;
+    this.pickupCourierId = 0;
+    this.pickupVehicleNo = '';
+    this.pickupAwbNo = '';
+    this.pickupOtherPartyName = '';
+    this.pickupTransportType = '';
+    this.pickupRemarks = '';
+
+    const direct = this.transferModes.find(x => x.transferModeCode === 'DIRECT');
+
+    if (direct) {
+      this.setTransferMode(direct);
+    }
+
   }
 
   closePickupModal(): void {
@@ -631,29 +720,45 @@ export class TransferOrderWorkbench implements OnInit {
     this.pendingNextLifecycle = undefined;
   }
 
-  setLoadMode(mode: 'Direct' | 'Courier'): void {
-    this.pickupLoadMode = mode;
-    this.pickupValidationMessage = '';
-  }
-
   confirmPickupAssignment(): void {
 
     this.pickupValidationMessage = '';
 
-    if (this.pickupLoadMode === 'Direct') {
-      if (!this.pickupDriverName.trim()) {
-        this.pickupValidationMessage = 'Please select a driver.';
+    // ===== Validation (per transfer mode) =====
+
+    if (this.pickupLoadMode === 'DIRECT') {
+
+      if (!this.pickupDriverId) {
+        this.pickupValidationMessage = 'Please select the driver.';
         return;
       }
-    } else {
-      if (!this.pickupCourierName.trim()) {
-        this.pickupValidationMessage = 'Please enter the courier name.';
+
+    }
+    else if (this.pickupLoadMode === 'COURIER') {
+
+      if (!this.pickupCourierId) {
+        this.pickupValidationMessage = 'Please select the courier.';
         return;
       }
-      if (!this.pickupAwbNo.trim()) {
-        this.pickupValidationMessage = 'Please enter the AWB / Bill No.';
+
+      if (!this.pickupAwbNo || this.pickupAwbNo.trim() === '') {
+        this.pickupValidationMessage = 'Please enter the AWB Bill Number.';
         return;
       }
+
+    }
+    else if (this.pickupLoadMode === 'OTHERS') {
+
+      if (!this.pickupOtherPartyName || this.pickupOtherPartyName.trim() === '') {
+        this.pickupValidationMessage = 'Please enter the Other Party Name.';
+        return;
+      }
+
+      if (!this.pickupTransportType) {
+        this.pickupValidationMessage = 'Please select transport type.';
+        return;
+      }
+
     }
 
     if (!this.pendingNextLifecycle) {
@@ -661,20 +766,46 @@ export class TransferOrderWorkbench implements OnInit {
       return;
     }
 
-    const extra: Partial<TransferStockLogDetail> = {
-      transferModeId: this.pickupLoadMode === 'Direct' ? 1 : 2,
-      transferModeName: this.pickupLoadMode
+    // ===== Build the extra payload =====
+
+    const selectedMode = this.transferModes.find(
+      x => x.transferModeId === this.pickupTransferModeId
+    );
+
+    const extra: Partial<DeliveryOrderTransaction> = {
+      transferModeId: this.pickupTransferModeId,
+      transferModeName: selectedMode?.transferModeName ?? this.pickupLoadMode
     };
 
-    if (this.pickupLoadMode === 'Direct') {
-      extra.assignedUserName = this.pickupDriverName.trim();
-      extra.assignedUserId = 0;
-      extra.remarks = this.pickupVehicleInfo.trim();
-    } else {
-      extra.courierName = this.pickupCourierName.trim();
-      extra.courierId = 0;
+    if (this.pickupLoadMode === 'DIRECT') {
+
+      const driver = this.users.find(u => u.userId === this.pickupDriverId);
+
+      extra.assignedUserId = this.pickupDriverId;
+      extra.assignedUserName = driver?.fullName ?? '';
+
+      // Vehicle No goes in the common vehicleNo parameter
+      extra.vehicleNo = this.pickupVehicleNo.trim();
+
+    }
+    else if (this.pickupLoadMode === 'COURIER') {
+
+      const courier = this.couriers.find(c => c.courierId === this.pickupCourierId);
+
+      extra.courierId = this.pickupCourierId;
+      extra.courierName = courier?.courierName ?? '';
       extra.awbBillNo = this.pickupAwbNo.trim();
       extra.remarks = this.pickupRemarks.trim();
+
+    }
+    else if (this.pickupLoadMode === 'OTHERS') {
+
+      extra.otherPartyName = this.pickupOtherPartyName.trim();
+      extra.otherPartyType = this.pickupTransportType;
+
+      // Same common vehicleNo parameter as DIRECT
+      extra.vehicleNo = this.pickupVehicleNo.trim();
+
     }
 
     const nextLifecycle = this.pendingNextLifecycle;
@@ -685,4 +816,13 @@ export class TransferOrderWorkbench implements OnInit {
     this.saveWithLifecycle(nextLifecycle, extra);
 
   }
+
+getLifecycleColor(status: string): string {
+
+  const lifecycle = this.deliveryLifecycles.find(
+    x => x.statusName === status
+  );
+
+  return lifecycle?.colorCode ?? '#6B7280';
+}
 }

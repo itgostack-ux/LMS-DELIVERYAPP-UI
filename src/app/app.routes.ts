@@ -18,6 +18,8 @@ import { Administration } from './pages/administration/administration';
 import { CompanyRoleLifecycleAccess } from './pages/company-role-lifecycle-access/company-role-lifecycle-access';
 import { RoleLifecyleMapping } from './pages/role-lifecyle-mapping/role-lifecyle-mapping';
 import { TransferOrderWorkbench } from './pages/transfer-order-workbench/transfer-order-workbench';
+import { DriverConsole } from './pages/driver-console/driver-console';
+import { TranferOrderView } from './pages/tranfer-order-view/tranfer-order-view';
 
 export const routes: Routes = [
 
@@ -105,11 +107,11 @@ export const routes: Routes = [
 
           { path: 'lifecycle', component: DeliveryLifecycleMaster },
           { path: 'lifecycleaccess', component: CompanyRoleLifecycleAccess },
-            { path: 'role-cycle', component: RoleLifecyleMapping }
+          { path: 'role-cycle', component: RoleLifecyleMapping }
         ]
       },
 
-      
+
       {
         path: 'operations',
         component: TransferOrderWorkbench,
@@ -123,10 +125,34 @@ export const routes: Routes = [
 
           { path: 'lifecycle', component: DeliveryLifecycleMaster },
           { path: 'lifecycleaccess', component: CompanyRoleLifecycleAccess },
-            { path: 'role-cycle', component: RoleLifecyleMapping }
+          { path: 'role-cycle', component: RoleLifecyleMapping }
+        ]
+      },
+      {
+        path: 'driver-console',
+        component: DriverConsole,
+        children: [
+
+          { path: '', redirectTo: 'role', pathMatch: 'full' },
+
+          { path: 'role', component: RoleMaster },
+
+
+        ]
+      },
+
+         {
+        path: 'track-orders',
+        component: TranferOrderView,
+        children: [
+
+          { path: '', redirectTo: 'role', pathMatch: 'full' },
+
+          { path: 'role', component: RoleMaster },
+
+
         ]
       }
-
 
     ]
 

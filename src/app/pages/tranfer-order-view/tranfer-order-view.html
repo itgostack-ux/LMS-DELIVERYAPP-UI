@@ -1,0 +1,308 @@
+<div class="page">
+
+    <div class="page-header">
+        <h2>Track Delivery Orders</h2>
+        <span class="record-count" *ngIf="!loading && filteredOrders.length > 0">
+            {{filteredOrders.length}} of {{orders.length}} records
+        </span>
+    </div>
+
+    <!-- ===== Filters ===== -->
+    <div class="card toolbar-card">
+        <div class="toolbar">
+
+            <div class="field">
+                <label>Source Location</label>
+                <select [(ngModel)]="selectedSourceId" (change)="onFilterChange()">
+                    <option [ngValue]="0">All Sources</option>
+                    <option *ngFor="let loc of sourceLocations" [ngValue]="loc.id">
+                        {{loc.name}}
+                    </option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Destination Location</label>
+                <select [(ngModel)]="selectedDestinationId" (change)="onFilterChange()">
+                    <option [ngValue]="0">All Destinations</option>
+                    <option *ngFor="let loc of destinationLocations" [ngValue]="loc.id">
+                        {{loc.name}}
+                    </option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Status</label>
+                <select [(ngModel)]="selectedLifecycleCode" (change)="onFilterChange()">
+                    <option value="">All Statuses</option>
+                    <option *ngFor="let lc of deliveryLifecycles" [value]="lc.statusCode">
+                        {{lc.statusName}}
+                    </option>
+                </select>
+            </div>
+
+            <div class="field grow">
+                <label>Search</label>
+                <input type="text" [(ngModel)]="searchText" (input)="onFilterChange()"
+                    placeholder="Transit ID / Delivery Note / IMEI / Item / AWB">
+            </div>
+
+            <button class="btn-clear" *ngIf="hasActiveFilters" (click)="clearFilters()">
+                Clear Filters
+            </button>
+
+        </div>
+    </div>
+
+    <!-- ===== Loading ===== -->
+    <div *ngIf="loading" class="loading">
+        <span class="spinner"></span> Loading delivery orders...
+    </div>
+
+    <!-- ===== Table ===== -->
+    <div class="card table-card" *ngIf="!loading">
+
+        <div class="table-wrap">
+            <table>
+
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>S.No</th>
+                        <th>Transit ID</th>
+                        <th>Delivery Note</th>
+                        <th>Transfer Date</th>
+                        <th>Source</th>
+                        <th>Destination</th>
+                        <th>Item</th>
+                        <th>IMEI</th>
+                        <th>Status</th>
+                        <th>Progress</th>
+                        <th>Mode</th>
+                        <th>Assigned To</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    <ng-container *ngFor="let order of pagedOrders; let i = index; trackBy: trackByOrderId">
+
+                        <tr class="order-row" [class.expanded]="isExpanded(order)" (click)="toggleTrack(order)">
+
+                            <td class="expand-cell">
+                                <span class="chevron" [class.open]="isExpanded(order)">›</span>
+                            </td>
+
+                            <td>{{startIndex + i + 1}}</td>
+
+                            <td class="mono">{{order.transitID}}</td>
+
+                            <td>{{order.deliveryNoteNo}}</td>
+
+                            <td>{{order.transferOutDate | date:'dd-MM-yyyy'}}</td>
+
+                            <td>{{order.sourceLocationName}}</td>
+
+                            <td>{{order.destinationLocationName}}</td>
+
+                            <td class="item-name">{{order.itemName}}</td>
+
+                            <td class="mono">{{order.imei}}</td>
+
+                            <td>
+                                <span class="lc-badge" [ngClass]="statusClass(order.lifecycleCode)">
+                                    {{order.lifecycleName}}
+                                </span>
+                            </td>
+
+                            <td class="progress-cell">
+                                <div class="progress-track">
+                                    <div class="progress-fill" [style.width.%]="progressPercent(order)"></div>
+                                </div>
+                                <span class="progress-label">{{progressPercent(order)}}%</span>
+                            </td>
+
+                            <td>{{order.transferModeName || '-'}}</td>
+
+                            <td>
+                                {{ order.assignedUserName || order.courierName || order.otherPartyName || '-' }}
+                            </td>
+
+                        </tr>
+
+                        <!-- ===== Expanded tracking timeline ===== -->
+                        <tr *ngIf="isExpanded(order)" class="track-row">
+                            <td colspan="13">
+
+                                <div class="track-panel">
+
+                                    <!-- Route summary -->
+                                    <div class="route">
+                                        <div class="route-point">
+                                            <div class="route-label">From</div>
+                                            <div class="route-name">{{order.sourceLocationName}}</div>
+                                            <div class="route-sub">
+                                                {{order.transferOutTime | date:'dd-MM-yyyy HH:mm'}}
+                                                <span *ngIf="order.transferOutByName">
+                                                    · by {{order.transferOutByName}}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="route-line"></div>
+
+                                        <div class="route-point right">
+                                            <div class="route-label">To</div>
+                                            <div class="route-name">{{order.destinationLocationName}}</div>
+                                            <div class="route-sub">
+                                                {{ order.transferInTime
+                                                    ? (order.transferInTime | date:'dd-MM-yyyy HH:mm')
+                                                    : 'Not yet received' }}
+                                                <span *ngIf="order.inwardDoneByName">
+                                                    · by {{order.inwardDoneByName}}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Lifecycle timeline -->
+                                    <div class="timeline">
+
+                                        <div class="timeline-step" *ngFor="let stage of deliveryLifecycles"
+                                            [ngClass]="stageState(order, stage)">
+
+                                            <div class="dot">
+                                                <span *ngIf="stageState(order, stage) === 'done'">✓</span>
+                                            </div>
+
+                                            <div class="step-name">{{stage.statusName}}</div>
+
+                                        </div>
+
+                                    </div>
+
+                                    <!-- Shipment details -->
+                                    <div class="detail-grid">
+
+                                        <div class="detail" *ngIf="order.transferModeName">
+                                            <span class="detail-label">Transfer Mode</span>
+                                            <span class="detail-value">{{order.transferModeName}}</span>
+                                        </div>
+
+                                        <div class="detail" *ngIf="order.assignedUserName">
+                                            <span class="detail-label">Driver</span>
+                                            <span class="detail-value">{{order.assignedUserName}}</span>
+                                        </div>
+
+                                        <div class="detail" *ngIf="order.courierName">
+                                            <span class="detail-label">Courier</span>
+                                            <span class="detail-value">{{order.courierName}}</span>
+                                        </div>
+
+                                        <div class="detail" *ngIf="order.awbBillNo">
+                                            <span class="detail-label">AWB Bill No</span>
+                                            <span class="detail-value mono">{{order.awbBillNo}}</span>
+                                        </div>
+
+                                        <div class="detail" *ngIf="order.otherPartyName">
+                                            <span class="detail-label">Other Party</span>
+                                            <span class="detail-value">{{order.otherPartyName}}</span>
+                                        </div>
+
+                                        <div class="detail" *ngIf="order.otherPartyType">
+                                            <span class="detail-label">Transport Type</span>
+                                            <span class="detail-value">{{order.otherPartyType}}</span>
+                                        </div>
+
+                                        <div class="detail" *ngIf="order.vehicleNo">
+                                            <span class="detail-label">Vehicle No</span>
+                                            <span class="detail-value mono">{{order.vehicleNo}}</span>
+                                        </div>
+
+                                        <div class="detail" *ngIf="order.itemCode">
+                                            <span class="detail-label">Item Code</span>
+                                            <span class="detail-value mono">{{order.itemCode}}</span>
+                                        </div>
+
+                                        <div class="detail" *ngIf="order.transferDuration">
+                                            <span class="detail-label">Duration</span>
+                                            <span class="detail-value">{{order.transferDuration}}</span>
+                                        </div>
+
+                                        <div class="detail" *ngIf="order.remarks">
+                                            <span class="detail-label">Remarks</span>
+                                            <span class="detail-value">{{order.remarks}}</span>
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </td>
+                        </tr>
+
+                    </ng-container>
+
+                    <tr *ngIf="filteredOrders.length == 0">
+                        <td colspan="13" class="empty">
+                            {{ orders.length == 0
+                                ? 'No delivery orders found'
+                                : 'No orders match the selected filters' }}
+                        </td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+        </div>
+
+        <!-- ===== Pagination ===== -->
+        <div class="pagination" *ngIf="filteredOrders.length > 0">
+
+            <div class="page-size">
+                <label>Rows per page</label>
+                <select [(ngModel)]="pageSize" (change)="onPageSizeChange()">
+                    <option [value]="10">10</option>
+                    <option [value]="25">25</option>
+                    <option [value]="50">50</option>
+                    <option [value]="100">100</option>
+                </select>
+            </div>
+
+            <div class="page-info">
+                Showing {{startIndex + 1}}–{{endIndex}} of {{filteredOrders.length}}
+            </div>
+
+            <div class="page-controls">
+
+                <button class="page-btn" (click)="goToPage(1)" [disabled]="currentPage == 1" title="First page">
+                    &laquo;
+                </button>
+
+                <button class="page-btn" (click)="goToPage(currentPage - 1)" [disabled]="currentPage == 1"
+                    title="Previous page">
+                    &lsaquo;
+                </button>
+
+                <button class="page-btn" *ngFor="let p of visiblePages" [class.active]="p == currentPage"
+                    (click)="goToPage(p)">
+                    {{p}}
+                </button>
+
+                <button class="page-btn" (click)="goToPage(currentPage + 1)" [disabled]="currentPage == totalPages"
+                    title="Next page">
+                    &rsaquo;
+                </button>
+
+                <button class="page-btn" (click)="goToPage(totalPages)" [disabled]="currentPage == totalPages"
+                    title="Last page">
+                    &raquo;
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>

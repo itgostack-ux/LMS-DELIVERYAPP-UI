@@ -99,9 +99,7 @@
 
             <div class="right-section">
 
-                <button class="btn-action"
-                        [disabled]="!isSameStatus || saving"
-                        (click)="processSelectedOrders()">
+                <button class="btn-action" [disabled]="!isSameStatus || saving" (click)="processSelectedOrders()">
                     {{ saving ? 'Saving...' : actionButtonText }}
                 </button>
 
@@ -159,9 +157,7 @@
                         <td>
                             <!-- Received rows have blank logisticsStatus and are not
                                  part of the delivery workflow, so they can't be selected -->
-                            <input type="checkbox"
-                                   [(ngModel)]="item.selected"
-                                   [disabled]="!item.logisticsStatus">
+                            <input type="checkbox" [(ngModel)]="item.selected" [disabled]="!item.logisticsStatus">
                         </td>
 
                         <td>{{startIndex + i + 1}}</td>
@@ -182,9 +178,23 @@
                         </td>
 
                         <td>
-                            {{ item.logisticsStatus || '-' }}
-                        </td>
 
+                            <span class="status-badge" [style.background]="getLifecycleColor(item.logisticsStatus)"
+                                style="
+            color:#fff;
+            padding:5px 12px;
+            border-radius:20px;
+            font-size:12px;
+            font-weight:600;
+            display:inline-block;
+            min-width:120px;
+            text-align:center;">
+
+                                {{ item.logisticsStatus || '-' }}
+
+                            </span>
+
+                        </td>
                         <td>{{item.sourceBranch}}</td>
 
                         <td>{{item.destinationBranch}}</td>
@@ -272,30 +282,21 @@
         </div>
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-        
     </div>
 
 </div>
 
-<div *ngIf="showPickupModal"
-     style="position:fixed; inset:0; background:rgba(15,23,42,.45); display:flex; align-items:center; justify-content:center; z-index:1000;">
+<!-- ================= PICKUP ASSIGNMENT MODAL ================= -->
 
-    <div style="background:#fff; width:520px; max-width:95vw; border-radius:12px; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,.25);">
+<div *ngIf="showPickupModal"
+    style="position:fixed; inset:0; background:rgba(15,23,42,.45); display:flex; align-items:center; justify-content:center; z-index:1000;">
+
+    <div
+        style="background:#fff; width:520px; max-width:95vw; border-radius:12px; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,.25);">
 
         <!-- Header -->
-        <div style="background:#eef2ff;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;">
+        <div
+            style="background:#eef2ff;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;">
             <div>
                 <div style="font-size:22px;font-weight:700;color:#1e3a8a;">
                     Assign Pickup
@@ -306,9 +307,7 @@
                 </div>
             </div>
 
-            <button
-                (click)="closePickupModal()"
-                style="border:none;background:none;font-size:24px;cursor:pointer;">
+            <button (click)="closePickupModal()" style="border:none;background:none;font-size:24px;cursor:pointer;">
                 ×
             </button>
         </div>
@@ -316,100 +315,153 @@
         <!-- Body -->
         <div style="padding:22px;">
 
+            <!-- Transfer Mode -->
             <label style="font-size:12px;font-weight:700;color:#475569;">
-                LOAD MODE
+                Transfer Mode
             </label>
 
-            <div style="display:flex;margin-top:8px;margin-bottom:20px;gap:10px;">
+            <div style="display:flex;gap:10px;margin-top:8px;margin-bottom:20px;">
 
-                <button
-                    type="button"
-                    (click)="setLoadMode('Direct')"
-                    [style.background]="pickupLoadMode=='Direct' ? '#2563eb' : '#f1f5f9'"
-                    [style.color]="pickupLoadMode=='Direct' ? '#fff' : '#334155'"
+                <button *ngFor="let mode of transferModes" type="button" (click)="setTransferMode(mode)"
+                    [style.background]="pickupTransferModeId === mode.transferModeId ? '#2563eb' : '#f1f5f9'"
+                    [style.color]="pickupTransferModeId === mode.transferModeId ? '#fff' : '#334155'"
                     style="flex:1;padding:12px;border:none;border-radius:8px;cursor:pointer;font-weight:600;">
-                    🚚 Direct
-                </button>
 
-                <button
-                    type="button"
-                    (click)="setLoadMode('Courier')"
-                    [style.background]="pickupLoadMode=='Courier' ? '#2563eb' : '#f1f5f9'"
-                    [style.color]="pickupLoadMode=='Courier' ? '#fff' : '#334155'"
-                    style="flex:1;padding:12px;border:none;border-radius:8px;cursor:pointer;font-weight:600;">
-                    📦 Courier
+                    {{mode.transferModeName}}
+
                 </button>
 
             </div>
 
-            <!-- DIRECT -->
+            <!-- ================= DIRECT ================= -->
 
-            <div *ngIf="pickupLoadMode=='Direct'">
+            <div *ngIf="pickupLoadMode === 'DIRECT'">
 
                 <label style="font-size:13px;font-weight:600;">
                     Driver
                 </label>
 
-                <input
-                    type="text"
-                    [(ngModel)]="pickupDriverName"
-                    placeholder="Driver Name"
+                <select [(ngModel)]="pickupDriverId"
                     style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin:6px 0 16px;">
+
+                    <option [ngValue]="0">
+                        Select Driver
+                    </option>
+
+                    <option *ngFor="let user of users" [ngValue]="user.userId">
+
+                        {{user.fullName}}
+
+                    </option>
+
+                </select>
 
                 <label style="font-size:13px;font-weight:600;">
-                    Vehicle
+                    Vehicle No
                 </label>
 
-                <input
-                    type="text"
-                    [(ngModel)]="pickupVehicleInfo"
-                    placeholder="Vehicle Number / Vehicle Details"
-                    style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin:6px 0 16px;">
+                <input type="text" [(ngModel)]="pickupVehicleNo" placeholder="TN 09 AB 1234"
+                    style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
 
             </div>
 
-            <!-- COURIER -->
+            <!-- ================= COURIER ================= -->
 
-            <div *ngIf="pickupLoadMode=='Courier'">
-
-                <label style="font-size:13px;font-weight:600;">
-                    Courier Name
-                </label>
-
-                <input
-                    type="text"
-                    [(ngModel)]="pickupCourierName"
-                    placeholder="Courier Name"
-                    style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin:6px 0 16px;">
+            <div *ngIf="pickupLoadMode === 'COURIER'">
 
                 <label style="font-size:13px;font-weight:600;">
-                    AWB Number
+                    Courier
                 </label>
 
-                <input
-                    type="text"
-                    [(ngModel)]="pickupAwbNo"
-                    placeholder="AWB / Tracking Number"
+                <select [(ngModel)]="pickupCourierId"
                     style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin:6px 0 16px;">
+
+                    <option [ngValue]="0">
+                        Select Courier
+                    </option>
+
+                    <option *ngFor="let courier of couriers" [ngValue]="courier.courierId">
+
+                        {{courier.courierName}}
+
+                    </option>
+
+                </select>
+
+                <label style="font-size:13px;font-weight:600;">
+                    AWB Bill No
+                </label>
+
+                <input type="text" [(ngModel)]="pickupAwbNo" placeholder="Enter AWB Bill Number"
+                    style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:16px;">
+
+                <label style="font-size:13px;font-weight:600;">
+                    Remarks
+                </label>
+
+                <input type="text" [(ngModel)]="pickupRemarks" placeholder="Remarks (optional)"
+                    style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
 
             </div>
 
-            <!-- REMARKS -->
+            <!-- ================= OTHERS ================= -->
 
-            <label style="font-size:13px;font-weight:600;">
-                Remarks
-            </label>
+            <!-- ================= OTHER PARTY ================= -->
 
-            <textarea
-                [(ngModel)]="pickupRemarks"
-                rows="3"
-                placeholder="Enter Remarks..."
-                style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;resize:vertical;">
-            </textarea>
+            <div *ngIf="pickupLoadMode === 'OTHERS'">
 
-            <div
-                *ngIf="pickupValidationMessage"
-                style="margin-top:10px;color:#dc2626;font-size:13px;">
+                <!-- Other Party Name -->
+
+                <label style="font-size:13px;font-weight:600;">
+                    <i class="fa-solid fa-building me-2"></i>
+                    Other Party Name
+                </label>
+
+                <input type="text" [(ngModel)]="pickupOtherPartyName" placeholder="Enter Other Party Name"
+                    style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin:6px 0 16px;">
+
+                <!-- Transport Type -->
+
+                <label style="font-size:13px;font-weight:600;">
+                    <i class="fa-solid fa-truck-fast me-2"></i>
+                    Transport Type
+                </label>
+
+                <select [(ngModel)]="pickupTransportType"
+                    style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin:6px 0 16px;">
+
+                    <option value="">
+                        Select Transport Type
+                    </option>
+
+                    <option value="Bike">
+                        <i class="fa-solid fa-motorcycle"></i> Bike
+                    </option>
+
+                    <option value="Auto">
+                        <i class="fa-solid fa-taxi"></i> Auto
+                    </option>
+
+                    <option value="Truck">
+                        <i class="fa-solid fa-truck"></i> Truck
+                    </option>
+
+                </select>
+
+                <!-- Vehicle No -->
+
+                <label style="font-size:13px;font-weight:600;">
+                    <i class="fa-solid fa-car-side me-2"></i>
+                    Vehicle No
+                </label>
+
+                <input type="text" [(ngModel)]="pickupVehicleNo" placeholder="TN 09 AB 1234"
+                    style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+
+            </div>
+            <!-- Validation -->
+
+            <div *ngIf="pickupValidationMessage" style="margin-top:12px;color:#dc2626;font-size:13px;">
 
                 {{pickupValidationMessage}}
 
@@ -421,17 +473,14 @@
 
         <div style="display:flex;justify-content:flex-end;gap:10px;padding:18px 22px;border-top:1px solid #e2e8f0;">
 
-            <button
-                (click)="closePickupModal()"
+            <button (click)="closePickupModal()"
                 style="padding:10px 18px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;cursor:pointer;">
 
                 Cancel
 
             </button>
 
-            <button
-                (click)="confirmPickupAssignment()"
-                [disabled]="saving"
+            <button (click)="confirmPickupAssignment()" [disabled]="saving"
                 style="padding:10px 18px;border:none;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer;">
 
                 {{ saving ? 'Saving...' : 'Assign Pickup' }}
@@ -443,4 +492,3 @@
     </div>
 
 </div>
-

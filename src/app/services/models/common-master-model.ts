@@ -20,55 +20,55 @@ export interface Location {
 
 export interface Role {
 
-    roleID: number;
+  roleID: number;
 
-    roleName: string;
+  roleName: string;
 
 }
 
 export interface User {
 
-    userId: number;
+  userId: number;
 
-    fullName: string;
+  fullName: string;
 
-    loginName: string;
+  loginName: string;
 
-    emailId: string;
+  emailId: string;
 
-    mobileNo: string;
+  mobileNo: string;
 
 }
 
 
 export interface DeliveryLifecycle {
 
-    lifecycleId: number;
+  lifecycleId: number;
 
-    sequenceNo: number;
+  sequenceNo: number;
 
-    statusCode: string;
+  statusCode: string;
 
-    statusName: string;
+  statusName: string;
 
-    nextStatusCode: string;
+  nextStatusCode: string;
 
-    colorCode: string;
+  colorCode: string;
 
-    description: string;
+  description: string;
 
-    isActive: boolean;
+  isActive: boolean;
 
-    createdBy: string;
+  createdBy: string;
 
-    createdDate: Date;
+  createdDate: Date;
 
-    modifiedBy: string;
+  modifiedBy: string;
 
-    modifiedDate: Date;
+  modifiedDate: Date;
   selected?: boolean
 
-  
+
 }
 
 export interface SendOtpRequest {
@@ -207,6 +207,8 @@ export interface RoleLifecycleMappingView {
   isActive: boolean;
 
 }
+
+
 export interface TransferStockLogDetail {
 
   transferOrderId: number;
@@ -234,35 +236,39 @@ export interface TransferStockLogDetail {
 
   transferStatus: string;
 
-  // Use same names as DeliveryOrderTransaction
+  // Transfer Out User
   transferOutById?: number;
   transferOutByName?: string;
 
-  transferInTime?: string;
+  // Assigned Driver
+  assignedUserId?: number;
+  assignedUserName?: string;
 
+  // Courier
+  courierId?: number;
+  courierName?: string;
+  awbBillNo?: string;
+
+  // Transfer In
+  transferInTime?: string;
   inwardDoneById?: number;
   inwardDoneByName?: string;
 
   transferDuration?: string;
 
+  // Lifecycle
   lifecycleId: number;
   lifecycleSequenceNo: number;
   lifecycleCode: string;
   lifecycleName: string;
 
+  // Transfer Mode
   transferModeId: number;
   transferModeName: string;
 
-  assignedUserId?: number;
-  assignedUserName?: string;
-
-  courierId?: number;
-  courierName?: string;
-
-  awbBillNo?: string;
-
   remarks?: string;
 
+  // Audit
   isActive: boolean;
 
   createdBy: number;
@@ -273,12 +279,16 @@ export interface TransferStockLogDetail {
   modifiedByName?: string;
   modifiedDate?: string;
 
-  // UI
+  // UI Only
   logisticsStatus: string;
   selected: boolean;
 
+  otherPartyType?: string;
+  otherPartyName?: string;
+  vehicleNo?: string;
+
   deliveryLifecycles?: DeliveryLifecycle[];
-  currentLifecycle?: DeliveryLifecycle[];
+  currentLifecycle?: DeliveryLifecycle;
 }
 export interface DeliveryOrderTransaction {
 
@@ -327,6 +337,10 @@ export interface DeliveryOrderTransaction {
   inwardDoneById?: number;
   inwardDoneByName?: string;
 
+
+  otherPartyType?: string;
+  otherPartyName?: string;
+  vehicleNo?: string;
   transferDuration?: string;
 
   remarks?: string;
@@ -362,4 +376,28 @@ export interface TransferMode {
 
   modifiedDate?: string;
 
+}
+
+export interface TransferManifest {
+  manifestId: number;
+  manifestNo: string;
+  transferOrderId: number;
+
+  assignedUserId: number;
+  assignedUserName: string;
+
+  receiverUserId: number;
+  receiverUserName: string;
+
+  otp: string;
+
+  lifecycleId: number;
+  lifecycleSequenceNo: number;
+  lifecycleCode: string;
+  lifecycleName: string;
+
+  manifestDate: Date;
+  status: string;
+
+ 
 }

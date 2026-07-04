@@ -6,7 +6,7 @@ import { DeliveryLifecycle,CompanyUserLifecycleAccess,
   TransferStockLogDetail,CompanyUserLifecycleAccessView,
   DeliveryOrderTransaction,RoleLifecycleMappingView,
   
-  TransferMode,Company,RoleLifecycleMapping,User,Role } from './models/common-master-model';
+  TransferMode,Company,RoleLifecycleMapping,User,Role,TransferManifest } from './models/common-master-model';
 @Injectable({
   providedIn: 'root'
 })
@@ -229,7 +229,29 @@ saveDeliveryOrderTransaction(
 getTransferModes(): Observable<TransferMode[]> {
 
   return this.http.get<TransferMode[]>(
-    `${this.apiUrl}/transfer-mode`
+    `${this.apiUrl}/transfer-modes`
+  );
+
+}
+// ======================================
+// Transfer Manifest
+// ======================================
+
+// Get Manifest Orders
+getManifestOrders(manifestNo: string): Observable<TransferManifest[]> {
+
+  return this.http.get<TransferManifest[]>(
+    `${this.apiUrl}/GetManifestOrders/${manifestNo}`
+  );
+
+}
+
+// Save Transfer Manifest
+saveTransferManifest(model: TransferManifest): Observable<any> {
+
+  return this.http.post<any>(
+    `${this.apiUrl}/SaveTransferManifest`,
+    model
   );
 
 }

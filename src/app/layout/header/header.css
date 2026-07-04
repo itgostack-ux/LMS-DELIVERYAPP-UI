@@ -101,3 +101,49 @@ header{
     border-radius:50%;
 
 }
+
+.right{
+    display:flex;
+    align-items:center;
+    gap:16px;
+}
+
+.user-info{
+    text-align:right;
+    color:#fff;
+}
+
+.user-name{
+    font-size:15px;
+    font-weight:600;
+}
+
+.role-name{
+    font-size:12px;
+    opacity:.85;
+}
+
+
+.logout{
+
+    padding:20px;
+
+}
+
+.logout btn{
+
+    width:100%;
+    padding:14px;
+
+    border:none;
+
+    border-radius:8px;
+
+    background:white;
+
+    color:#1E3A8A;
+
+    font-weight:600;
+
+    cursor:pointer;
+}

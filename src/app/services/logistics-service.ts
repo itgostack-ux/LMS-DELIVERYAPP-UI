@@ -5,6 +5,7 @@ import { HttpParams } from '@angular/common/http';
 import { DeliveryLifecycle,CompanyUserLifecycleAccess,
   TransferStockLogDetail,CompanyUserLifecycleAccessView,
   DeliveryOrderTransaction,RoleLifecycleMappingView,
+  TransferManifestResponse,
   
   TransferMode,Company,RoleLifecycleMapping,User,Role,TransferManifest } from './models/common-master-model';
 @Injectable({
@@ -237,20 +238,18 @@ getTransferModes(): Observable<TransferMode[]> {
 // Transfer Manifest
 // ======================================
 
-// Get Manifest Orders
-getManifestOrders(manifestNo: string): Observable<TransferManifest[]> {
-
-  return this.http.get<TransferManifest[]>(
-    `${this.apiUrl}/GetManifestOrders/${manifestNo}`
+getManifestOrders(): Observable<TransferManifestResponse[]> {
+  return this.http.get<TransferManifestResponse[]>(
+    `${this.apiUrl}/transfer-manifest`
   );
-
 }
 
+// Save Transfer Manifest
 // Save Transfer Manifest
 saveTransferManifest(model: TransferManifest): Observable<any> {
 
   return this.http.post<any>(
-    `${this.apiUrl}/SaveTransferManifest`,
+    `${this.apiUrl}/transfer-manifest`,
     model
   );
 

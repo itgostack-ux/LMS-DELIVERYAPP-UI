@@ -91,6 +91,15 @@
 
                 </div>
 
+                <!-- Manifest grouping hint: shown when the next step is
+                     Pickup Assigned, since that's when manifest(s) get
+                     created — one per source location -->
+                <div *ngIf="isSameStatus && isManifestNext" class="manifest-hint"
+                    style="font-size:12px;color:#64748b;margin-top:4px;">
+                    {{selectedSourceLocationCount}} manifest(s) will be created —
+                    one per source location
+                </div>
+
                 <div class="text-danger" *ngIf="!isSameStatus">
                     Please select orders with the same Logistics Status.
                 </div>
@@ -403,8 +412,6 @@
                     style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
 
             </div>
-
-            <!-- ================= OTHERS ================= -->
 
             <!-- ================= OTHER PARTY ================= -->
 

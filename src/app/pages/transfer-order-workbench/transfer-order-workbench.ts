@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { forkJoin, from, of, Observable } from 'rxjs';
+import { concatMap, toArray } from 'rxjs/operators';
 
 import { LogisticsService } from '../../services/logistics-service';
 import {
@@ -13,7 +14,8 @@ import {
   TransferStockLogDetail,
   TransferMode,
   User,
-  Courier
+  Courier,
+  TransferManifest
 } from '../../services/models/common-master-model';
 
 @Component({
@@ -88,6 +90,12 @@ export class TransferOrderWorkbench implements OnInit {
 
   users: User[] = [];
   couriers: Courier[] = [];
+
+  // SequenceNo at which pickup assignment happens (PICKUP_ASSIGNED) —
+  // this is also the step where manifests get created, grouped by
+  // source location. Kept as one constant so both places that need it
+  // (processSelectedOrders + isManifestNext) stay in sync.
+  private readonly PICKUP_ASSIGNED_SEQUENCE_NO = 3;
 
   constructor(private logisticsService: LogisticsService) { }
 
@@ -516,6 +524,40 @@ export class TransferOrderWorkbench implements OnInit {
 
   }
 
+  // ===== Manifest grouping info (for the action toolbar hint) =====
+
+  // Number of distinct source locations among the selected orders.
+  // Moving to Pickup Assigned creates one manifest per source location.
+  get selectedSourceLocationCount(): number {
+
+    const ids = new Set(
+      this.selectedOrders.map(x => x.sourceLocationId)
+    );
+
+    return ids.size;
+
+  }
+
+  // True when the NEXT lifecycle step (by sequenceNo) is Pickup Assigned —
+  // that's the step where manifest(s) get created, grouped by source location.
+  get isManifestNext(): boolean {
+
+    const current = this.deliveryLifecycles.find(
+      x => x.statusName === this.selectedStatus
+    );
+
+    if (!current) {
+      return false;
+    }
+
+    const next = this.deliveryLifecycles.find(
+      x => x.statusCode === current.nextStatusCode
+    );
+
+    return next?.sequenceNo === this.PICKUP_ASSIGNED_SEQUENCE_NO;
+
+  }
+
   private buildRequest(
     order: TransferStockLogDetail,
     nextLifecycle: DeliveryLifecycle,
@@ -626,15 +668,195 @@ export class TransferOrderWorkbench implements OnInit {
       return;
     }
 
-    // Moving INTO "Pickup Assigned" needs Direct/Courier details first —
-    // open the popup instead of saving right away.
-    if (nextLifecycle.statusCode === 'PICKUP_ASSIGNED') {
+    // Moving into "Pickup Assigned" (sequenceNo 3) needs Direct/Courier/Other
+    // details first — open the popup instead of saving right away. This is
+    // also the step where manifest(s) get created, one per source location.
+    if (nextLifecycle.sequenceNo === this.PICKUP_ASSIGNED_SEQUENCE_NO) {
       this.pendingNextLifecycle = nextLifecycle;
       this.openPickupAssignModal();
       return;
     }
 
+    // Any other transition (Open -> Pickup Ready, Picked Up -> Delivered,
+    // etc.) is a plain status update — no manifest involved.
     this.saveWithLifecycle(nextLifecycle);
+
+  }
+
+  // ===== Manifest creation (grouped by source location) =====
+
+  private buildManifest(
+    order: TransferStockLogDetail,
+    nextLifecycle: DeliveryLifecycle,
+    manifestNo: string,
+    extra: Partial<DeliveryOrderTransaction> = {}
+  ): TransferManifest {
+
+    return {
+
+      manifestId: 0,
+
+      // '' = backend generates a new manifest number for this group;
+      // non-empty = reuse the number already generated for this group
+      manifestNo: manifestNo,
+
+      transferOrderId: order.transferOrderId ?? 0,
+
+      // Driver/Courier assignment from the Pickup Assignment modal,
+      // falling back to whatever is already on the order
+      assignedUserId: extra.assignedUserId ?? order.assignedUserId ?? 0,
+      assignedUserName: extra.assignedUserName ?? order.assignedUserName ?? '',
+
+      receiverUserId: 0,
+      receiverUserName: '',
+
+      otp: '',
+
+      // Lifecycle -> Pickup Assigned
+      lifecycleId: nextLifecycle.lifecycleId,
+      lifecycleSequenceNo: nextLifecycle.sequenceNo,
+      lifecycleCode: nextLifecycle.statusCode,
+      lifecycleName: nextLifecycle.statusName,
+
+      manifestDate: new Date(),
+      status: nextLifecycle.statusName
+
+    };
+  }
+
+  // Saves ONE source-location group:
+  //   - first order goes with blank ManifestNo -> backend generates a new number
+  //   - remaining orders in the same group reuse that generated number
+  private saveManifestGroup(
+    orders: TransferStockLogDetail[],
+    nextLifecycle: DeliveryLifecycle,
+    extra: Partial<DeliveryOrderTransaction> = {}
+  ): Observable<any> {
+
+    const [first, ...rest] = orders;
+
+    return this.logisticsService
+      .saveTransferManifest(this.buildManifest(first, nextLifecycle, '', extra))
+      .pipe(
+        concatMap((res: any) => {
+
+          // Adjust this extraction to match your API's actual response shape
+          const manifestNo: string =
+            res?.manifestNo ??
+            res?.data?.manifestNo ??
+            res?.ManifestNo ??
+            '';
+
+          console.log(
+            `Manifest ${manifestNo} created for source location ` +
+            `${first.sourceLocationId} (${first.sourceLocationName})`
+          );
+
+          if (rest.length === 0) {
+            return of([res]);
+          }
+
+          // Remaining orders from the SAME source location
+          // save in parallel against the SAME manifest number
+          return forkJoin(
+            rest.map(o =>
+              this.logisticsService.saveTransferManifest(
+                this.buildManifest(o, nextLifecycle, manifestNo, extra)
+              )
+            )
+          );
+
+        })
+      );
+
+  }
+
+  // Groups the selected orders by sourceLocationId and creates ONE manifest
+  // per group, sequentially (concatMap) so every group gets its own
+  // manifest number from the backend without numbers mixing between
+  // locations.
+  private createManifestsBySourceLocation(
+    orders: TransferStockLogDetail[],
+    nextLifecycle: DeliveryLifecycle,
+    extra: Partial<DeliveryOrderTransaction> = {}
+  ): Observable<TransferStockLogDetail[][]> {
+
+    const groups = new Map<number, TransferStockLogDetail[]>();
+
+    for (const order of orders) {
+      const list = groups.get(order.sourceLocationId) ?? [];
+      list.push(order);
+      groups.set(order.sourceLocationId, list);
+    }
+
+    const groupList = [...groups.values()];
+
+    return from(groupList).pipe(
+      concatMap(groupOrders =>
+        this.saveManifestGroup(groupOrders, nextLifecycle, extra).pipe(
+          concatMap(() => of(groupOrders))
+        )
+      ),
+      toArray()
+    );
+
+  }
+
+  // ===== Combined save: updates each order's own status/assignment
+  // (DeliveryOrderTransaction table) AND creates the manifest(s), one per
+  // source location (TransferManifest table). Used for the Pickup Assigned
+  // step, where both things need to happen together. =====
+  private saveWithLifecycleAndManifest(
+    nextLifecycle: DeliveryLifecycle,
+    extra: Partial<DeliveryOrderTransaction> = {}
+  ): void {
+
+    const ordersToSave = [...this.selectedOrders];
+
+    this.saving = true;
+
+    // Step 1: update each order's own status + assignment
+    const dotRequests = ordersToSave.map(order =>
+      this.logisticsService.saveDeliveryOrderTransaction(
+        this.buildRequest(order, nextLifecycle, extra)
+      )
+    );
+
+    forkJoin(dotRequests).pipe(
+
+      // Step 2: create manifests, one per source location group
+      concatMap(() =>
+        this.createManifestsBySourceLocation(ordersToSave, nextLifecycle, extra)
+      )
+
+    ).subscribe({
+
+      next: (groups) => {
+        this.saving = false;
+
+        alert(
+          `Status updated to ${nextLifecycle.statusName}. ` +
+          `${groups.length} manifest(s) created for ${groups.length} source location(s).`
+        );
+
+        this.clearSelection();
+        this.loadTransferLogs();
+      },
+
+      error: (err) => {
+        this.saving = false;
+        console.error('Save failed:', err);
+
+        if (err?.error?.errors) {
+          console.error('Validation errors:', err.error.errors);
+        }
+
+        alert('Failed to update status or create manifest(s). Check the console / Network tab for details.');
+
+        this.loadTransferLogs();
+      }
+
+    });
 
   }
 
@@ -813,16 +1035,18 @@ export class TransferOrderWorkbench implements OnInit {
     this.showPickupModal = false;
     this.pendingNextLifecycle = undefined;
 
-    this.saveWithLifecycle(nextLifecycle, extra);
+    // Updates order status/assignment AND creates the per-source-location
+    // manifest(s) in one combined save.
+    this.saveWithLifecycleAndManifest(nextLifecycle, extra);
 
   }
 
-getLifecycleColor(status: string): string {
+  getLifecycleColor(status: string): string {
 
-  const lifecycle = this.deliveryLifecycles.find(
-    x => x.statusName === status
-  );
+    const lifecycle = this.deliveryLifecycles.find(
+      x => x.statusName === status
+    );
 
-  return lifecycle?.colorCode ?? '#6B7280';
-}
+    return lifecycle?.colorCode ?? '#6B7280';
+  }
 }

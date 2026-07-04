@@ -1,1 +1,115 @@
-<p>driver-console works!</p>
+<div class="page">
+
+    <div class="page-header">
+        <h2>Driver Console</h2>
+        
+    </div>
+
+    <div class="card toolbar-card">
+        <div class="toolbar">
+
+            <div class="field">
+                <label>Driver Name</label>
+                <div class="driver-readonly">
+                    {{driverName || '—'}}
+                </div>
+            </div>
+
+            <button class="btn-primary" (click)="refresh()" [disabled]="driverId == 0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="23 4 23 10 17 10" />
+                    <polyline points="1 20 1 14 7 14" />
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                Refresh
+            </button>
+
+        </div>
+    </div>
+
+    <div *ngIf="loading" class="loading">
+        <span class="spinner"></span> Loading assigned orders...
+    </div>
+
+    <div *ngIf="errorMessage" class="hint text-danger">
+        {{errorMessage}}
+    </div>
+
+    <div *ngIf="!loading && driverId != 0 && manifestGroups.length === 0 && !errorMessage" class="empty-hint">
+        No pending pickups assigned to you.
+    </div>
+
+    <div class="manifest-list" *ngIf="!loading">
+
+        <div class="card manifest-card" *ngFor="let group of manifestGroups">
+
+            <div class="manifest-header">
+
+                <div>
+                    <div class="manifest-title">
+                        Manifest {{group.manifestNo}}
+                    </div>
+                    <div class="manifest-sub">
+                        {{group.sourceLocationName}} &middot;
+                        {{group.transferModeName}}
+                        <span *ngIf="group.vehicleNo"> &middot; Vehicle {{group.vehicleNo}}</span>
+                    </div>
+                </div>
+
+                <div class="manifest-count">
+                    {{group.orders.length}} order(s)
+                </div>
+
+            </div>
+
+            <div class="table-wrap">
+                <table>
+
+                    <thead>
+                        <tr>
+                            <th>
+                                <input type="checkbox" [(ngModel)]="group.selectAll"
+                                    (change)="toggleSelectAll(group)">
+                            </th>
+                            <th>Transit ID</th>
+                            <th>Delivery Note</th>
+                            <th>Item</th>
+                            <th>IMEI</th>
+                            <th class="num">Qty</th>
+                            <th>Destination</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        <tr *ngFor="let order of group.orders">
+                            <td>
+                                <input type="checkbox" [(ngModel)]="order.selected">
+                            </td>
+                            <td class="mono">{{order.transitID}}</td>
+                            <td>{{order.deliveryNoteNo}}</td>
+                            <td class="item-name">{{order.itemName}}</td>
+                            <td class="mono">{{order.imei}}</td>
+                            <td class="num">{{order.transferQty}}</td>
+                            <td>{{order.destinationLocationName}}</td>
+                        </tr>
+
+                    </tbody>
+
+                </table>
+            </div>
+
+            <div class="manifest-footer">
+
+                <button class="btn-action" [disabled]="!hasSelection(group) || saving"
+                    (click)="markPickedUp(group)">
+                    {{ saving ? 'Saving...' : 'Mark Picked Up' }}
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div> 

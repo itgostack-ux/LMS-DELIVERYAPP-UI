@@ -26,6 +26,15 @@ export interface Role {
 
 }
 
+
+export interface Rolelifecycle {
+  userId: number;
+  roleID: number;
+
+  roleName: string;
+
+}
+
 export interface User {
 
   userId: number;
@@ -400,81 +409,81 @@ export interface TransferManifest {
   manifestDate: Date;
   status: string;
 
- 
+
 }
 // Flattened row returned by GET /api/Logistics/transfer-manifest —
 // a join of TransferManifest + DeliveryOrderTransaction, one row per
 // transfer order under a manifest. This is the real backend DTO shape.
 export interface TransferManifestResponse {
- 
+
   // TransferManifest
   manifestId: number;
   manifestNo: string;
   transferOrderId: number;
- 
+
   assignedUserId: number;
   assignedUserName: string;
- 
+
   receiverUserId: number;
   receiverUserName: string;
- 
+
   otp: string;
- 
+
   lifecycleId: number;
   lifecycleSequenceNo: number;
   lifecycleCode: string;
   lifecycleName: string;
- 
+
   manifestDate: Date | null;
   status: string;
- 
+
   // DeliveryOrderTransaction
   transitID: string;
   deliveryNoteNo: string;
- 
+
   transferOutDate: Date | null;
   transferOutTime: Date | null;
- 
+
   sourceLocationId: number;
   sourceLocationName: string;
- 
+
   destinationLocationId: number;
   destinationLocationName: string;
- 
+
   itemCode: string;
   itemName: string;
   imei: string;
- 
+
   transferQty: number;
- 
+
   transferModeId: number;
   transferModeName: string;
- 
+
   courierId: number | null;
   courierName: string;
- 
+
   awbBillNo: string;
- 
+
   transferInTime: Date | null;
- 
+
   inwardDoneById: number | null;
   inwardDoneByName: string;
- 
+
   transferDuration: string;
   remarks: string;
- 
+
   vehicleNo: string;
   otherPartyName: string;
- 
+
   companyId: number;
   companyName: string;
- 
+
   locationTypeId: number;
   locationTypeName: string;
- 
+
   pickupManifestId: number | null;
   pickupManifestNo: string;
- 
+
   // UI only
   selected?: boolean;
 }

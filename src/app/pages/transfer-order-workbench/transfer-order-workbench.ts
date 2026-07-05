@@ -17,6 +17,7 @@ import {
   Courier,
   TransferManifest
 } from '../../services/models/common-master-model';
+import { UserDataService } from '../../service/user-data-service';
 
 @Component({
   selector: 'app-transfer-order-workbench',
@@ -81,6 +82,7 @@ export class TransferOrderWorkbench implements OnInit {
   // Courier fields
   pickupCourierId = 0;
   pickupAwbNo = '';
+  manifestNo: string = '';
 
   // Others fields
   pickupOtherPartyName = '';
@@ -97,7 +99,13 @@ export class TransferOrderWorkbench implements OnInit {
   // (processSelectedOrders + isManifestNext) stay in sync.
   private readonly PICKUP_ASSIGNED_SEQUENCE_NO = 3;
 
-  constructor(private logisticsService: LogisticsService) { }
+  constructor(
+    private logisticsService: LogisticsService,
+    private userDataService: UserDataService
+
+
+
+  ) { }
 
   ngOnInit(): void {
 
@@ -107,7 +115,6 @@ export class TransferOrderWorkbench implements OnInit {
     this.loadUsers();
     this.loadCouriers();
 
-    // Default until transfer modes load
     this.pickupLoadMode = 'DIRECT';
     this.pickupTransferModeId = 1;
 
@@ -116,16 +123,61 @@ export class TransferOrderWorkbench implements OnInit {
   private today(): string {
     return new Date().toISOString().split('T')[0];
   }
-
   loadDeliveryLifecycles(): void {
-    this.logisticsService.getDeliveryLifecycles().subscribe({
-      next: (res) => {
-        this.deliveryLifecycles = res
-          .filter(x => x.isActive)
-          .sort((a, b) => a.sequenceNo - b.sequenceNo);
+
+    const userId = this.userDataService.getUserId();
+
+    console.log('Logged In UserId :', userId);
+
+    if (userId === 0) {
+      console.error('User Id not found');
+      return;
+    }
+
+    this.logisticsService.getRoleslifecycle(userId).subscribe({
+
+      next: (roles) => {
+
+        console.log('User Roles Response :', roles);
+
+        if (!roles || roles.length === 0) {
+          console.error('No role mapped for this user.');
+          return;
+        }
+
+        const roleId = roles[0].roleID;
+
+        console.log('Selected Role Id :', roleId);
+        console.log('Selected Role Name :', roles[0].roleName);
+
+        this.logisticsService.getRoleBasedLifecycles(roleId).subscribe({
+
+          next: (lifecycles) => {
+
+            console.log('Role Based Lifecycles :', lifecycles);
+
+            this.deliveryLifecycles = lifecycles
+              .filter(x => x.isActive)
+              .sort((a, b) => a.sequenceNo - b.sequenceNo);
+
+            console.log('Filtered Lifecycles :', this.deliveryLifecycles);
+
+          },
+
+          error: (err) => {
+            console.error('Failed to load lifecycles', err);
+          }
+
+        });
+
       },
-      error: err => console.error('Failed to load delivery lifecycles:', err)
+
+      error: (err) => {
+        console.error('Failed to load user roles', err);
+      }
+
     });
+
   }
 
   setTransferMode(mode: TransferMode): void {
@@ -136,21 +188,64 @@ export class TransferOrderWorkbench implements OnInit {
 
   }
 
-  // ===== Master data loading =====
 
+loadNextManifestNo(): void {
+
+  this.logisticsService.getNextManifestNo().subscribe({
+
+    next: (res) => {
+
+      this.manifestNo = res;
+
+      console.log('Next Manifest No:', this.manifestNo);
+
+    },
+
+    error: (err) => {
+
+      console.error('Failed to load Manifest No', err);
+
+    }
+
+  });
+
+}
+
+  // ===== Master data loading =====
   loadCompanies(): void {
-    this.logisticsService.getCompanies().subscribe({
+
+    const userId = this.userDataService.getUserId();
+
+    if (userId === 0) {
+      console.error('Invalid User Id');
+      return;
+    }
+
+    this.logisticsService.getUserCompanies(userId).subscribe({
+
+
       next: (res) => {
+
         this.companies = res;
 
-        // Auto-select if there is only one company — saves a click
-        if (res.length === 1) {
-          this.selectedCompanyId = res[0].compId;
+        // Auto-select if only one company is available
+        if (this.companies.length === 1) {
+
+          this.selectedCompanyId = this.companies[0].compId;
           this.onCompanyChange();
+
         }
+
       },
-      error: (err) => console.error('Failed to load companies:', err)
+
+      error: (err) => {
+
+        console.error('Failed to load user companies:', err);
+
+      }
+
     });
+
   }
 
   loadUsers(): void {
@@ -640,45 +735,92 @@ export class TransferOrderWorkbench implements OnInit {
 
   processSelectedOrders(): void {
 
+    // ==========================================
+    // Step 1 : Check Selection
+    // ==========================================
     if (this.selectedOrders.length === 0) {
+
       alert('Please select at least one order.');
+
       return;
+
     }
 
+    // ==========================================
+    // Step 2 : Check Same Logistics Status
+    // ==========================================
     if (!this.isSameStatus) {
+
       alert('Please select orders with the same Logistics Status.');
+
       return;
+
     }
 
+    // ==========================================
+    // Step 3 : Find Current Lifecycle
+    // ==========================================
     const currentLifecycle = this.deliveryLifecycles.find(
       x => x.statusName === this.selectedStatus
     );
 
     if (!currentLifecycle) {
+
       alert('Current lifecycle not found.');
+
       return;
+
     }
 
+    // ==========================================
+    // Step 4 : Check Next Status Configured
+    // ==========================================
+    if (
+      !currentLifecycle.nextStatusCode ||
+      currentLifecycle.nextStatusCode.trim() === ''
+    ) {
+
+      alert(
+        `No next status is configured for '${currentLifecycle.statusName}'.`
+      );
+
+      return;
+
+    }
+
+    // ==========================================
+    // Step 5 : Find Next Lifecycle
+    // ==========================================
     const nextLifecycle = this.deliveryLifecycles.find(
       x => x.statusCode === currentLifecycle.nextStatusCode
     );
 
     if (!nextLifecycle) {
-      alert('Next lifecycle not found.');
+
+      alert(
+        `Next lifecycle '${currentLifecycle.nextStatusCode}' is not available for your role.`
+      );
+
       return;
+
     }
 
-    // Moving into "Pickup Assigned" (sequenceNo 3) needs Direct/Courier/Other
-    // details first — open the popup instead of saving right away. This is
-    // also the step where manifest(s) get created, one per source location.
+    // ==========================================
+    // Step 6 : Pickup Assignment Required
+    // ==========================================
     if (nextLifecycle.sequenceNo === this.PICKUP_ASSIGNED_SEQUENCE_NO) {
+
       this.pendingNextLifecycle = nextLifecycle;
+
       this.openPickupAssignModal();
+
       return;
+
     }
 
-    // Any other transition (Open -> Pickup Ready, Picked Up -> Delivered,
-    // etc.) is a plain status update — no manifest involved.
+    // ==========================================
+    // Step 7 : Normal Status Update
+    // ==========================================
     this.saveWithLifecycle(nextLifecycle);
 
   }
@@ -727,49 +869,42 @@ export class TransferOrderWorkbench implements OnInit {
   // Saves ONE source-location group:
   //   - first order goes with blank ManifestNo -> backend generates a new number
   //   - remaining orders in the same group reuse that generated number
-  private saveManifestGroup(
-    orders: TransferStockLogDetail[],
-    nextLifecycle: DeliveryLifecycle,
-    extra: Partial<DeliveryOrderTransaction> = {}
-  ): Observable<any> {
+ private saveManifestGroup(
+  orders: TransferStockLogDetail[],
+  nextLifecycle: DeliveryLifecycle,
+  extra: Partial<DeliveryOrderTransaction> = {}
+): Observable<any> {
 
-    const [first, ...rest] = orders;
+  return this.logisticsService.getNextManifestNo().pipe(
 
-    return this.logisticsService
-      .saveTransferManifest(this.buildManifest(first, nextLifecycle, '', extra))
-      .pipe(
-        concatMap((res: any) => {
+    concatMap((manifestNo: string) => {
 
-          // Adjust this extraction to match your API's actual response shape
-          const manifestNo: string =
-            res?.manifestNo ??
-            res?.data?.manifestNo ??
-            res?.ManifestNo ??
-            '';
+      console.log('Manifest No:', manifestNo);
 
-          console.log(
-            `Manifest ${manifestNo} created for source location ` +
-            `${first.sourceLocationId} (${first.sourceLocationName})`
-          );
+      return forkJoin(
 
-          if (rest.length === 0) {
-            return of([res]);
-          }
+        orders.map(order =>
 
-          // Remaining orders from the SAME source location
-          // save in parallel against the SAME manifest number
-          return forkJoin(
-            rest.map(o =>
-              this.logisticsService.saveTransferManifest(
-                this.buildManifest(o, nextLifecycle, manifestNo, extra)
-              )
+          this.logisticsService.saveTransferManifest(
+
+            this.buildManifest(
+              order,
+              nextLifecycle,
+              manifestNo,
+              extra
             )
-          );
 
-        })
+          )
+
+        )
+
       );
 
-  }
+    })
+
+  );
+
+}
 
   // Groups the selected orders by sourceLocationId and creates ONE manifest
   // per group, sequentially (concatMap) so every group gets its own

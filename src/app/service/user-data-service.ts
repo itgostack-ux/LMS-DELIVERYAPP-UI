@@ -20,14 +20,29 @@ export class UserDataService {
 
   }
 
+  getUserId(): number {
+    return this.getUser()?.userId ?? 0;
+  }
+
+  getUserName(): string {
+    return this.getUser()?.userName ?? '';
+  }
+
+  getRoleId(): number {
+    return this.getUser()?.userProjectAccessList?.[0]?.roleId ?? 0;
+  }
+
+  getRoleName(): string {
+    return this.getUser()?.userProjectAccessList?.[0]?.roleName ?? '';
+  }
+
+
   clearUser(): void {
     localStorage.removeItem(this.USER_KEY);
   }
 
   isLoggedIn(): boolean {
-
     return this.getUser() != null;
-
   }
 
 }

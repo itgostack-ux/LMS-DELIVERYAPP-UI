@@ -77,16 +77,68 @@ export class DriverConsole implements OnInit {
 
   }
 
-  private loadDeliveryLifecycles(): void {
-    this.logisticsService.getDeliveryLifecycles().subscribe({
-      next: (res) => {
-        this.deliveryLifecycles = res
-          .filter(x => x.isActive)
-          .sort((a, b) => a.sequenceNo - b.sequenceNo);
-      },
-      error: (err: any) => console.error('Failed to load delivery lifecycles:', err)
-    });
+  
+private loadDeliveryLifecycles(): void {
+
+  const userId = this.userDataService.getUserId();
+
+  if (userId === 0) {
+
+    console.error('Invalid User Id');
+
+    return;
+
   }
+
+  this.logisticsService.getRoleslifecycle(userId).subscribe({
+
+    next: (roles) => {
+
+      if (!roles || roles.length === 0) {
+
+        console.error('No role mapped for this user.');
+
+        return;
+
+      }
+
+      const roleId = roles[0].roleID;
+
+      console.log('User Id :', userId);
+      console.log('Role Id :', roleId);
+      console.log('Role Name :', roles[0].roleName);
+
+      this.logisticsService.getRoleBasedLifecycles(roleId).subscribe({
+
+        next: (lifecycles) => {
+
+          this.deliveryLifecycles = lifecycles.sort(
+            (a, b) => a.sequenceNo - b.sequenceNo
+          );
+
+          console.log('Role Based Lifecycles :', this.deliveryLifecycles);
+
+        },
+
+        error: (err: any) => {
+
+          console.error('Failed to load role-based lifecycles:', err);
+
+        }
+
+      });
+
+    },
+
+    error: (err: any) => {
+
+      console.error('Failed to load user roles:', err);
+
+    }
+
+  });
+
+}
 
   refresh(): void {
     if (this.driverId !== 0) {
@@ -309,5 +361,37 @@ export class DriverConsole implements OnInit {
     };
 
   }
+
+  getNextStatusName(currentStatusCode: string): string {
+
+  const current = this.deliveryLifecycles.find(
+    x => x.statusCode === currentStatusCode
+  );
+
+  if (!current?.nextStatusCode) {
+    return 'No Next Status';
+  }
+
+  const next = this.deliveryLifecycles.find(
+    x => x.statusCode === current.nextStatusCode
+  );
+
+  return next?.statusName ?? 'No Next Status';
+
+}
+
+hasNextStatus(currentStatusCode: string): boolean {
+
+  const current = this.deliveryLifecycles.find(
+    x => x.statusCode === currentStatusCode
+  );
+
+  return !!current?.nextStatusCode;
+
+}
+
+processManifest(group: ManifestGroup): void {
+    // Move your current markPickedUp() code here
+}
 
 }

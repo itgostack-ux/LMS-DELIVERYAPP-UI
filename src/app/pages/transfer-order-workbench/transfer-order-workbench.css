@@ -624,3 +624,15 @@ tbody tr:hover{
     cursor:pointer;
 
 }
+
+.status.next.no-next{
+    background:#fee2e2;
+    color:#dc2626;
+    border:1px solid #fecaca;
+}
+
+.text-danger{
+    color:#dc2626;
+    font-size:13px;
+    font-weight:600;
+}

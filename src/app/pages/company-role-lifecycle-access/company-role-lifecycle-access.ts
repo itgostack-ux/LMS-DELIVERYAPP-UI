@@ -56,14 +56,37 @@ export class CompanyRoleLifecycleAccess implements OnInit {
     private logisticsService: LogisticsService
   ) { }
 
-ngOnInit(): void {
+  ngOnInit(): void {
 
-  this.loadUsers();
+    this.loadUsers();
+    this.loadRoles();
+    this.loadAccessList();
 
-  this.loadAccessList();
+  }
 
-}
 
+  //=========================================
+  // Load Roles
+  //=========================================
+  loadRoles(): void {
+
+    this.logisticsService.getRoles().subscribe({
+
+      next: (res) => {
+
+        this.roles = res;
+
+      },
+
+      error: (err) => {
+
+        console.error('Failed to load roles', err);
+
+      }
+
+    });
+
+  }
   //=========================================
   // Load Companies
   //=========================================
@@ -87,81 +110,44 @@ ngOnInit(): void {
     });
 
   }
-loadUsers(): void {
+  loadUsers(): void {
 
-  this.logisticsService.getUsers().subscribe({
+    this.logisticsService.getUsers().subscribe({
 
-    next: (res) => {
+      next: (res) => {
 
-      this.users = res;
+        this.users = res;
 
-    },
+      },
 
-    error: (err) => {
+      error: (err) => {
 
-      console.error(err);
+        console.error(err);
 
-    }
+      }
 
-  });
+    });
 
-}
+  }
   //=========================================
   // Company Changed
   //=========================================
-companyChanged(): void {
 
-  this.roles = [];
-
-  this.model.roleId = 0;
-
-  if (
-    this.model.userId === 0 ||
-    this.model.companyId === 0
-  ) {
-    return;
-  }
-
-  this.logisticsService
-      .getUserRoles(
-        this.model.userId,
-        this.model.companyId
-      )
-      .subscribe({
-
-        next: (res) => {
-
-          this.roles = res;
-
-        },
-
-        error: (err) => {
-
-          console.error(err);
-
-        }
-
-      });
-
-}
 
   //=========================================
   // User Changed
   //=========================================
-userChanged(): void {
+  userChanged(): void {
 
-  this.companies = [];
+    this.companies = [];
 
-  this.roles = [];
+    this.model.companyId = 0;
 
-  this.model.companyId = 0;
-  this.model.roleId = 0;
+    if (this.model.userId === 0) {
+      return;
+    }
 
-  if (this.model.userId === 0) {
-    return;
-  }
-
-  this.logisticsService
+    this.logisticsService
       .getUserCompanies(this.model.userId)
       .subscribe({
 
@@ -179,127 +165,133 @@ userChanged(): void {
 
       });
 
-}
-
+  }
   //=========================================
   // Save
   //=========================================
 
-save(): void {
+  save(): void {
 
-  if (this.model.companyId === 0) {
+    if (this.model.companyId === 0) {
 
-    alert('Please select Company.');
-    return;
+      alert('Please select Company.');
+      return;
+
+    }
+
+    if (this.model.userId === 0) {
+
+      alert('Please select User.');
+      return;
+
+    }
+
+    if (this.model.roleId === 0) {
+
+      alert('Please select Role.');
+      return;
+
+    }
+
+    // Duplicate Check
+    const duplicate = this.accessList.find(x =>
+      x.companyId === this.model.companyId &&
+      x.userId === this.model.userId &&
+      x.roleId === this.model.roleId &&
+      x.mappingId !== this.model.mappingId
+    );
+
+    if (duplicate) {
+
+      alert('This User is already mapped to the selected Company and Role.');
+
+      return;
+
+    }
+
+    const saveModel: CompanyUserLifecycleAccess = {
+
+      mappingId: this.model.mappingId,
+
+      companyId: this.model.companyId,
+
+      userId: this.model.userId,
+
+      roleId: this.model.roleId,
+
+      isActive: true,
+
+      createdBy: 'Admin',
+
+      createdDate: new Date(),
+
+      modifiedBy: 'Admin',
+
+      modifiedDate: new Date()
+
+    };
+
+    this.logisticsService
+      .saveCompanyUserLifecycleAccess(saveModel)
+      .subscribe({
+
+        next: (res) => {
+
+          alert(res.message);
+
+          this.reset();
+
+          this.loadUsers();
+
+          this.loadAccessList();
+
+        },
+
+        error: (err) => {
+
+          alert(err.error?.message || 'Save Failed');
+
+        }
+
+      });
 
   }
-
-  if (this.model.userId === 0) {
-
-    alert('Please select User.');
-    return;
-
-  }
-
-  if (this.model.roleId === 0) {
-
-    alert('Please select Role.');
-    return;
-
-  }
-
-  // Duplicate Check
-  const duplicate = this.accessList.find(x =>
-    x.companyId === this.model.companyId &&
-    x.userId === this.model.userId &&
-    x.roleId === this.model.roleId &&
-    x.mappingId !== this.model.mappingId
-  );
-
-  if (duplicate) {
-
-    alert('This User is already mapped to the selected Company and Role.');
-
-    return;
-
-  }
-
-  const saveModel: CompanyUserLifecycleAccess = {
-
-    mappingId: this.model.mappingId,
-
-    companyId: this.model.companyId,
-
-    userId: this.model.userId,
-
-    roleId: this.model.roleId,
-
-    isActive: true,
-
-    createdBy: 'Admin',
-
-    createdDate: new Date(),
-
-    modifiedBy: 'Admin',
-
-    modifiedDate: new Date()
-
-  };
-
-  this.logisticsService
-    .saveCompanyUserLifecycleAccess(saveModel)
-    .subscribe({
-
-      next: (res) => {
-
-        alert(res.message);
-
-        this.reset();
-
-        this.loadUsers();
-
-        this.loadAccessList();
-
-      },
-
-      error: (err) => {
-
-        alert(err.error?.message || 'Save Failed');
-
-      }
-
-    });
-
-}
 
   //=========================================
   // Edit
   //=========================================
 
-  edit(item: CompanyUserLifecycleAccessView): void {
+edit(item: CompanyUserLifecycleAccessView): void {
 
-    this.model.mappingId = item.mappingId;
+  this.model.mappingId = item.mappingId;
 
-    this.model.companyId = item.companyId;
+  // Set User first
+  this.model.userId = item.userId;
 
-    this.companyChanged();
+  // Load companies for the selected user
+  this.logisticsService.getUserCompanies(item.userId).subscribe({
 
-    setTimeout(() => {
+    next: (companies) => {
 
-      this.model.userId = item.userId;
+      this.companies = companies;
 
-      this.userChanged();
+      // After companies are loaded, set the selected company
+      this.model.companyId = item.companyId;
 
-      setTimeout(() => {
+      // Roles are already loaded from the master
+      this.model.roleId = item.roleId;
 
-        this.model.roleId = item.roleId;
+    },
 
-      }, 300);
+    error: (err) => {
 
-    }, 300);
+      console.error(err);
 
-  }
+    }
 
+  });
+
+}
   //=========================================
   // Delete
   //=========================================

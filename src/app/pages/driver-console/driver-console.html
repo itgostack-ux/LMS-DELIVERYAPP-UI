@@ -2,7 +2,7 @@
 
     <div class="page-header">
         <h2>Driver Console</h2>
-        
+
     </div>
 
     <div class="card toolbar-card">
@@ -47,7 +47,7 @@
 
                 <div>
                     <div class="manifest-title">
-                        Manifest {{group.manifestNo}}
+                         {{group.manifestNo}}
                     </div>
                     <div class="manifest-sub">
                         {{group.sourceLocationName}} &middot;
@@ -68,8 +68,7 @@
                     <thead>
                         <tr>
                             <th>
-                                <input type="checkbox" [(ngModel)]="group.selectAll"
-                                    (change)="toggleSelectAll(group)">
+                                <input type="checkbox" [(ngModel)]="group.selectAll" (change)="toggleSelectAll(group)">
                             </th>
                             <th>Transit ID</th>
                             <th>Delivery Note</th>
@@ -101,9 +100,30 @@
 
             <div class="manifest-footer">
 
-                <button class="btn-action" [disabled]="!hasSelection(group) || saving"
-                    (click)="markPickedUp(group)">
-                    {{ saving ? 'Saving...' : 'Mark Picked Up' }}
+                <div class="status-flow">
+
+                    <span class="label">Current</span>
+
+                    <span class="status current">
+                        {{ group.orders[0].lifecycleName }}
+                    </span>
+
+                    <span class="arrow">➜</span>
+
+                    <span class="label">Next</span>
+
+                    <span class="status next">
+                        {{ getNextStatusName(group.orders[0].lifecycleCode) }}
+                    </span>
+
+                </div>
+
+                <button class="btn-action"
+                    [disabled]="!hasSelection(group) || saving || !hasNextStatus(group.orders[0].lifecycleCode)"
+                    (click)="processManifest(group)">
+
+                    {{ saving ? 'Saving...' : getNextStatusName(group.orders[0].lifecycleCode) }}
+
                 </button>
 
             </div>
@@ -112,4 +132,4 @@
 
     </div>
 
-</div> 
+</div>

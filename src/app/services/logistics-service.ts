@@ -7,7 +7,7 @@ import { DeliveryLifecycle,CompanyUserLifecycleAccess,
   DeliveryOrderTransaction,RoleLifecycleMappingView,
   TransferManifestResponse,
   
-  TransferMode,Company,RoleLifecycleMapping,User,Role,TransferManifest } from './models/common-master-model';
+  TransferMode,Company,RoleLifecycleMapping,User,Role,TransferManifest,Rolelifecycle } from './models/common-master-model';
 @Injectable({
   providedIn: 'root'
 })
@@ -251,6 +251,41 @@ saveTransferManifest(model: TransferManifest): Observable<any> {
   return this.http.post<any>(
     `${this.apiUrl}/transfer-manifest`,
     model
+  );
+
+}
+
+// ======================================
+// Role Based Delivery Lifecycles
+// ======================================
+
+getRoleBasedLifecycles(roleId: number): Observable<DeliveryLifecycle[]> {
+
+  return this.http.get<DeliveryLifecycle[]>(
+    `${this.apiUrl}/role-based-lifecycles/${roleId}`
+  );
+
+}
+
+getRoleslifecycle(userId: number): Observable<Rolelifecycle[]> {
+
+  return this.http.get<Rolelifecycle[]>(
+    `${this.apiUrl}/user-roles/${userId}`
+  );
+
+}
+
+// ======================================
+// Get Next Manifest Number
+// ======================================
+
+getNextManifestNo(): Observable<string> {
+
+  return this.http.get(
+    `${this.apiUrl}/next-manifest-no`,
+    {
+      responseType: 'text'
+    }
   );
 
 }

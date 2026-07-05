@@ -78,16 +78,25 @@
                     <span class="label">Current</span>
 
                     <span class="status current">
-                        {{selectedStatus}}
+                        {{ selectedStatus }}
                     </span>
 
                     <span class="arrow">➜</span>
 
                     <span class="label">Next</span>
 
-                    <span class="status next">
-                        {{actionButtonText}}
+                    <span class="status next" [class.no-next]="!actionButtonText">
+
+                        {{ actionButtonText || 'No Next Status' }}
+
                     </span>
+
+                </div>
+
+                <div *ngIf="isSameStatus && !actionButtonText" class="text-danger mt-2">
+
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    No next status is configured for the selected Logistics Status.
 
                 </div>
 
@@ -108,8 +117,11 @@
 
             <div class="right-section">
 
-                <button class="btn-action" [disabled]="!isSameStatus || saving" (click)="processSelectedOrders()">
-                    {{ saving ? 'Saving...' : actionButtonText }}
+                <button class="btn-action" [disabled]="!isSameStatus || saving || !actionButtonText"
+                    (click)="processSelectedOrders()">
+
+                    {{ saving ? 'Saving...' : (actionButtonText || 'No Next Status') }}
+
                 </button>
 
                 <button class="btn-clear" (click)="clearSelection()">

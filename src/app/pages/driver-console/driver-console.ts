@@ -391,7 +391,57 @@ hasNextStatus(currentStatusCode: string): boolean {
 }
 
 processManifest(group: ManifestGroup): void {
-    // Move your current markPickedUp() code here
+
+    const selected = this.selectedOrdersIn(group);
+
+    if (selected.length === 0) {
+      alert('Please select at least one order to mark as Picked Up.');
+      return;
+    }
+
+    const current = this.deliveryLifecycles.find(
+      x => x.statusCode === 'PICKUP_ASSIGNED'
+    );
+
+    const nextLifecycle = this.deliveryLifecycles.find(
+      x => x.statusCode === current?.nextStatusCode
+    );
+
+    if (!nextLifecycle) {
+      alert('Picked Up lifecycle step not found.');
+      return;
+    }
+
+    this.saving = true;
+
+    const requests = selected.map(order =>
+      this.logisticsService.saveDeliveryOrderTransaction(
+        this.buildPickedUpRequest(order, nextLifecycle)
+      )
+    );
+
+    forkJoin(requests).subscribe({
+
+      next: () => {
+        this.saving = false;
+        alert(`${selected.length} order(s) marked as ${nextLifecycle.statusName}.`);
+        this.loadAssignedManifests();
+      },
+
+      error: (err: any) => {
+        this.saving = false;
+        console.error('Failed to mark picked up:', err);
+
+        if (err?.error?.errors) {
+          console.error('Validation errors:', err.error.errors);
+        }
+
+        alert('Failed to update one or more orders. Please try again.');
+        this.loadAssignedManifests();
+      }
+
+    });
+
 }
 
 }

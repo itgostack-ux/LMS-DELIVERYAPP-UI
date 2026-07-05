@@ -1,11 +1,14 @@
 <div class="sidebar">
+
     <div class="logo">
         <h2>LMS</h2>
     </div>
+
     <ul class="menu">
 
-        <!-- Dashboard -->
-        <li routerLink="/dashboard" routerLinkActive="active">
+        <!-- Dashboard (All Users) -->
+        <li routerLink="/dashboard"
+            routerLinkActive="active">
 
             <i class="fa-solid fa-chart-line"></i>
 
@@ -13,60 +16,114 @@
 
         </li>
 
-        <!-- Organization -->
-        <li routerLink="/master-management" routerLinkActive="active">
+        <!-- Logistics Admin -->
 
-            <i class="fa-solid fa-building"></i>
+        <ng-container *ngIf="roleName === 'Logistics Admin'">
 
-            <span>Organization</span>
+            <li routerLink="/master-management"
+                routerLinkActive="active">
 
-        </li>
+                <i class="fa-solid fa-building"></i>
+
+                <span>Organization</span>
+
+            </li>
+
+            <li routerLink="/administration"
+                routerLinkActive="active">
+
+                <i class="fa-solid fa-user-shield"></i>
+
+                <span>Administration</span>
+
+            </li>
+
+            <li routerLink="/operations"
+                routerLinkActive="active">
+
+                <i class="fa-solid fa-truck-fast"></i>
+
+                <span>Operations</span>
+
+            </li>
+
+            <li routerLink="/track-orders"
+                routerLinkActive="active">
+
+                <i class="fa-solid fa-location-dot"></i>
+
+                <span>Track Orders</span>
+
+            </li>
+            
+            <li routerLink="/driver-console"
+                routerLinkActive="active">
+
+                <i class="fa-solid fa-truck"></i>
+
+                <span>Driver Console</span>
+
+            </li>
 
 
-        <!-- Administration -->
-        <li routerLink="/administration" routerLinkActive="active">
+        </ng-container>
 
-            <i class="fa-solid fa-user-shield"></i>
+        <!-- Logistics Manager -->
 
-            <span>Administration</span>
+        <ng-container *ngIf="roleName === 'Logistics Manager'">
 
-        </li>
+            <li routerLink="/operations"
+                routerLinkActive="active">
 
-        <!-- Operations -->
-        <li routerLink="/operations" routerLinkActive="active">
+                <i class="fa-solid fa-truck-fast"></i>
 
-            <i class="fa-solid fa-truck-fast"></i>
+                <span>Operations</span>
 
-            <span>Operations</span>
+            </li>
 
-        </li>
+            <li routerLink="/driver-console"
+                routerLinkActive="active">
 
-        <li routerLink="/driver-console" routerLinkActive="active">
+                <i class="fa-solid fa-truck"></i>
 
-            <i class="fa-solid fa-truck-fast"></i>
+                <span>Driver Console</span>
 
-            <span>Driver Console</span>
+            </li>
 
-        </li>
+            <li routerLink="/track-orders"
+                routerLinkActive="active">
 
+                <i class="fa-solid fa-location-dot"></i>
 
-        <li routerLink="/track-orders" routerLinkActive="active">
+                <span>Track Orders</span>
 
-            <i class="fa-solid fa-truck-fast"></i>
+            </li>
 
-            <span>Track Orders</span>
+        </ng-container>
 
-        </li>
+        <!-- Delivery Executive -->
 
+        <ng-container *ngIf="roleName === 'Delivery Executive'">
 
-        <!-- Logout 
-        <li routerLink="/login">
+            <li routerLink="/driver-console"
+                routerLinkActive="active">
 
-            <i class="fa-solid fa-right-from-bracket"></i>
+                <i class="fa-solid fa-truck"></i>
 
-            <span>Logout</span>
+                <span>Driver Console</span>
 
-        </li>-->
+            </li>
+
+            <li routerLink="/track-orders"
+                routerLinkActive="active">
+
+                <i class="fa-solid fa-location-dot"></i>
+
+                <span>Track Orders</span>
+
+            </li>
+
+        </ng-container>
 
     </ul>
 

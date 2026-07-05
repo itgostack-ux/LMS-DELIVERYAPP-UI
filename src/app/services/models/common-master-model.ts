@@ -3,6 +3,14 @@ export interface LocationType {
   locationTypeDesc: string;
 }
 
+export class SendMailRequest {
+  subject?: string;
+  message?: string;
+  isGofix?: boolean;
+  emailAddress?: string;
+  projectName?: string;
+}
+
 export interface Company {
   compId: number;
   compName: string;
@@ -90,6 +98,7 @@ export interface ValidateOtpRequest {
   otp: string;
   projectName: string;
 }
+
 
 export interface UserProjectAccess {
   roleId: number;

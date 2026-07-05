@@ -1,28 +1,54 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { Observable, forkJoin } from 'rxjs';
 
 import { LogisticsService } from '../../services/logistics-service';
 import { UserDataService } from '../../service/user-data-service';
 import {
   DeliveryLifecycle,
   DeliveryOrderTransaction,
-  TransferManifestResponse
+  TransferManifest,
+  TransferManifestResponse,
+  User
 } from '../../services/models/common-master-model';
+import { AuthService } from '../../service/auth';
 
-// One card per manifest, holding all the orders under it.
+// One card per manifest + current status, holding all the orders under it.
+// (Same manifest can appear twice if its orders are at different statuses.)
 interface ManifestGroup {
-  manifestId: number;
-  manifestNo: string;
-  sourceLocationName: string;
-  transferModeName: string;
-  vehicleNo: string;
-  assignedUserName: string;
-  orders: TransferManifestResponse[];
-  selectAll: boolean;
-}
 
+  manifestId: number;
+
+  manifestNo: string;
+
+  sourceLocationName: string;
+
+  transferModeName: string;
+
+  vehicleNo: string;
+
+  assignedUserName: string;
+
+  lifecycleCode: string;
+
+  lifecycleName: string;
+
+  receiverUserId?: number;
+
+  receiverUserName?: string;
+
+  otp?: string;
+
+  orders: TransferManifestResponse[];
+
+  selectAll: boolean;
+
+  // Manifest-level view: card starts collapsed; clicking the header
+  // expands it and shows the related orders.
+  expanded: boolean;
+
+}
 @Component({
   selector: 'app-driver-console',
   standalone: true,
@@ -36,23 +62,52 @@ interface ManifestGroup {
 export class DriverConsole implements OnInit {
 
   // ===== Logged-in driver =====
-  // Pulled from UserDataService, same as Header does — no manual
-  // driver picker anymore.
   driverId = 0;
   driverName = '';
+  generatedOtp = '';
+
+  selectedReceiverId = 0;
+
+  otpSent = false;
+  sendingOtp = false;
 
   deliveryLifecycles: DeliveryLifecycle[] = [];
 
   manifestGroups: ManifestGroup[] = [];
 
+  // ===== Status tab filter ('ALL' or a lifecycle statusCode) =====
+  statusFilter = 'ALL';
+
   loading = false;
   saving = false;
 
   errorMessage = '';
+  receiverSearch = '';
+
+  filteredUsers: User[] = [];
+
+
+  // ===== OTP modal state (final "Delivered" step) =====
+  showOtpModal = false;
+  otpInput = '';
+  otpError = '';
+
+  users: User[] = [];
+
+  selectedReceiverName = '';
+  selectedReceiverEmail = '';
+
+  // Pending Delivery Details
+  private pendingGroup!: ManifestGroup;
+
+  private pendingOrders: TransferManifestResponse[] = [];
+
+  private pendingLifecycle!: DeliveryLifecycle;
 
   constructor(
     private logisticsService: LogisticsService,
-    private userDataService: UserDataService
+    private userDataService: UserDataService,
+    private authservice: AuthService,
   ) {
 
     const user = this.userDataService.getUser();
@@ -66,10 +121,10 @@ export class DriverConsole implements OnInit {
 
   ngOnInit(): void {
 
-    this.loadDeliveryLifecycles();
-
     if (this.driverId !== 0) {
-      this.loadAssignedManifests();
+      // Lifecycles first, then manifests — status ordering/colors and the
+      // "next step" logic all come from the lifecycle master.
+      this.loadDeliveryLifecycles(true);
     }
     else {
       this.errorMessage = 'No logged-in driver found. Please log in again.';
@@ -77,78 +132,82 @@ export class DriverConsole implements OnInit {
 
   }
 
-  
-private loadDeliveryLifecycles(): void {
+  private loadDeliveryLifecycles(loadManifestsAfter: boolean): void {
 
-  const userId = this.userDataService.getUserId();
+    const userId = this.userDataService.getUserId();
 
-  if (userId === 0) {
+    if (userId === 0) {
+      console.error('Invalid User Id');
+      return;
+    }
 
-    console.error('Invalid User Id');
+    this.loading = true;
 
-    return;
+    this.logisticsService.getRoleslifecycle(userId).subscribe({
+
+      next: (roles) => {
+
+        if (!roles || roles.length === 0) {
+          console.error('No role mapped for this user.');
+          this.loading = false;
+          this.errorMessage = 'No role mapped for this user.';
+          return;
+        }
+
+        const roleId = roles[0].roleID;
+
+        this.logisticsService.getRoleBasedLifecycles(roleId).subscribe({
+
+          next: (lifecycles) => {
+
+            this.deliveryLifecycles = lifecycles.sort(
+              (a, b) => a.sequenceNo - b.sequenceNo
+            );
+
+            if (loadManifestsAfter) {
+              this.loadAssignedManifests();
+            }
+            else {
+              this.loading = false;
+            }
+
+          },
+
+          error: (err: any) => {
+            console.error('Failed to load role-based lifecycles:', err);
+            this.loading = false;
+            this.errorMessage = 'Failed to load lifecycle steps. Please try again.';
+          }
+
+        });
+
+      },
+
+      error: (err: any) => {
+        console.error('Failed to load user roles:', err);
+        this.loading = false;
+        this.errorMessage = 'Failed to load user roles. Please try again.';
+      }
+
+    });
 
   }
 
-  this.logisticsService.getRoleslifecycle(userId).subscribe({
-
-    next: (roles) => {
-
-      if (!roles || roles.length === 0) {
-
-        console.error('No role mapped for this user.');
-
-        return;
-
-      }
-
-      const roleId = roles[0].roleID;
-
-      console.log('User Id :', userId);
-      console.log('Role Id :', roleId);
-      console.log('Role Name :', roles[0].roleName);
-
-      this.logisticsService.getRoleBasedLifecycles(roleId).subscribe({
-
-        next: (lifecycles) => {
-
-          this.deliveryLifecycles = lifecycles.sort(
-            (a, b) => a.sequenceNo - b.sequenceNo
-          );
-
-          console.log('Role Based Lifecycles :', this.deliveryLifecycles);
-
-        },
-
-        error: (err: any) => {
-
-          console.error('Failed to load role-based lifecycles:', err);
-
-        }
-
-      });
-
-    },
-
-    error: (err: any) => {
-
-      console.error('Failed to load user roles:', err);
-
-    }
-
-  });
-
-}
-
   refresh(): void {
     if (this.driverId !== 0) {
-      this.loadAssignedManifests();
+      if (this.deliveryLifecycles.length === 0) {
+        this.loadDeliveryLifecycles(true);
+      }
+      else {
+        this.loadAssignedManifests();
+      }
     }
   }
 
   // The backend endpoint returns ALL manifest-order rows (no driver filter),
-  // so we filter to this driver's pending pickups client-side using the
-  // logged-in userId.
+  // so we filter client-side to this driver's rows. ALL statuses are kept —
+  // including DELIVERED — so the driver sees every manifest at manifest
+  // level; the action button only appears where a next step exists.
   loadAssignedManifests(): void {
 
     this.loading = true;
@@ -158,14 +217,20 @@ private loadDeliveryLifecycles(): void {
 
       next: (rows: TransferManifestResponse[]) => {
 
-        const pending = rows
-          .filter(r =>
-            r.assignedUserId === this.driverId &&
-            r.lifecycleCode === 'PICKUP_ASSIGNED'
-          )
+        const mine = rows
+          .filter(r => r.assignedUserId === this.driverId)
           .map(r => ({ ...r, selected: false }));
 
-        this.manifestGroups = this.groupByManifest(pending);
+        this.manifestGroups = this.groupByManifest(mine);
+
+        // If the selected tab no longer has any manifests, fall back to All
+        if (
+          this.statusFilter !== 'ALL' &&
+          !this.manifestGroups.some(g => g.lifecycleCode === this.statusFilter)
+        ) {
+          this.statusFilter = 'ALL';
+        }
+
         this.loading = false;
 
       },
@@ -181,33 +246,100 @@ private loadDeliveryLifecycles(): void {
 
   }
 
+  // Group by manifest + current status so a manifest whose orders sit at
+  // two different steps renders as two independent cards. Newest first.
   private groupByManifest(rows: TransferManifestResponse[]): ManifestGroup[] {
 
-    const map = new Map<number, TransferManifestResponse[]>();
+    const map = new Map<string, TransferManifestResponse[]>();
 
     for (const row of rows) {
-      const list = map.get(row.manifestId) ?? [];
+      const key = `${row.manifestId}_${row.lifecycleCode}`;
+      const list = map.get(key) ?? [];
       list.push(row);
-      map.set(row.manifestId, list);
+      map.set(key, list);
     }
 
-    return [...map.entries()].map(([manifestId, orders]) => {
+    return [...map.entries()]
+      .map(([key, orders]) => {
 
-      const first = orders[0];
+        const first = orders[0];
 
-      return {
-        manifestId,
-        manifestNo: first.manifestNo || `#${manifestId}`,
-        sourceLocationName: first.sourceLocationName,
-        transferModeName: first.transferModeName,
-        vehicleNo: first.vehicleNo,
-        assignedUserName: first.assignedUserName,
-        orders,
-        selectAll: false
-      };
+        return {
+          key,
+          manifestId: first.manifestId,
+          manifestNo: first.manifestNo || `#${first.manifestId}`,
+          sourceLocationName: first.sourceLocationName,
+          transferModeName: first.transferModeName,
+          vehicleNo: first.vehicleNo,
+          assignedUserName: first.assignedUserName,
+          lifecycleCode: first.lifecycleCode,
+          lifecycleName: first.lifecycleName,
 
-    });
+          // Carry the receiver + OTP already stored on the manifest so the
+          // final save doesn't overwrite them with blanks.
+          receiverUserId: first.receiverUserId ?? 0,
+          receiverUserName: first.receiverUserName ?? '',
+          otp: first.otp ?? '',
 
+          orders,
+          selectAll: false,
+          expanded: false
+
+        };
+
+      })
+      // Actionable manifests first, then by manifestId descending
+      .sort((a, b) => {
+        const aAct = this.hasNextStatus(a.lifecycleCode) ? 0 : 1;
+        const bAct = this.hasNextStatus(b.lifecycleCode) ? 0 : 1;
+        if (aAct !== bAct) {
+          return aAct - bAct;
+        }
+        return b.manifestId - a.manifestId;
+      });
+
+  }
+
+  // ===== Status tab filter =====
+
+  // One tab per lifecycle status that actually has manifests, in
+  // lifecycle sequence order, each with its manifest count.
+  get statusTabs(): { code: string; name: string; count: number }[] {
+
+    const counts = new Map<string, number>();
+
+    for (const g of this.manifestGroups) {
+      counts.set(g.lifecycleCode, (counts.get(g.lifecycleCode) ?? 0) + 1);
+    }
+
+    return this.deliveryLifecycles
+      .filter(l => counts.has(l.statusCode))
+      .map(l => ({
+        code: l.statusCode,
+        name: l.statusName,
+        count: counts.get(l.statusCode) ?? 0
+      }));
+
+  }
+
+  // Manifests shown under the currently selected tab
+  get visibleGroups(): ManifestGroup[] {
+    if (this.statusFilter === 'ALL') {
+      return this.manifestGroups;
+    }
+    return this.manifestGroups.filter(
+      g => g.lifecycleCode === this.statusFilter
+    );
+  }
+
+  setStatusFilter(code: string): void {
+    this.statusFilter = code;
+  }
+
+  // ===== Manifest-level expand / collapse =====
+  // Clicking the manifest header loads (shows) that manifest's orders.
+  toggleGroup(group: ManifestGroup): void {
+    group.expanded = !group.expanded;
   }
 
   toggleSelectAll(group: ManifestGroup): void {
@@ -222,49 +354,211 @@ private loadDeliveryLifecycles(): void {
     return this.selectedOrdersIn(group).length > 0;
   }
 
-  // ===== Mark Picked Up =====
+  // ===== Lifecycle helpers =====
 
-  markPickedUp(group: ManifestGroup): void {
+  private findLifecycle(statusCode: string): DeliveryLifecycle | undefined {
+    return this.deliveryLifecycles.find(x => x.statusCode === statusCode);
+  }
+
+  private nextLifecycleOf(currentStatusCode: string): DeliveryLifecycle | undefined {
+    const current = this.findLifecycle(currentStatusCode);
+    if (!current?.nextStatusCode) {
+      return undefined;
+    }
+    return this.findLifecycle(current.nextStatusCode);
+  }
+
+  // Final step = a lifecycle with no nextStatusCode (DELIVERED)
+  private isFinalStep(lifecycle: DeliveryLifecycle): boolean {
+    return !lifecycle.nextStatusCode;
+  }
+
+  getNextStatusName(currentStatusCode: string): string {
+    return this.nextLifecycleOf(currentStatusCode)?.statusName ?? 'No Next Status';
+  }
+
+  hasNextStatus(currentStatusCode: string): boolean {
+    return !!this.findLifecycle(currentStatusCode)?.nextStatusCode;
+  }
+
+  getStatusColor(statusCode: string): string {
+    return this.findLifecycle(statusCode)?.colorCode || '#6B7280';
+  }
+
+  // ===== Advance to next status =====
+  // PICKUP_ASSIGNED -> PICKED_UP updates immediately.
+  // PICKED_UP -> DELIVERED (final step) opens the OTP popup first.
+
+  processManifest(group: ManifestGroup): void {
 
     const selected = this.selectedOrdersIn(group);
 
     if (selected.length === 0) {
-      alert('Please select at least one order to mark as Picked Up.');
+      alert('Please select at least one order to update.');
       return;
     }
 
-    const current = this.deliveryLifecycles.find(
-      x => x.statusCode === 'PICKUP_ASSIGNED'
-    );
-
-    const nextLifecycle = this.deliveryLifecycles.find(
-      x => x.statusCode === current?.nextStatusCode
-    );
+    const nextLifecycle = this.nextLifecycleOf(group.lifecycleCode);
 
     if (!nextLifecycle) {
-      alert('Picked Up lifecycle step not found.');
+      alert('Next lifecycle step not found.');
       return;
     }
+
+    // Final Step (Delivered)
+    if (this.isFinalStep(nextLifecycle)) {
+
+      this.pendingGroup = group;
+      this.pendingOrders = selected;
+      this.pendingLifecycle = nextLifecycle;
+
+      this.otpInput = '';
+      this.otpError = '';
+
+      this.selectedReceiverId = 0;
+      this.selectedReceiverName = '';
+      this.selectedReceiverEmail = '';
+      this.receiverSearch = '';
+      this.otpSent = false;
+      this.generatedOtp = '';
+
+      // Load users first
+      this.logisticsService.getUsers().subscribe({
+
+        next: (res) => {
+
+          this.users = res.sort((a, b) =>
+            (a.fullName || '')
+              .trim()
+              .toLowerCase()
+              .localeCompare(
+                (b.fullName || '')
+                  .trim()
+                  .toLowerCase()
+              )
+          );
+
+          // Populate the dropdown list — it binds to filteredUsers.
+          this.filteredUsers = [...this.users];
+
+          // Open popup after users are loaded
+          this.showOtpModal = true;
+
+        },
+
+        error: (err) => {
+
+          console.error('Failed to load users', err);
+
+          alert('Unable to load receiver users.');
+
+        }
+
+      });
+
+      return;
+
+    }
+
+    // Other lifecycle updates
+    this.updateOrders(group, selected, nextLifecycle);
+
+  }
+
+  // ===== OTP modal actions =====
+
+  confirmOtp(): void {
+
+    if (!this.pendingGroup || !this.pendingLifecycle) {
+      this.cancelOtp();
+      return;
+    }
+
+    if (!this.otpSent) {
+      this.otpError = 'Please send the OTP to the receiver first.';
+      return;
+    }
+
+    const entered = this.otpInput.trim();
+
+    if (!entered) {
+      this.otpError = 'Please enter the OTP.';
+      return;
+    }
+
+    // OTP set on the group by sendOtp(); generatedOtp is the fallback.
+    const expected = (this.pendingGroup.otp || this.generatedOtp || '').trim();
+
+    if (!expected || entered !== expected) {
+      this.otpError = 'Invalid OTP. Please check with the receiver and try again.';
+      return;
+    }
+
+    this.otpError = '';
+    this.showOtpModal = false;
+
+    this.updateOrders(
+      this.pendingGroup,
+      this.pendingOrders,
+      this.pendingLifecycle
+    );
+
+  }
+
+  cancelOtp(): void {
+    this.showOtpModal = false;
+    this.otpInput = '';
+    this.otpError = '';
+    this.otpSent = false;
+    this.receiverSearch = '';
+    this.pendingOrders = [];
+  }
+
+  // ===== Save =====
+  // Posts one DeliveryOrderTransaction per selected order, and — when the
+  // whole manifest is being moved — also updates the TransferManifest row
+  // to the new lifecycle so both tables stay in sync.
+
+  private updateOrders(
+    group: ManifestGroup,
+    selected: TransferManifestResponse[],
+    nextLifecycle: DeliveryLifecycle
+  ): void {
 
     this.saving = true;
 
-    const requests = selected.map(order =>
+    const isFinal = this.isFinalStep(nextLifecycle);
+
+    const requests: Observable<any>[] = selected.map(order =>
       this.logisticsService.saveDeliveryOrderTransaction(
-        this.buildPickedUpRequest(order, nextLifecycle)
+        this.buildTransactionRequest(order, nextLifecycle, isFinal)
       )
     );
+
+    // Only bump the manifest's own status when ALL its orders move together;
+    // a partial selection would otherwise push the manifest ahead of the
+    // orders still waiting.
+    if (selected.length === group.orders.length) {
+      requests.push(
+        this.logisticsService.saveTransferManifest(
+          this.buildManifestRequest(group, nextLifecycle)
+        )
+      );
+    }
 
     forkJoin(requests).subscribe({
 
       next: () => {
         this.saving = false;
+        this.clearPending();
         alert(`${selected.length} order(s) marked as ${nextLifecycle.statusName}.`);
         this.loadAssignedManifests();
       },
 
       error: (err: any) => {
         this.saving = false;
-        console.error('Failed to mark picked up:', err);
+        this.clearPending();
+        console.error('Failed to update orders:', err);
 
         if (err?.error?.errors) {
           console.error('Validation errors:', err.error.errors);
@@ -278,6 +572,10 @@ private loadDeliveryLifecycles(): void {
 
   }
 
+  private clearPending(): void {
+    this.pendingOrders = [];
+  }
+
   // TransferManifestResponse uses raw Date|null and a string transitID
   // (straight off the API), while DeliveryOrderTransaction expects ISO
   // date strings and a numeric transitID — convert between them here.
@@ -289,10 +587,13 @@ private loadDeliveryLifecycles(): void {
     return isNaN(date.getTime()) ? '' : date.toISOString();
   }
 
-  private buildPickedUpRequest(
+  private buildTransactionRequest(
     order: TransferManifestResponse,
-    nextLifecycle: DeliveryLifecycle
+    nextLifecycle: DeliveryLifecycle,
+    isFinal: boolean
   ): DeliveryOrderTransaction {
+
+    const now = new Date().toISOString();
 
     return {
 
@@ -316,7 +617,7 @@ private loadDeliveryLifecycles(): void {
 
       transferQty: order.transferQty ?? 0,
 
-      // Lifecycle -> Picked Up
+      // Lifecycle -> next step (Picked Up / Delivered)
       lifecycleId: nextLifecycle.lifecycleId,
       lifecycleSequenceNo: nextLifecycle.sequenceNo,
       lifecycleCode: nextLifecycle.statusCode,
@@ -336,10 +637,18 @@ private loadDeliveryLifecycles(): void {
       vehicleNo: order.vehicleNo ?? '',
       otherPartyName: order.otherPartyName ?? '',
 
-      transferInTime: this.toIsoString(order.transferInTime) || undefined,
+      // On final delivery, stamp the inward details with the driver + now
+      transferInTime: isFinal
+        ? now
+        : (this.toIsoString(order.transferInTime) || undefined),
 
-      inwardDoneById: order.inwardDoneById ?? 0,
-      inwardDoneByName: order.inwardDoneByName ?? '',
+      inwardDoneById: isFinal
+        ? this.driverId
+        : (order.inwardDoneById ?? 0),
+
+      inwardDoneByName: isFinal
+        ? this.driverName
+        : (order.inwardDoneByName ?? ''),
 
       transferDuration: order.transferDuration ?? '',
 
@@ -352,96 +661,286 @@ private loadDeliveryLifecycles(): void {
       // audit fields if your API returns them on this endpoint.
       createdBy: order.assignedUserId ?? this.driverId,
       createdByName: order.assignedUserName ?? this.driverName,
-      createdDate: new Date().toISOString(),
+      createdDate: now,
 
       modifiedBy: this.driverId,
       modifiedByName: this.driverName,
-      modifiedDate: new Date().toISOString()
+      modifiedDate: now
 
     };
 
   }
 
-  getNextStatusName(currentStatusCode: string): string {
+  private buildManifestRequest(
+    group: ManifestGroup,
+    nextLifecycle: DeliveryLifecycle
+  ): TransferManifest {
 
-  const current = this.deliveryLifecycles.find(
-    x => x.statusCode === currentStatusCode
-  );
+    const first = group.orders[0];
 
-  if (!current?.nextStatusCode) {
-    return 'No Next Status';
+    return {
+
+      manifestId: group.manifestId,
+      manifestNo: group.manifestNo,
+      transferOrderId: first.transferOrderId,
+
+      assignedUserId: first.assignedUserId ?? this.driverId,
+      assignedUserName: first.assignedUserName ?? this.driverName,
+
+      // Read receiver + OTP from the GROUP (set by sendOtp), not from the
+      // stale order row — otherwise the final Delivered save overwrites
+      // ReceiverUserId/ReceiverUserName/OTP with 0 / '' in the database.
+      receiverUserId: group.receiverUserId ?? first.receiverUserId ?? 0,
+      receiverUserName: group.receiverUserName ?? first.receiverUserName ?? '',
+
+      otp: group.otp ?? first.otp ?? '',
+
+      lifecycleId: nextLifecycle.lifecycleId,
+      lifecycleSequenceNo: nextLifecycle.sequenceNo,
+      lifecycleCode: nextLifecycle.statusCode,
+      lifecycleName: nextLifecycle.statusName,
+
+      manifestDate: first.manifestDate ?? new Date(),
+      status: nextLifecycle.statusName
+
+    };
+
   }
 
-  const next = this.deliveryLifecycles.find(
-    x => x.statusCode === current.nextStatusCode
-  );
+  loadUsers(): void {
 
-  return next?.statusName ?? 'No Next Status';
+    this.logisticsService.getUsers().subscribe({
 
-}
+      next: (res) => {
 
-hasNextStatus(currentStatusCode: string): boolean {
+        this.users = res.sort((a, b) =>
+          (a.fullName || '')
+            .trim()
+            .toLowerCase()
+            .localeCompare(
+              (b.fullName || '')
+                .trim()
+                .toLowerCase()
+            )
+        );
 
-  const current = this.deliveryLifecycles.find(
-    x => x.statusCode === currentStatusCode
-  );
+        this.filteredUsers = [...this.users];
 
-  return !!current?.nextStatusCode;
-
-}
-
-processManifest(group: ManifestGroup): void {
-
-    const selected = this.selectedOrdersIn(group);
-
-    if (selected.length === 0) {
-      alert('Please select at least one order to mark as Picked Up.');
-      return;
-    }
-
-    const current = this.deliveryLifecycles.find(
-      x => x.statusCode === 'PICKUP_ASSIGNED'
-    );
-
-    const nextLifecycle = this.deliveryLifecycles.find(
-      x => x.statusCode === current?.nextStatusCode
-    );
-
-    if (!nextLifecycle) {
-      alert('Picked Up lifecycle step not found.');
-      return;
-    }
-
-    this.saving = true;
-
-    const requests = selected.map(order =>
-      this.logisticsService.saveDeliveryOrderTransaction(
-        this.buildPickedUpRequest(order, nextLifecycle)
-      )
-    );
-
-    forkJoin(requests).subscribe({
-
-      next: () => {
-        this.saving = false;
-        alert(`${selected.length} order(s) marked as ${nextLifecycle.statusName}.`);
-        this.loadAssignedManifests();
       },
 
-      error: (err: any) => {
-        this.saving = false;
-        console.error('Failed to mark picked up:', err);
+      error: (err) => {
 
-        if (err?.error?.errors) {
-          console.error('Validation errors:', err.error.errors);
-        }
+        console.error(err);
 
-        alert('Failed to update one or more orders. Please try again.');
-        this.loadAssignedManifests();
       }
 
     });
 
-}
+  }
 
+  receiverChanged(): void {
+
+    const receiver = this.users.find(
+      x => x.userId == this.selectedReceiverId
+    );
+
+    if (!receiver) {
+      this.selectedReceiverName = '';
+      this.selectedReceiverEmail = '';
+      return;
+    }
+
+    this.selectedReceiverName = receiver.fullName;
+    this.selectedReceiverEmail = receiver.emailId;
+
+  }
+
+  sendOtp(): void {
+
+    if (this.selectedReceiverId === 0) {
+
+      alert('Please select Receiver.');
+
+      return;
+
+    }
+
+    const receiver = this.users.find(
+      x => x.userId === this.selectedReceiverId
+    );
+
+    if (!receiver) {
+
+      alert('Receiver not found.');
+
+      return;
+
+    }
+
+    if (!receiver.emailId) {
+
+      alert('Receiver email is not available.');
+
+      return;
+
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Save locally
+    this.generatedOtp = otp;
+
+    // Update pending manifest (used by confirmOtp + buildManifestRequest)
+    this.pendingGroup.receiverUserId = receiver.userId;
+    this.pendingGroup.receiverUserName = receiver.fullName;
+    this.pendingGroup.otp = otp;
+
+    // At "send OTP" time the manifest is NOT delivered yet — save the
+    // receiver + OTP against the CURRENT lifecycle (e.g. Picked Up), and
+    // only move to Delivered after the OTP is verified in confirmOtp().
+    const currentLifecycle =
+      this.findLifecycle(this.pendingGroup.lifecycleCode) ?? this.pendingLifecycle;
+
+    this.sendingOtp = true;
+
+    // Save OTP & Receiver in backend
+    this.logisticsService.saveTransferManifest({
+
+      manifestId: this.pendingGroup.manifestId,
+
+      manifestNo: this.pendingGroup.manifestNo,
+
+      transferOrderId: this.pendingGroup.orders[0].transferOrderId,
+
+      assignedUserId: this.pendingGroup.orders[0].assignedUserId,
+
+      assignedUserName: this.pendingGroup.orders[0].assignedUserName,
+
+      receiverUserId: receiver.userId,
+
+      receiverUserName: receiver.fullName,
+
+      otp: otp,
+
+      lifecycleId: currentLifecycle.lifecycleId,
+
+      lifecycleSequenceNo: currentLifecycle.sequenceNo,
+
+      lifecycleCode: currentLifecycle.statusCode,
+
+      lifecycleName: currentLifecycle.statusName,
+
+      manifestDate: new Date(),
+
+      status: currentLifecycle.statusName
+
+    }).subscribe({
+
+      next: () => {
+
+        const body = `
+        Dear <b>${receiver.fullName}</b>,<br><br>
+
+        Your Delivery Verification OTP is:
+
+        <h2 style="color:#2563EB">${otp}</h2>
+
+        <table cellpadding="5">
+
+            <tr>
+
+                <td><b>Manifest No</b></td>
+
+                <td>${this.pendingGroup.manifestNo}</td>
+
+            </tr>
+
+            <tr>
+
+                <td><b>Driver</b></td>
+
+                <td>${this.driverName}</td>
+
+            </tr>
+
+        </table>
+
+        <br>
+
+        Please share this OTP with the delivery executive to complete your delivery.
+
+        <br><br>
+
+        Regards,<br>
+
+        Logistics Management System
+      `;
+
+        this.authservice.sendMail({
+
+          subject: 'Delivery Verification OTP',
+
+          message: body,
+
+          emailAddress: receiver.emailId,
+
+          isGofix: false,
+
+          projectName: 'Logistics Management System'
+
+        }).subscribe({
+
+          next: () => {
+
+            this.sendingOtp = false;
+
+            alert('OTP sent successfully.');
+
+            this.otpSent = true;
+            this.otpError = '';
+
+          },
+
+          error: () => {
+
+            this.sendingOtp = false;
+
+            alert('Failed to send OTP email.');
+
+          }
+
+        });
+
+      },
+
+      error: () => {
+
+        this.sendingOtp = false;
+
+        alert('Failed to save OTP.');
+
+      }
+
+    });
+
+  }
+
+  filterUsers(): void {
+
+    const search = this.receiverSearch.trim().toLowerCase();
+
+    if (!search) {
+
+      this.filteredUsers = [...this.users];
+
+      return;
+
+    }
+
+    this.filteredUsers = this.users.filter(x =>
+      (x.fullName || '').toLowerCase().includes(search)
+    );
+
+  }
 }

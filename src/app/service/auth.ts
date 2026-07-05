@@ -1,16 +1,18 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 import {
   SendOtpRequest,
   ValidateOtpRequest,
-  UserDetails
+  UserDetails,
+  SendMailRequest
 } from '../services/models/common-master-model';
 import { environment } from '../pages/confiq';
 @Injectable({
   providedIn: 'root'
 })
+
 export class AuthService {
 
   private baseUrl = environment.authApiUrl;
@@ -51,4 +53,10 @@ logout(): void {
   localStorage.removeItem('token');
 
 }
+  sendMail(data: SendMailRequest): Observable<any> {
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    return this.http.post<any>(`${this.baseUrl}api/Common/SendMailAsync`, data, { headers });
+  }
+
+
 }

@@ -2,7 +2,6 @@
 
     <div class="page-header">
         <h2>Driver Console</h2>
-
     </div>
 
     <div class="card toolbar-card">
@@ -15,7 +14,7 @@
                 </div>
             </div>
 
-            <button class="btn-primary" (click)="refresh()" [disabled]="driverId == 0">
+            <button class="btn-primary" (click)="refresh()" [disabled]="driverId == 0 || loading">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                     <polyline points="23 4 23 10 17 10" />
                     <polyline points="1 20 1 14 7 14" />
@@ -27,8 +26,29 @@
         </div>
     </div>
 
+    <!-- ===== Status tab filter ===== -->
+    <div class="status-tabs" *ngIf="!loading && manifestGroups.length > 0">
+
+        <button class="tab" [class.active]="statusFilter === 'ALL'" (click)="setStatusFilter('ALL')">
+            All
+            <span class="tab-count">{{manifestGroups.length}}</span>
+        </button>
+
+        <button class="tab" *ngFor="let tab of statusTabs"
+            [class.active]="statusFilter === tab.code"
+            [style.--tab-color]="getStatusColor(tab.code)"
+            (click)="setStatusFilter(tab.code)">
+
+            <span class="tab-dot" [style.background]="getStatusColor(tab.code)"></span>
+            {{tab.name}}
+            <span class="tab-count">{{tab.count}}</span>
+
+        </button>
+
+    </div>
+
     <div *ngIf="loading" class="loading">
-        <span class="spinner"></span> Loading assigned orders...
+        <span class="spinner"></span> Loading assigned manifests...
     </div>
 
     <div *ngIf="errorMessage" class="hint text-danger">
@@ -36,24 +56,48 @@
     </div>
 
     <div *ngIf="!loading && driverId != 0 && manifestGroups.length === 0 && !errorMessage" class="empty-hint">
-        No pending pickups assigned to you.
+        No manifests assigned to you.
     </div>
 
+    <div *ngIf="!loading && manifestGroups.length > 0 && visibleGroups.length === 0" class="empty-hint">
+        No manifests under this status.
+    </div>
+
+    <!-- ===== Manifest-level list: one collapsed row per manifest.
+         Click the header to expand and load its related orders. ===== -->
     <div class="manifest-list" *ngIf="!loading">
 
-        <div class="card manifest-card" *ngFor="let group of manifestGroups">
+        <div class="card manifest-card" *ngFor="let group of visibleGroups"
+            [class.expanded]="group.expanded">
 
-            <div class="manifest-header">
+            <!-- Manifest-level row: Manifest No + Assigned Name + Lifecycle -->
+            <div class="manifest-header clickable" (click)="toggleGroup(group)">
 
-                <div>
-                    <div class="manifest-title">
-                         {{group.manifestNo}}
+                <div class="manifest-head-left">
+
+                    <span class="chevron" [class.open]="group.expanded">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <polyline points="9 6 15 12 9 18" />
+                        </svg>
+                    </span>
+
+                    <div>
+                        <div class="manifest-title">
+                            {{group.manifestNo}}
+                            <span class="status-badge" [style.background]="getStatusColor(group.lifecycleCode)">
+                                {{group.lifecycleName}}
+                            </span>
+                        </div>
+                        <div class="manifest-sub">
+                            Assigned: <b>{{group.assignedUserName || '—'}}</b>
+                            <span *ngIf="group.receiverUserName"> &middot; Receiver: <b>{{group.receiverUserName}}</b></span>
+                            <span *ngIf="group.sourceLocationName"> &middot; {{group.sourceLocationName}}</span>
+                            <span *ngIf="group.transferModeName"> &middot; {{group.transferModeName}}</span>
+                            <span *ngIf="group.vehicleNo"> &middot; Vehicle {{group.vehicleNo}}</span>
+                        </div>
                     </div>
-                    <div class="manifest-sub">
-                        {{group.sourceLocationName}} &middot;
-                        {{group.transferModeName}}
-                        <span *ngIf="group.vehicleNo"> &middot; Vehicle {{group.vehicleNo}}</span>
-                    </div>
+
                 </div>
 
                 <div class="manifest-count">
@@ -62,74 +106,179 @@
 
             </div>
 
-            <div class="table-wrap">
-                <table>
+            <!-- Related orders: shown only after clicking the manifest -->
+            <ng-container *ngIf="group.expanded">
 
-                    <thead>
-                        <tr>
-                            <th>
-                                <input type="checkbox" [(ngModel)]="group.selectAll" (change)="toggleSelectAll(group)">
-                            </th>
-                            <th>Transit ID</th>
-                            <th>Delivery Note</th>
-                            <th>Item</th>
-                            <th>IMEI</th>
-                            <th class="num">Qty</th>
-                            <th>Destination</th>
-                        </tr>
-                    </thead>
+                <div class="table-wrap">
+                    <table>
 
-                    <tbody>
+                        <thead>
+                            <tr>
+                                <th *ngIf="hasNextStatus(group.lifecycleCode)">
+                                    <input type="checkbox" [(ngModel)]="group.selectAll"
+                                        (change)="toggleSelectAll(group)">
+                                </th>
+                                <th>Transit ID</th>
+                                <th>Delivery Note</th>
+                                <th>Item</th>
+                                <th>IMEI</th>
+                                <th class="num">Qty</th>
+                                <th>Destination</th>
+                            </tr>
+                        </thead>
 
-                        <tr *ngFor="let order of group.orders">
-                            <td>
-                                <input type="checkbox" [(ngModel)]="order.selected">
-                            </td>
-                            <td class="mono">{{order.transitID}}</td>
-                            <td>{{order.deliveryNoteNo}}</td>
-                            <td class="item-name">{{order.itemName}}</td>
-                            <td class="mono">{{order.imei}}</td>
-                            <td class="num">{{order.transferQty}}</td>
-                            <td>{{order.destinationLocationName}}</td>
-                        </tr>
+                        <tbody>
 
-                    </tbody>
+                            <tr *ngFor="let order of group.orders">
+                                <td *ngIf="hasNextStatus(group.lifecycleCode)">
+                                    <input type="checkbox" [(ngModel)]="order.selected">
+                                </td>
+                                <td class="mono">{{order.transitID}}</td>
+                                <td>{{order.deliveryNoteNo}}</td>
+                                <td class="item-name">{{order.itemName}}</td>
+                                <td class="mono">{{order.imei}}</td>
+                                <td class="num">{{order.transferQty}}</td>
+                                <td>{{order.destinationLocationName}}</td>
+                            </tr>
 
-                </table>
-            </div>
+                        </tbody>
 
-            <div class="manifest-footer">
+                    </table>
+                </div>
 
-                <div class="status-flow">
+                <!-- Action footer only for manifests that still have a next step -->
+                <div class="manifest-footer" *ngIf="hasNextStatus(group.lifecycleCode)">
 
-                    <span class="label">Current</span>
+                    <div class="status-flow">
 
-                    <span class="status current">
-                        {{ group.orders[0].lifecycleName }}
-                    </span>
+                        <span class="label">Current</span>
 
-                    <span class="arrow">➜</span>
+                        <span class="status current" [style.border-color]="getStatusColor(group.lifecycleCode)"
+                            [style.color]="getStatusColor(group.lifecycleCode)">
+                            {{ group.lifecycleName }}
+                        </span>
 
-                    <span class="label">Next</span>
+                        <span class="arrow">➜</span>
 
-                    <span class="status next">
-                        {{ getNextStatusName(group.orders[0].lifecycleCode) }}
-                    </span>
+                        <span class="label">Next</span>
+
+                        <span class="status next">
+                            {{ getNextStatusName(group.lifecycleCode) }}
+                        </span>
+
+                    </div>
+
+                    <button class="btn-action"
+                        [disabled]="!hasSelection(group) || saving"
+                        (click)="processManifest(group)">
+
+                        {{ saving ? 'Saving...' : 'Mark ' + getNextStatusName(group.lifecycleCode) }}
+
+                    </button>
 
                 </div>
 
-                <button class="btn-action"
-                    [disabled]="!hasSelection(group) || saving || !hasNextStatus(group.orders[0].lifecycleCode)"
-                    (click)="processManifest(group)">
+                <!-- Read-only footer for completed (Delivered) manifests -->
+                <div class="manifest-footer done" *ngIf="!hasNextStatus(group.lifecycleCode)">
 
-                    {{ saving ? 'Saving...' : getNextStatusName(group.orders[0].lifecycleCode) }}
+                    <div class="status-flow">
+                        <span class="label">Status</span>
+                        <span class="status current" [style.border-color]="getStatusColor(group.lifecycleCode)"
+                            [style.color]="getStatusColor(group.lifecycleCode)">
+                            {{ group.lifecycleName }}
+                        </span>
+                        <span class="done-info" *ngIf="group.receiverUserName">
+                            Received by <b>{{group.receiverUserName}}</b>
+                        </span>
+                    </div>
+
+                </div>
+
+            </ng-container>
+
+        </div>
+
+    </div>
+
+    <!-- ===== Delivery OTP Modal (opens on the final lifecycle step) ===== -->
+    <div class="modal-overlay" *ngIf="showOtpModal">
+        <div class="modal-box">
+
+            <h3>Delivery OTP Verification</h3>
+
+            <p class="modal-text">
+                Select the receiver and send them the OTP, then enter the OTP they share with you.
+            </p>
+
+            <div class="mb-3">
+
+                <label class="form-label">Receiver</label>
+
+                <input type="text" class="form-control mb-2" placeholder="Search Receiver..."
+                    [(ngModel)]="receiverSearch" (input)="filterUsers()">
+
+                <select class="form-select" [(ngModel)]="selectedReceiverId" (change)="receiverChanged()">
+
+                    <option [ngValue]="0">
+                        Select Receiver
+                    </option>
+
+                    <option *ngFor="let user of filteredUsers" [ngValue]="user.userId">
+
+                        {{user.fullName}}
+
+                    </option>
+
+                </select>
+
+            </div>
+
+            <div class="mb-3" *ngIf="selectedReceiverId != 0">
+
+                <label>Email</label>
+
+                <input class="form-control" [value]="selectedReceiverEmail" readonly>
+
+            </div>
+
+            <button class="btn btn-primary w-100 mb-3" (click)="sendOtp()"
+                [disabled]="sendingOtp || selectedReceiverId == 0">
+
+                {{ sendingOtp ? 'Sending...' : (otpSent ? 'Resend OTP' : 'Send OTP') }}
+
+            </button>
+
+            <div class="otp-sent-hint" *ngIf="otpSent">
+                OTP sent to <b>{{selectedReceiverName}}</b> ({{selectedReceiverEmail}})
+            </div>
+
+            <div *ngIf="otpSent">
+
+                <input class="otp-input" maxlength="6" [(ngModel)]="otpInput" placeholder="Enter OTP">
+
+            </div>
+
+            <div class="otp-error" *ngIf="otpError">
+                {{otpError}}
+            </div>
+
+            <div class="modal-actions">
+
+                <button class="btn-secondary" (click)="cancelOtp()">
+
+                    Cancel
+
+                </button>
+
+                <button class="btn-action" *ngIf="otpSent" [disabled]="saving" (click)="confirmOtp()">
+
+                    {{ saving ? 'Saving...' : 'Verify & Deliver' }}
 
                 </button>
 
             </div>
 
         </div>
-
     </div>
 
 </div>

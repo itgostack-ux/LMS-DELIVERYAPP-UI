@@ -41,3 +41,10 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Firebase
+.firebase/
+.agents/
+skills-lock.json
+firebase-debug.log
+dist/

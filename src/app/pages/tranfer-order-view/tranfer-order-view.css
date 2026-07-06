@@ -181,6 +181,7 @@ h2::after{
 
 .table-wrap{
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 table{
@@ -699,19 +700,145 @@ td:first-child{
 }
 
 /* ===== Responsive ===== */
+
+/* Large tablet / small laptop */
+@media (max-width: 1024px) {
+
+    .page{
+        padding: 22px 20px;
+    }
+
+    .detail-grid{
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    }
+
+    .route-point{
+        min-width: 170px;
+    }
+
+}
+
+/* Tablet */
 @media (max-width: 768px){
     .page{ padding: 16px; }
     .toolbar{ gap: 12px; }
     .toolbar select,
     .toolbar input{ min-width: 100%; }
     .field{ width: 100%; }
+    .field.grow{ min-width: 0; }
     .pagination{ justify-content: center; }
     .track-panel{ padding: 18px 16px; }
     .route{ flex-direction: column; align-items: stretch; gap: 14px; }
+    .route-point{ min-width: 0; }
     .route-point.right{ text-align: left; }
     .route-line{ display: none; }
     .timeline{ flex-wrap: wrap; gap: 16px 0; }
     .timeline-step{ flex: 0 0 33.33%; }
     .timeline-step:not(:first-child)::before{ display: none; }
     .detail{ border-right: none; }
+}
+
+/* Phone */
+@media (max-width: 640px) {
+
+    .page-header{
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    h2{
+        font-size: 18px;
+    }
+
+    .toolbar-card{
+        padding: 14px 16px;
+    }
+
+    .btn-clear{
+        width: 100%;
+    }
+
+    table{
+        font-size: 12px;
+    }
+
+    thead th,
+    td{
+        padding: 10px 12px;
+    }
+
+    thead th:first-child,
+    td:first-child{
+        padding-left: 12px;
+    }
+
+    .item-name{
+        max-width: 160px;
+    }
+
+    .progress-cell{
+        min-width: 120px;
+    }
+
+    .progress-track{
+        width: 60px;
+    }
+
+    .timeline-step{
+        flex: 0 0 50%;
+        margin-bottom: 10px;
+    }
+
+    .detail-grid{
+        grid-template-columns: 1fr;
+    }
+
+    .detail{
+        border-right: none;
+    }
+
+    .pagination{
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+
+    .page-controls{
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+}
+
+/* Small phone */
+@media (max-width: 400px) {
+
+    .record-count{
+        font-size: 11px;
+        padding: 4px 10px;
+    }
+
+    .lc-badge{
+        font-size: 10.5px;
+        padding: 4px 10px 4px 8px;
+    }
+
+    .timeline-step{
+        flex: 0 0 100%;
+    }
+
+    .dot{
+        width: 24px;
+        height: 24px;
+    }
+
+    .route-name{
+        font-size: 14px;
+    }
+
+    .item-name{
+        max-width: 120px;
+    }
+
 }

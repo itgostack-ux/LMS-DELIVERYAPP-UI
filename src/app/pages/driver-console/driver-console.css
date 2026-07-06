@@ -59,6 +59,7 @@
   flex-direction: column;
   gap: 6px;
   min-width: 220px;
+  flex: 1 1 220px;
 }
 
 .field label {
@@ -89,6 +90,7 @@
 .btn-primary {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 10px 18px;
   border: none;
@@ -189,6 +191,7 @@
   border-top-color: #2563eb;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
 }
 
 @keyframes spin {
@@ -274,12 +277,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   padding: 16px 18px;
   background: #eef2ff;
   border-bottom: 1px solid #e2e8f0;
+  flex-wrap: wrap;
 }
 
+/* Manifest title row + its status chips (one per distinct status among
+   its orders) */
 .manifest-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
   font-size: 16px;
   font-weight: 700;
   color: #1e3a8a;
@@ -299,6 +310,7 @@
   border: 1px solid #e2e8f0;
   border-radius: 20px;
   padding: 4px 12px;
+  white-space: nowrap;
 }
 
 /* Manifest-level header is clickable to expand/collapse its orders */
@@ -315,6 +327,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .chevron {
@@ -337,38 +350,61 @@
   border-color: #c7d2fe;
 }
 
-/* Read-only footer for Delivered manifests */
-.manifest-footer.done {
-  background: #f8fafc;
-}
-
 .done-info {
   font-size: 13px;
   color: #475569;
 }
 
-/* Status badge next to the manifest number */
+/* Status chip in the manifest header (one per distinct status present) */
 .status-badge {
   display: inline-block;
-  margin-left: 8px;
   padding: 2px 10px;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
   color: #fff;
-  vertical-align: middle;
+  white-space: nowrap;
 }
 
-/* ===== Manifest footer: status flow + action button ===== */
+/* Small status pill shown per order row in the table */
+.status-badge-sm {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.done-tag {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+/* ===== Manifest footer: status flow + action button(s) =====
+   Can stack more than one status-action row when a manifest has orders
+   sitting at more than one current status. */
 
 .manifest-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.manifest-footer.done {
+  background: #f8fafc;
+}
+
+.status-action-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  padding: 14px 18px;
-  border-top: 1px solid #e2e8f0;
 }
 
 .status-flow {
@@ -418,6 +454,7 @@
 
 .table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 table {
@@ -444,6 +481,7 @@ tbody td {
   border-bottom: 1px solid #f1f5f9;
   color: #1e293b;
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 tbody tr:hover {
@@ -492,6 +530,8 @@ input[type="checkbox"] {
   padding: 24px;
   width: 100%;
   max-width: 360px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
 }
 
@@ -631,17 +671,153 @@ input[type="checkbox"] {
   margin-top: 18px;
 }
 
-/* ===== Responsive ===== */
+/* ================= Responsive ================= */
 
-@media (max-width: 640px) {
+/* Tablet */
+@media (max-width: 992px) {
 
-  .manifest-footer {
-    flex-direction: column;
+  .card {
+    padding: 16px;
+  }
+
+  .center input {
+    max-width: 320px;
+  }
+
+  .toolbar {
+    gap: 12px;
+  }
+
+  .field {
+    min-width: 180px;
+  }
+
+}
+
+/* Large phone / small tablet */
+@media (max-width: 768px) {
+
+  .page-header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .toolbar {
     align-items: stretch;
   }
 
-  .btn-action {
+  .field {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  .btn-primary {
     width: 100%;
+  }
+
+  .manifest-header {
+    padding: 14px;
+  }
+
+  .manifest-count {
+    order: 3;
+  }
+
+  .table-wrap table {
+    font-size: 12.5px;
+  }
+
+  thead th,
+  tbody td {
+    padding: 8px 10px;
+  }
+
+}
+
+/* Phone */
+@media (max-width: 640px) {
+
+  .page {
+    padding: 0 4px;
+  }
+
+  .page-header h2 {
+    font-size: 19px;
+  }
+
+  .status-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    margin-bottom: 12px;
+  }
+
+  .status-tabs .tab {
+    flex-shrink: 0;
+  }
+
+  .manifest-head-left {
+    width: 100%;
+  }
+
+  .manifest-title {
+    font-size: 14.5px;
+  }
+
+  .manifest-sub {
+    font-size: 12px;
+  }
+
+  .manifest-footer {
+    padding: 12px 14px;
+  }
+
+  .status-action-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .status-action-row .btn-action {
+    width: 100%;
+  }
+
+  .status-flow {
+    justify-content: flex-start;
+  }
+
+  .modal-box {
+    padding: 18px;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .modal-actions button {
+    width: 100%;
+  }
+
+}
+
+/* Small phone */
+@media (max-width: 400px) {
+
+  .item-name {
+    max-width: 140px;
+  }
+
+  .manifest-count {
+    font-size: 12px;
+    padding: 3px 9px;
+  }
+
+  .status-badge,
+  .status-badge-sm {
+    font-size: 10.5px;
+    padding: 2px 8px;
   }
 
 }

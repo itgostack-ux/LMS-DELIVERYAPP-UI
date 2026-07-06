@@ -14,10 +14,16 @@ import {
 } from '../../services/models/common-master-model';
 import { AuthService } from '../../service/auth';
 
-// One card per manifest + current status, holding all the orders under it.
-// (Same manifest can appear twice if its orders are at different statuses.)
+// One card PER MANIFEST (regardless of status). Orders under a manifest can
+// each sit at a different lifecycle status - each order shows its own
+// status + its own "Mark <NextStatus>" action. The manifest's own lifecycle
+// row is only advanced once ALL orders under it share the same status.
 interface ManifestGroup {
 
+  // Representative manifestId (first order's) - kept for display/back-compat
+  // only. Orders inside a group can legitimately carry DIFFERENT manifestId
+  // values while sharing the same manifestNo, so never assume this is the
+  // only manifest row backing the card - see updateOrders().
   manifestId: number;
 
   manifestNo: string;
@@ -30,10 +36,6 @@ interface ManifestGroup {
 
   assignedUserName: string;
 
-  lifecycleCode: string;
-
-  lifecycleName: string;
-
   receiverUserId?: number;
 
   receiverUserName?: string;
@@ -42,13 +44,20 @@ interface ManifestGroup {
 
   orders: TransferManifestResponse[];
 
-  selectAll: boolean;
-
   // Manifest-level view: card starts collapsed; clicking the header
   // expands it and shows the related orders.
   expanded: boolean;
 
 }
+
+// Small summary chip shown in the manifest header, e.g. "3 Picked Up".
+interface StatusBreakdown {
+  code: string;
+  name: string;
+  color: string;
+  count: number;
+}
+
 @Component({
   selector: 'app-driver-console',
   standalone: true,
@@ -97,7 +106,7 @@ export class DriverConsole implements OnInit {
   selectedReceiverName = '';
   selectedReceiverEmail = '';
 
-  // Pending Delivery Details
+  // Pending Delivery Details - now always exactly ONE order being advanced.
   private pendingGroup!: ManifestGroup;
 
   private pendingOrders: TransferManifestResponse[] = [];
@@ -207,7 +216,8 @@ export class DriverConsole implements OnInit {
   // The backend endpoint returns ALL manifest-order rows (no driver filter),
   // so we filter client-side to this driver's rows. ALL statuses are kept —
   // including DELIVERED — so the driver sees every manifest at manifest
-  // level; the action button only appears where a next step exists.
+  // level; each order's own action button only appears where a next step
+  // exists for THAT order.
   loadAssignedManifests(): void {
 
     this.loading = true;
@@ -217,16 +227,16 @@ export class DriverConsole implements OnInit {
 
       next: (rows: TransferManifestResponse[]) => {
 
-        const mine = rows
-          .filter(r => r.assignedUserId === this.driverId)
-          .map(r => ({ ...r, selected: false }));
+        const mine = rows.filter(r => r.assignedUserId === this.driverId);
 
         this.manifestGroups = this.groupByManifest(mine);
 
-        // If the selected tab no longer has any manifests, fall back to All
+        // If the selected tab no longer has any orders, fall back to All
         if (
           this.statusFilter !== 'ALL' &&
-          !this.manifestGroups.some(g => g.lifecycleCode === this.statusFilter)
+          !this.manifestGroups.some(g =>
+            g.orders.some(o => o.lifecycleCode === this.statusFilter)
+          )
         ) {
           this.statusFilter = 'ALL';
         }
@@ -246,34 +256,34 @@ export class DriverConsole implements OnInit {
 
   }
 
-  // Group by manifest + current status so a manifest whose orders sit at
-  // two different steps renders as two independent cards. Newest first.
+  // Group by manifestNo (NOT manifestId) - a manifest is a single card no
+  // matter how many different statuses its orders currently sit at, and
+  // regardless of whether the backend happens to have split it across
+  // multiple manifestId rows that share the same manifestNo. Newest first.
   private groupByManifest(rows: TransferManifestResponse[]): ManifestGroup[] {
 
     const map = new Map<string, TransferManifestResponse[]>();
 
     for (const row of rows) {
-      const key = `${row.manifestId}_${row.lifecycleCode}`;
+      const key = row.manifestNo || `#${row.manifestId}`;
       const list = map.get(key) ?? [];
       list.push(row);
       map.set(key, list);
     }
 
     return [...map.entries()]
-      .map(([key, orders]) => {
+      .map(([manifestNo, orders]) => {
 
         const first = orders[0];
 
         return {
-          key,
+          // Representative id only - see interface comment above.
           manifestId: first.manifestId,
-          manifestNo: first.manifestNo || `#${first.manifestId}`,
+          manifestNo,
           sourceLocationName: first.sourceLocationName,
           transferModeName: first.transferModeName,
           vehicleNo: first.vehicleNo,
           assignedUserName: first.assignedUserName,
-          lifecycleCode: first.lifecycleCode,
-          lifecycleName: first.lifecycleName,
 
           // Carry the receiver + OTP already stored on the manifest so the
           // final save doesn't overwrite them with blanks.
@@ -282,34 +292,42 @@ export class DriverConsole implements OnInit {
           otp: first.otp ?? '',
 
           orders,
-          selectAll: false,
           expanded: false
 
         };
 
       })
-      // Actionable manifests first, then by manifestId descending
+      // Actionable manifests (at least one order with a next step) first,
+      // then by highest manifestId among their orders, descending.
       .sort((a, b) => {
-        const aAct = this.hasNextStatus(a.lifecycleCode) ? 0 : 1;
-        const bAct = this.hasNextStatus(b.lifecycleCode) ? 0 : 1;
+        const aAct = this.manifestHasAnyNextStatus(a) ? 0 : 1;
+        const bAct = this.manifestHasAnyNextStatus(b) ? 0 : 1;
         if (aAct !== bAct) {
           return aAct - bAct;
         }
-        return b.manifestId - a.manifestId;
+        const aMax = Math.max(...a.orders.map(o => o.manifestId));
+        const bMax = Math.max(...b.orders.map(o => o.manifestId));
+        return bMax - aMax;
       });
 
   }
 
+  private manifestHasAnyNextStatus(group: ManifestGroup): boolean {
+    return group.orders.some(o => this.hasNextStatus(o.lifecycleCode));
+  }
+
   // ===== Status tab filter =====
 
-  // One tab per lifecycle status that actually has manifests, in
-  // lifecycle sequence order, each with its manifest count.
+  // One tab per lifecycle status that actually has orders under it, in
+  // lifecycle sequence order, each with its ORDER count (not manifest count).
   get statusTabs(): { code: string; name: string; count: number }[] {
 
     const counts = new Map<string, number>();
 
     for (const g of this.manifestGroups) {
-      counts.set(g.lifecycleCode, (counts.get(g.lifecycleCode) ?? 0) + 1);
+      for (const o of g.orders) {
+        counts.set(o.lifecycleCode, (counts.get(o.lifecycleCode) ?? 0) + 1);
+      }
     }
 
     return this.deliveryLifecycles
@@ -322,13 +340,14 @@ export class DriverConsole implements OnInit {
 
   }
 
-  // Manifests shown under the currently selected tab
+  // Manifests shown under the currently selected tab - a manifest is shown
+  // if ANY of its orders are at that status.
   get visibleGroups(): ManifestGroup[] {
     if (this.statusFilter === 'ALL') {
       return this.manifestGroups;
     }
     return this.manifestGroups.filter(
-      g => g.lifecycleCode === this.statusFilter
+      g => g.orders.some(o => o.lifecycleCode === this.statusFilter)
     );
   }
 
@@ -336,22 +355,52 @@ export class DriverConsole implements OnInit {
     this.statusFilter = code;
   }
 
+  // Chips shown in the manifest header, e.g. "2 Picked Up · 1 Pickup Assigned"
+  statusBreakdown(group: ManifestGroup): StatusBreakdown[] {
+
+    const counts = new Map<string, number>();
+
+    for (const o of group.orders) {
+      counts.set(o.lifecycleCode, (counts.get(o.lifecycleCode) ?? 0) + 1);
+    }
+
+    return [...counts.entries()].map(([code, count]) => ({
+      code,
+      name: this.findLifecycle(code)?.statusName ?? code,
+      color: this.getStatusColor(code),
+      count
+    }));
+
+  }
+
+  // One action button per CURRENT status present in the manifest (usually
+  // just one, when every order is at the same step) - clicking it advances
+  // every order at that status together, instead of one button per order.
+  actionableStatusGroups(
+    group: ManifestGroup
+  ): { code: string; name: string; nextName: string; count: number }[] {
+
+    const counts = new Map<string, number>();
+
+    for (const o of group.orders) {
+      if (this.hasNextStatus(o.lifecycleCode)) {
+        counts.set(o.lifecycleCode, (counts.get(o.lifecycleCode) ?? 0) + 1);
+      }
+    }
+
+    return [...counts.entries()].map(([code, count]) => ({
+      code,
+      name: this.findLifecycle(code)?.statusName ?? code,
+      nextName: this.getNextStatusName(code),
+      count
+    }));
+
+  }
+
   // ===== Manifest-level expand / collapse =====
   // Clicking the manifest header loads (shows) that manifest's orders.
   toggleGroup(group: ManifestGroup): void {
     group.expanded = !group.expanded;
-  }
-
-  toggleSelectAll(group: ManifestGroup): void {
-    group.orders.forEach(o => o.selected = group.selectAll);
-  }
-
-  selectedOrdersIn(group: ManifestGroup): TransferManifestResponse[] {
-    return group.orders.filter(o => !!o.selected);
-  }
-
-  hasSelection(group: ManifestGroup): boolean {
-    return this.selectedOrdersIn(group).length > 0;
   }
 
   // ===== Lifecycle helpers =====
@@ -385,20 +434,22 @@ export class DriverConsole implements OnInit {
     return this.findLifecycle(statusCode)?.colorCode || '#6B7280';
   }
 
-  // ===== Advance to next status =====
+  // ===== Advance ALL orders at a given status, together =====
+  // One button per manifest-per-status (see actionableStatusGroups above).
   // PICKUP_ASSIGNED -> PICKED_UP updates immediately.
   // PICKED_UP -> DELIVERED (final step) opens the OTP popup first.
+  // The manifest's own lifecycle row only moves forward once every order
+  // under it shares this same current status (see updateOrders below).
 
-  processManifest(group: ManifestGroup): void {
+  processStatusGroup(group: ManifestGroup, statusCode: string): void {
 
-    const selected = this.selectedOrdersIn(group);
+    const ordersAtStatus = group.orders.filter(o => o.lifecycleCode === statusCode);
 
-    if (selected.length === 0) {
-      alert('Please select at least one order to update.');
+    if (ordersAtStatus.length === 0) {
       return;
     }
 
-    const nextLifecycle = this.nextLifecycleOf(group.lifecycleCode);
+    const nextLifecycle = this.nextLifecycleOf(statusCode);
 
     if (!nextLifecycle) {
       alert('Next lifecycle step not found.');
@@ -409,7 +460,7 @@ export class DriverConsole implements OnInit {
     if (this.isFinalStep(nextLifecycle)) {
 
       this.pendingGroup = group;
-      this.pendingOrders = selected;
+      this.pendingOrders = ordersAtStatus;
       this.pendingLifecycle = nextLifecycle;
 
       this.otpInput = '';
@@ -460,8 +511,8 @@ export class DriverConsole implements OnInit {
 
     }
 
-    // Other lifecycle updates
-    this.updateOrders(group, selected, nextLifecycle);
+    // Other lifecycle updates - fires immediately for every order at this status.
+    this.updateOrders(group, ordersAtStatus, nextLifecycle);
 
   }
 
@@ -515,13 +566,19 @@ export class DriverConsole implements OnInit {
   }
 
   // ===== Save =====
-  // Posts one DeliveryOrderTransaction per selected order, and — when the
-  // whole manifest is being moved — also updates the TransferManifest row
-  // to the new lifecycle so both tables stay in sync.
+  // Posts one DeliveryOrderTransaction per order being advanced (normally
+  // just one, since each order now has its own action button), and — only
+  // when every order under the manifest currently shares the SAME status as
+  // the one(s) being advanced — also updates the TransferManifest row(s) to
+  // the new lifecycle so both tables stay in sync. A manifest CARD can be
+  // backed by more than one manifestId row (they share a manifestNo), so we
+  // update every distinct manifestId found in the group, not just one.
+  // If other orders under the manifest are still sitting at an earlier
+  // status, the manifest-level row(s) are left untouched.
 
   private updateOrders(
     group: ManifestGroup,
-    selected: TransferManifestResponse[],
+    ordersToAdvance: TransferManifestResponse[],
     nextLifecycle: DeliveryLifecycle
   ): void {
 
@@ -529,21 +586,42 @@ export class DriverConsole implements OnInit {
 
     const isFinal = this.isFinalStep(nextLifecycle);
 
-    const requests: Observable<any>[] = selected.map(order =>
+    const requests: Observable<any>[] = ordersToAdvance.map(order =>
       this.logisticsService.saveDeliveryOrderTransaction(
         this.buildTransactionRequest(order, nextLifecycle, isFinal)
       )
     );
 
-    // Only bump the manifest's own status when ALL its orders move together;
-    // a partial selection would otherwise push the manifest ahead of the
-    // orders still waiting.
-    if (selected.length === group.orders.length) {
-      requests.push(
-        this.logisticsService.saveTransferManifest(
-          this.buildManifestRequest(group, nextLifecycle)
-        )
-      );
+    // Only bump the manifest's own status when ALL its orders are currently
+    // at the same status as the order(s) being advanced; a partial
+    // advance would otherwise push the manifest ahead of orders still
+    // waiting at an earlier step.
+    const currentStatusCode = ordersToAdvance[0].lifecycleCode;
+    const allOrdersAtSameStatus = group.orders.every(
+      o => o.lifecycleCode === currentStatusCode
+    );
+
+    if (allOrdersAtSameStatus) {
+
+      // One saveTransferManifest call per distinct manifestId row that
+      // backs this card.
+      const seenManifestIds = new Set<number>();
+
+      for (const order of group.orders) {
+
+        if (seenManifestIds.has(order.manifestId)) {
+          continue;
+        }
+        seenManifestIds.add(order.manifestId);
+
+        requests.push(
+          this.logisticsService.saveTransferManifest(
+            this.buildManifestRequest(group, order, nextLifecycle)
+          )
+        );
+
+      }
+
     }
 
     forkJoin(requests).subscribe({
@@ -551,7 +629,7 @@ export class DriverConsole implements OnInit {
       next: () => {
         this.saving = false;
         this.clearPending();
-        alert(`${selected.length} order(s) marked as ${nextLifecycle.statusName}.`);
+        alert(`${ordersToAdvance.length} order(s) marked as ${nextLifecycle.statusName}.`);
         this.loadAssignedManifests();
       },
 
@@ -671,36 +749,38 @@ export class DriverConsole implements OnInit {
 
   }
 
+  // `forOrder` pins WHICH manifestId row this save targets - a card can be
+  // backed by several manifestId rows sharing one manifestNo, so the caller
+  // passes the specific order whose manifestId should be updated.
   private buildManifestRequest(
     group: ManifestGroup,
+    forOrder: TransferManifestResponse,
     nextLifecycle: DeliveryLifecycle
   ): TransferManifest {
 
-    const first = group.orders[0];
-
     return {
 
-      manifestId: group.manifestId,
+      manifestId: forOrder.manifestId,
       manifestNo: group.manifestNo,
-      transferOrderId: first.transferOrderId,
+      transferOrderId: forOrder.transferOrderId,
 
-      assignedUserId: first.assignedUserId ?? this.driverId,
-      assignedUserName: first.assignedUserName ?? this.driverName,
+      assignedUserId: forOrder.assignedUserId ?? this.driverId,
+      assignedUserName: forOrder.assignedUserName ?? this.driverName,
 
       // Read receiver + OTP from the GROUP (set by sendOtp), not from the
       // stale order row — otherwise the final Delivered save overwrites
       // ReceiverUserId/ReceiverUserName/OTP with 0 / '' in the database.
-      receiverUserId: group.receiverUserId ?? first.receiverUserId ?? 0,
-      receiverUserName: group.receiverUserName ?? first.receiverUserName ?? '',
+      receiverUserId: group.receiverUserId ?? forOrder.receiverUserId ?? 0,
+      receiverUserName: group.receiverUserName ?? forOrder.receiverUserName ?? '',
 
-      otp: group.otp ?? first.otp ?? '',
+      otp: group.otp ?? forOrder.otp ?? '',
 
       lifecycleId: nextLifecycle.lifecycleId,
       lifecycleSequenceNo: nextLifecycle.sequenceNo,
       lifecycleCode: nextLifecycle.statusCode,
       lifecycleName: nextLifecycle.statusName,
 
-      manifestDate: first.manifestDate ?? new Date(),
+      manifestDate: forOrder.manifestDate ?? new Date(),
       status: nextLifecycle.statusName
 
     };
@@ -796,26 +876,33 @@ export class DriverConsole implements OnInit {
     this.pendingGroup.receiverUserName = receiver.fullName;
     this.pendingGroup.otp = otp;
 
-    // At "send OTP" time the manifest is NOT delivered yet — save the
-    // receiver + OTP against the CURRENT lifecycle (e.g. Picked Up), and
-    // only move to Delivered after the OTP is verified in confirmOtp().
+    // At "send OTP" time the order is NOT delivered yet — save the
+    // receiver + OTP against the CURRENT order's lifecycle (e.g. Picked
+    // Up), and only move to Delivered after the OTP is verified in
+    // confirmOtp().
+    const currentStatusCode = this.pendingOrders[0]?.lifecycleCode;
     const currentLifecycle =
-      this.findLifecycle(this.pendingGroup.lifecycleCode) ?? this.pendingLifecycle;
+      (currentStatusCode ? this.findLifecycle(currentStatusCode) : undefined)
+      ?? this.pendingLifecycle;
 
     this.sendingOtp = true;
 
-    // Save OTP & Receiver in backend
+    // Save OTP & Receiver against the SPECIFIC order/manifestId being
+    // delivered - not group.manifestId, since a card can be backed by more
+    // than one manifestId row sharing the same manifestNo.
+    const pendingOrder = this.pendingOrders[0];
+
     this.logisticsService.saveTransferManifest({
 
-      manifestId: this.pendingGroup.manifestId,
+      manifestId: pendingOrder.manifestId,
 
       manifestNo: this.pendingGroup.manifestNo,
 
-      transferOrderId: this.pendingGroup.orders[0].transferOrderId,
+      transferOrderId: pendingOrder.transferOrderId,
 
-      assignedUserId: this.pendingGroup.orders[0].assignedUserId,
+      assignedUserId: pendingOrder.assignedUserId,
 
-      assignedUserName: this.pendingGroup.orders[0].assignedUserName,
+      assignedUserName: pendingOrder.assignedUserName,
 
       receiverUserId: receiver.userId,
 

@@ -1,149 +1,214 @@
-header{
+header {
 
-    position:fixed;
+    position: fixed;
 
-    top:0;
+    top: 0;
 
-    left:260px;
+    left: 260px;
+    right: 0;
 
-    right:0;
+    height: 70px;
 
-    height:70px;
+    background: white;
 
-    background:white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 
-    display:flex;
+    padding: 0 25px;
 
-    justify-content:space-between;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, .06);
 
-    align-items:center;
+    z-index: 100;
 
-    padding:0 25px;
-
-    box-shadow:0 2px 10px rgba(0,0,0,.06);
-
-    z-index:100;
-
-}
-
-.left h2{
-
-    color:#1F2937;
-    font-size:20px;
-}
-
-.center{
-
-    flex:1;
-    display:flex;
-    justify-content:center;
-}
-
-.center input{
-
-    width:450px;
-
-    height:42px;
-
-    border:1px solid #E5E7EB;
-
-    border-radius:8px;
-
-    padding-left:18px;
-
-    outline:none;
+    transition: left .25s ease;
 
 }
 
-.right{
+.left h2 {
 
-    display:flex;
-
-    gap:18px;
-
-    align-items:center;
-
-}
-
-.right select{
-
-    height:40px;
-
-    border-radius:8px;
-
-    border:1px solid #E5E7EB;
-
-    padding:0 12px;
+    color: #1F2937;
+    font-size: 20px;
+    margin: 0;
+    white-space: nowrap;
 
 }
 
-.right button{
+.center {
 
-    width:42px;
-    height:42px;
+    flex: 1;
 
-    border:none;
+    display: flex;
+    justify-content: center;
 
-    background:#F8FAFC;
-
-    border-radius:8px;
-
-    cursor:pointer;
+    min-width: 0;
+    padding: 0 20px;
 
 }
 
-.right img{
+.center input {
 
-    width:42px;
+    width: 450px;
+    max-width: 100%;
 
-    height:42px;
+    height: 42px;
 
-    border-radius:50%;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
 
-}
+    padding-left: 18px;
 
-.right{
-    display:flex;
-    align-items:center;
-    gap:16px;
-}
-
-.user-info{
-    text-align:right;
-    color:#fff;
-}
-
-.user-name{
-    font-size:15px;
-    font-weight:600;
-}
-
-.role-name{
-    font-size:12px;
-    opacity:.85;
-}
-
-
-.logout{
-
-    padding:20px;
+    outline: none;
 
 }
 
-.logout btn{
+.right {
 
-    width:100%;
-    padding:14px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
 
-    border:none;
+    flex-shrink: 0;
 
-    border-radius:8px;
+}
 
-    background:white;
+.right select {
 
-    color:#1E3A8A;
+    height: 40px;
 
-    font-weight:600;
+    border-radius: 8px;
+    border: 1px solid #E5E7EB;
 
-    cursor:pointer;
+    padding: 0 12px;
+
+}
+
+.right button {
+
+    width: 42px;
+    height: 42px;
+
+    border: none;
+
+    background: #F8FAFC;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+
+}
+
+.right img {
+
+    width: 42px;
+    height: 42px;
+
+    border-radius: 50%;
+
+    flex-shrink: 0;
+
+}
+
+/* Header sits on a white background, so this text needs dark colors,
+   not white (it was invisible before). */
+.user-info {
+    text-align: right;
+    color: #1F2937;
+    white-space: nowrap;
+}
+
+.user-name {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.role-name {
+    font-size: 12px;
+    color: #6B7280;
+}
+
+.logout {
+    padding: 20px;
+}
+
+.logout button {
+
+    width: 100%;
+    padding: 14px;
+
+    border: none;
+    border-radius: 8px;
+
+    background: #1E3A8A;
+    color: white;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+}
+
+/* ================= Responsive ================= */
+/* Offsets kept in sync with the sidebar's own breakpoints. */
+
+/* Tablet: sidebar collapses to a 78px icon rail */
+@media (max-width: 992px) {
+
+    header {
+        left: 78px;
+        padding: 0 16px;
+    }
+
+    .center {
+        padding: 0 12px;
+    }
+
+    .center input {
+        width: 100%;
+        max-width: 320px;
+    }
+
+    .user-info {
+        display: none;
+    }
+
+}
+
+/* Mobile: sidebar moves to a bottom bar, so header spans full width and
+   shrinks - search collapses, role/name text hides, keep icons only */
+@media (max-width: 640px) {
+
+    header {
+        left: 0;
+        height: 60px;
+        padding: 0 12px;
+        gap: 10px;
+    }
+
+    .left h2 {
+        font-size: 17px;
+    }
+
+    .center {
+        display: none;
+    }
+
+    .right {
+        gap: 10px;
+    }
+
+    .right select {
+        display: none;
+    }
+
+    .right button {
+        width: 38px;
+        height: 38px;
+    }
+
+    .right img {
+        width: 36px;
+        height: 36px;
+    }
+
 }

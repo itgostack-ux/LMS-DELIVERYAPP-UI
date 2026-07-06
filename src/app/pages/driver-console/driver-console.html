@@ -26,7 +26,7 @@
         </div>
     </div>
 
-    <!-- ===== Status tab filter ===== -->
+    <!-- ===== Status tab filter (counts ORDERS, not manifests) ===== -->
     <div class="status-tabs" *ngIf="!loading && manifestGroups.length > 0">
 
         <button class="tab" [class.active]="statusFilter === 'ALL'" (click)="setStatusFilter('ALL')">
@@ -63,14 +63,15 @@
         No manifests under this status.
     </div>
 
-    <!-- ===== Manifest-level list: one collapsed row per manifest.
-         Click the header to expand and load its related orders. ===== -->
+    <!-- ===== Manifest-level list: ONE card per manifest, whatever the mix
+         of order statuses under it. Click the header to expand and load its
+         related orders. ===== -->
     <div class="manifest-list" *ngIf="!loading">
 
         <div class="card manifest-card" *ngFor="let group of visibleGroups"
             [class.expanded]="group.expanded">
 
-            <!-- Manifest-level row: Manifest No + Assigned Name + Lifecycle -->
+            <!-- Manifest-level row: Manifest No + Assigned Name + status breakdown -->
             <div class="manifest-header clickable" (click)="toggleGroup(group)">
 
                 <div class="manifest-head-left">
@@ -85,8 +86,9 @@
                     <div>
                         <div class="manifest-title">
                             {{group.manifestNo}}
-                            <span class="status-badge" [style.background]="getStatusColor(group.lifecycleCode)">
-                                {{group.lifecycleName}}
+                            <span class="status-badge" *ngFor="let s of statusBreakdown(group)"
+                                [style.background]="s.color">
+                                {{s.count}} {{s.name}}
                             </span>
                         </div>
                         <div class="manifest-sub">
@@ -106,7 +108,8 @@
 
             </div>
 
-            <!-- Related orders: shown only after clicking the manifest -->
+            <!-- Related orders: shown only after clicking the manifest.
+                 Each order carries its own status + its own action button. -->
             <ng-container *ngIf="group.expanded">
 
                 <div class="table-wrap">
@@ -114,31 +117,31 @@
 
                         <thead>
                             <tr>
-                                <th *ngIf="hasNextStatus(group.lifecycleCode)">
-                                    <input type="checkbox" [(ngModel)]="group.selectAll"
-                                        (change)="toggleSelectAll(group)">
-                                </th>
                                 <th>Transit ID</th>
                                 <th>Delivery Note</th>
                                 <th>Item</th>
                                 <th>IMEI</th>
                                 <th class="num">Qty</th>
                                 <th>Destination</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
 
                         <tbody>
 
                             <tr *ngFor="let order of group.orders">
-                                <td *ngIf="hasNextStatus(group.lifecycleCode)">
-                                    <input type="checkbox" [(ngModel)]="order.selected">
-                                </td>
                                 <td class="mono">{{order.transitID}}</td>
                                 <td>{{order.deliveryNoteNo}}</td>
                                 <td class="item-name">{{order.itemName}}</td>
                                 <td class="mono">{{order.imei}}</td>
                                 <td class="num">{{order.transferQty}}</td>
                                 <td>{{order.destinationLocationName}}</td>
+                                <td>
+                                    <span class="status-badge-sm"
+                                        [style.background]="getStatusColor(order.lifecycleCode)">
+                                        {{order.lifecycleName}}
+                                    </span>
+                                </td>
                             </tr>
 
                         </tbody>
@@ -146,52 +149,37 @@
                     </table>
                 </div>
 
-                <!-- Action footer only for manifests that still have a next step -->
-                <div class="manifest-footer" *ngIf="hasNextStatus(group.lifecycleCode)">
+                <!-- One action button per status present in this manifest -
+                     usually just one when every order is at the same step.
+                     Clicking it advances ALL orders at that status together. -->
+                <div class="manifest-footer" *ngIf="actionableStatusGroups(group).length > 0">
 
-                    <div class="status-flow">
+                    <div class="status-action-row" *ngFor="let sg of actionableStatusGroups(group)">
 
-                        <span class="label">Current</span>
+                        <div class="status-flow">
+                            <span class="label">Current</span>
+                            <span class="status current" [style.border-color]="getStatusColor(sg.code)"
+                                [style.color]="getStatusColor(sg.code)">
+                                {{ sg.count }} {{ sg.name }}
+                            </span>
+                            <span class="arrow">➜</span>
+                            <span class="label">Next</span>
+                            <span class="status next">{{ sg.nextName }}</span>
+                        </div>
 
-                        <span class="status current" [style.border-color]="getStatusColor(group.lifecycleCode)"
-                            [style.color]="getStatusColor(group.lifecycleCode)">
-                            {{ group.lifecycleName }}
-                        </span>
-
-                        <span class="arrow">➜</span>
-
-                        <span class="label">Next</span>
-
-                        <span class="status next">
-                            {{ getNextStatusName(group.lifecycleCode) }}
-                        </span>
+                        <button class="btn-action" [disabled]="saving"
+                            (click)="processStatusGroup(group, sg.code)">
+                            {{ saving ? 'Saving...' : 'Mark ' + sg.nextName }}
+                        </button>
 
                     </div>
-
-                    <button class="btn-action"
-                        [disabled]="!hasSelection(group) || saving"
-                        (click)="processManifest(group)">
-
-                        {{ saving ? 'Saving...' : 'Mark ' + getNextStatusName(group.lifecycleCode) }}
-
-                    </button>
 
                 </div>
 
-                <!-- Read-only footer for completed (Delivered) manifests -->
-                <div class="manifest-footer done" *ngIf="!hasNextStatus(group.lifecycleCode)">
-
-                    <div class="status-flow">
-                        <span class="label">Status</span>
-                        <span class="status current" [style.border-color]="getStatusColor(group.lifecycleCode)"
-                            [style.color]="getStatusColor(group.lifecycleCode)">
-                            {{ group.lifecycleName }}
-                        </span>
-                        <span class="done-info" *ngIf="group.receiverUserName">
-                            Received by <b>{{group.receiverUserName}}</b>
-                        </span>
-                    </div>
-
+                <!-- Read-only footer when every order under the manifest is
+                     already at a final step (no next status anywhere) -->
+                <div class="manifest-footer done" *ngIf="actionableStatusGroups(group).length === 0">
+                    <span class="done-info">All orders delivered.</span>
                 </div>
 
             </ng-container>
@@ -200,7 +188,7 @@
 
     </div>
 
-    <!-- ===== Delivery OTP Modal (opens on the final lifecycle step) ===== -->
+    <!-- ===== Delivery OTP Modal (opens on an order's final lifecycle step) ===== -->
     <div class="modal-overlay" *ngIf="showOtpModal">
         <div class="modal-box">
 

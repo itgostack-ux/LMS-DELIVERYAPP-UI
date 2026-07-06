@@ -1,0 +1,155 @@
+<div class="container-fluid">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h3 class="page-title">Delivery Lifecycle Master</h3>
+      <small class="page-subtitle">Manage Delivery Workflow Status</small>
+    </div>
+  </div>
+
+  <!-- Form -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5>{{ isEdit ? 'Update Lifecycle' : 'New Lifecycle' }}</h5>
+    </div>
+
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-2">
+          <label>Sequence No</label>
+          <input type="number" class="form-control" [(ngModel)]="lifecycle.sequenceNo">
+        </div>
+
+        <div class="col-md-2">
+          <label>Status Code</label>
+          <input type="text" class="form-control" [(ngModel)]="lifecycle.statusCode">
+        </div>
+
+        <div class="col-md-2">
+          <label>Status Name</label>
+          <input type="text" class="form-control" [(ngModel)]="lifecycle.statusName">
+        </div>
+
+        <div class="col-md-2">
+          <label>Next Status</label>
+          <input type="text" class="form-control" [(ngModel)]="lifecycle.nextStatusCode">
+        </div>
+
+        <div class="col-md-2">
+          <label>Color</label>
+          <input type="color" class="form-control form-control-color" [(ngModel)]="lifecycle.colorCode">
+        </div>
+
+        <div class="col-md-2">
+          <label>Status</label>
+          <select class="form-select" [(ngModel)]="lifecycle.isActive">
+            <option [ngValue]="true">Active</option>
+            <option [ngValue]="false">Inactive</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row mt-3">
+        <div class="col-md-12">
+          <label>Description</label>
+          <textarea class="form-control" rows="3" [(ngModel)]="lifecycle.description"></textarea>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <button class="btn btn-primary me-2" (click)="saveLifecycle()">
+          {{ isEdit ? 'Update' : 'Save' }}
+        </button>
+        <button class="btn btn-secondary" (click)="cancel()">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grid -->
+  <div class="card">
+    <div class="card-header">
+      <h5>Delivery Lifecycle List</h5>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>S.No</th>
+            <th>Sequence</th>
+            <th>Status Code</th>
+            <th>Status Name</th>
+            <th>Next Status</th>
+            <th>Color</th>
+            <th>Description</th>
+            <th>Status</th>
+            <th width="150">Action</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr *ngFor="let item of pagedDeliveryLifecycles; let i = index">
+            <td>{{ ((currentPage - 1) * pageSize) + i + 1 }}</td>
+            <td>{{ item.sequenceNo }}</td>
+            <td>{{ item.statusCode }}</td>
+            <td>{{ item.statusName }}</td>
+            <td>{{ item.nextStatusCode }}</td>
+            <td>
+              <span
+                class="color-circle"
+                [style.background]="item.colorCode">
+              </span>
+              {{ item.colorCode }}
+            </td>
+            <td>{{ item.description }}</td>
+            <td>
+              <span class="badge" [ngClass]="item.isActive ? 'bg-success' : 'bg-danger'">
+                {{ item.isActive ? 'Active' : 'Inactive' }}
+              </span>
+            </td>
+            <td>
+              <button class="btn btn-sm btn-warning me-2" (click)="editLifecycle(item)">
+                Edit
+              </button>
+              <button class="btn btn-sm btn-danger" (click)="deleteLifecycle(item)">
+                Delete
+              </button>
+            </td>
+          </tr>
+
+          <tr *ngIf="pagedDeliveryLifecycles.length == 0">
+            <td colspan="9" class="text-center">No Records Found</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card-footer">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          Showing {{ ((currentPage - 1) * pageSize) + 1 }} -
+          {{ ((currentPage - 1) * pageSize) + pagedDeliveryLifecycles.length }}
+          of {{ deliveryLifecycles.length }}
+        </div>
+
+        <div>
+          <button
+            class="btn btn-outline-secondary me-2"
+            (click)="previousPage()"
+            [disabled]="currentPage == 1">
+            Previous
+          </button>
+          <span>Page {{ currentPage }} of {{ totalPages }}</span>
+          <button
+            class="btn btn-outline-primary ms-2"
+            (click)="nextPage()"
+            [disabled]="currentPage == totalPages">
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,218 @@
+/*=========================================================
+  Login Component Styles
+  Consistent with LMS Enterprise Design System
+==========================================================*/
+
+.login-container {
+    min-height: 100vh;
+    min-height: 100dvh; /* real viewport height on mobile browsers with URL bars */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: var(--bg);
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 400px;
+    background: var(--white);
+    padding: 40px 36px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* Accent bar on top for brand identity */
+.login-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), var(--primary-light));
+}
+
+.login-card h2 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--primary);
+    letter-spacing: .5px;
+    margin-bottom: 4px;
+}
+
+.login-card p {
+    font-size: 13px;
+    color: var(--text-light);
+    margin-bottom: 24px;
+}
+
+/* Error message */
+.error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #FEF2F2;
+    color: var(--danger);
+    border: 1px solid #FCA5A5;
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 18px;
+}
+
+/* Inputs */
+input {
+    width: 100%;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+}
+
+input::placeholder {
+    color: var(--text-light);
+}
+
+input:hover {
+    border-color: var(--primary-light);
+}
+
+input:focus {
+    background: var(--white);
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+}
+
+/* Buttons */
+button {
+    width: 100%;
+    padding: 12px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: .3px;
+    color: var(--white);
+    background: linear-gradient(135deg, var(--primary-light), var(--primary));
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: filter var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+
+button:hover:not(:disabled) {
+    filter: brightness(1.08);
+    box-shadow: 0 6px 16px rgba(30, 58, 138, .25);
+}
+
+button:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+button:disabled {
+    background: var(--text-light);
+    cursor: not-allowed;
+    opacity: .7;
+}
+
+/* ================= Responsive ================= */
+
+/* Tablet */
+@media (max-width: 768px) {
+
+    .login-container {
+        padding: 24px 16px;
+    }
+
+    .login-card {
+        max-width: 380px;
+        padding: 36px 30px;
+    }
+
+}
+
+/* Phone */
+@media (max-width: 480px) {
+
+    .login-container {
+        padding: 16px;
+        align-items: flex-start;
+        padding-top: 10vh;
+    }
+
+    .login-card {
+        padding: 30px 22px;
+        border-radius: calc(var(--radius) + 2px);
+    }
+
+    .login-card h2 {
+        font-size: 19px;
+    }
+
+    .login-card p {
+        font-size: 12.5px;
+        margin-bottom: 20px;
+    }
+
+    input,
+    button {
+        padding: 11px 13px;
+        font-size: 15px; /* 15-16px avoids iOS Safari auto-zoom on focus */
+    }
+
+}
+
+/* Small phone */
+@media (max-width: 340px) {
+
+    .login-card {
+        padding: 24px 16px;
+    }
+
+    .login-card h2 {
+        font-size: 17px;
+    }
+
+}
+
+/* Short / landscape viewports (phones rotated, small laptops in split view) -
+   vertical centering can push the card off-screen when height is tight, so
+   switch to top alignment with scroll instead of clipping it */
+@media (max-height: 560px) {
+
+    .login-container {
+        align-items: flex-start;
+        padding-top: 24px;
+        padding-bottom: 24px;
+        overflow-y: auto;
+    }
+
+    .login-card {
+        padding: 24px 28px;
+    }
+
+    .login-card p {
+        margin-bottom: 16px;
+    }
+
+    input {
+        margin-bottom: 12px;
+    }
+
+}
+
+
+

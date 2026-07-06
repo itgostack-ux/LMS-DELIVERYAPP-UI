@@ -1,1 +1,126 @@
-<p>dashboard works!</p>
+<div class="dash">
+
+    <!-- ===== Header: role + user + refresh ===== -->
+    <div class="dash-header">
+
+        <div>
+            <h3>Logistics Dashboard</h3>
+            <div class="dash-sub">
+                <span class="role-chip" *ngIf="roleName">{{roleName}}</span>
+                <span class="user-chip" *ngIf="userName">
+                    <i class="fa-solid fa-user"></i> {{userName}}
+                </span>
+                <span class="date-chip">{{today | date:'EEEE, dd MMM yyyy'}}</span>
+            </div>
+        </div>
+
+        <button class="btn-refresh" (click)="refresh()" [disabled]="loading">
+            <i class="fa-solid fa-rotate"></i>
+            Refresh
+        </button>
+
+    </div>
+
+    <div *ngIf="loading" class="dash-loading">
+        <span class="spinner"></span> Loading dashboard...
+    </div>
+
+    <div *ngIf="errorMessage" class="dash-error">
+        <i class="fa-solid fa-triangle-exclamation"></i> {{errorMessage}}
+    </div>
+
+    <ng-container *ngIf="!loading && !errorMessage">
+
+        <!-- ===== KPI tiles (role based) ===== -->
+        <div class="stat-grid">
+
+            <div class="stat-card" *ngFor="let card of statCards"
+                [class.clickable]="!!card.route"
+                [style.--accent]="card.color"
+                (click)="goTo(card.route)">
+
+                <div class="stat-icon">
+                    <i [class]="card.icon"></i>
+                </div>
+
+                <div class="stat-info">
+                    <h5>{{card.label}}</h5>
+                    <h2>{{card.value}}</h2>
+                </div>
+
+                <i class="fa-solid fa-chevron-right stat-go" *ngIf="card.route"></i>
+
+            </div>
+
+        </div>
+
+        <!-- ===== Lifecycle status breakdown ===== -->
+        <div class="panel" *ngIf="statusCounts.length > 0">
+
+            <div class="panel-title">
+                <i class="fa-solid fa-diagram-project"></i>
+                Order Status Overview
+            </div>
+
+            <div class="status-strip">
+
+                <div class="status-item" *ngFor="let s of statusCounts">
+                    <span class="dot" [style.background]="s.color"></span>
+                    <span class="name">{{s.name}}</span>
+                    <span class="count" [style.color]="s.color">{{s.count}}</span>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- ===== Recent manifests ===== -->
+        <div class="panel">
+
+            <div class="panel-title">
+                <i class="fa-solid fa-clipboard-list"></i>
+                Recent Manifests
+            </div>
+
+            <div class="panel-empty" *ngIf="recentManifests.length === 0">
+                No manifests found.
+            </div>
+
+            <div class="table-wrap" *ngIf="recentManifests.length > 0">
+                <table>
+
+                    <thead>
+                        <tr>
+                            <th>Manifest No</th>
+                            <th>Assigned To</th>
+                            <th>Receiver</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        <tr *ngFor="let m of recentManifests">
+                            <td class="mono">{{m.manifestNo || ('#' + m.manifestId)}}</td>
+                            <td>{{m.assignedUserName || '—'}}</td>
+                            <td>{{m.receiverUserName || '—'}}</td>
+                            <td>
+                                <span class="status-pill"
+                                    [style.background]="getStatusColor(m.lifecycleCode)">
+                                    {{m.lifecycleName}}
+                                </span>
+                            </td>
+                            <td>{{m.manifestDate | date:'dd MMM yyyy, hh:mm a'}}</td>
+                        </tr>
+
+                    </tbody>
+
+                </table>
+            </div>
+
+        </div>
+
+    </ng-container>
+
+</div>

@@ -1,60 +1,76 @@
 import { Component } from '@angular/core';
+
 import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
+
 import { Router } from '@angular/router';
 
 import { AuthService } from '../../service/auth';
+
 import { UserDataService } from '../../service/user-data-service';
 
 @Component({
+
   selector: 'app-login',
+
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule
-  ],
+
+  imports: [CommonModule, FormsModule],
+
   templateUrl: './login.html',
-  styleUrl: './login.css'
+
+  styleUrls: ['./login.css']
+
 })
+
 export class Login {
 
-  email: string = '';
-  otp: string = '';
+  email = '';
 
-  showOtp: boolean = false;
-  isLoading: boolean = false;
-  errorMessage: string = '';
+  otp = '';
+
+  showOtp = false;
+
+  loading = false;
+
+  errorMessage = '';
 
   constructor(
+
     private authService: AuthService,
-    private userDataService: UserDataService,
+
+    private userService: UserDataService,
+
     private router: Router
+
   ) { }
 
-  sendOtp(): void {
+  sendOtp() {
 
-    this.errorMessage = '';
+    if (!this.email) {
 
-    if (this.email.trim() === '') {
-      this.errorMessage = 'Please enter your email.';
+      this.errorMessage = "Enter Email";
+
       return;
+
     }
 
-    this.isLoading = true;
+    this.loading = true;
 
     this.authService.sendOtp(this.email).subscribe({
 
-      next: (response: any) => {
+      next: (res: any) => {
 
-        this.isLoading = false;
+        this.loading = false;
 
-        if (response.isSuccess) {
+        if (res.isValidUser) {
 
           this.showOtp = true;
 
         } else {
 
-          this.errorMessage = response.message;
+          this.errorMessage = "Invalid User";
 
         }
 
@@ -62,8 +78,9 @@ export class Login {
 
       error: () => {
 
-        this.isLoading = false;
-        this.errorMessage = 'Unable to send OTP. Please try again.';
+        this.loading = false;
+
+        this.errorMessage = "Server Error";
 
       }
 
@@ -71,34 +88,35 @@ export class Login {
 
   }
 
-  login(): void {
+  login() {
 
-    this.errorMessage = '';
+    if (!this.otp) {
 
-    if (this.otp.trim() === '') {
+      this.errorMessage = "Enter OTP";
 
-      this.errorMessage = 'Please enter OTP.';
       return;
 
     }
 
-    this.isLoading = true;
+    this.loading = true;
 
     this.authService.validateOtp(this.email, this.otp).subscribe({
 
-      next: (response: any) => {
+      next: (user: any) => {
 
-        this.isLoading = false;
+        this.loading = false;
 
-        if (response.isSuccess) {
+        if (user.isValidOTP) {
 
-          this.userDataService.setUser(response);
+          this.userService.setUser(user);
 
           this.router.navigate(['/dashboard']);
 
-        } else {
+        }
 
-          this.errorMessage = response.message;
+        else {
+
+          this.errorMessage = "Invalid OTP";
 
         }
 
@@ -106,21 +124,13 @@ export class Login {
 
       error: () => {
 
-        this.isLoading = false;
-        this.errorMessage = 'Invalid OTP.';
+        this.loading = false;
+
+        this.errorMessage = "Login Failed";
 
       }
 
     });
-
-  }
-
-  clear(): void {
-
-    this.email = '';
-    this.otp = '';
-    this.showOtp = false;
-    this.errorMessage = '';
 
   }
 

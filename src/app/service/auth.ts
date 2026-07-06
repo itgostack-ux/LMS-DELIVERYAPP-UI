@@ -1,75 +1,62 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Router } from '@angular/router';
+import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { UserDataService } from '../service/user-data-service';
 
+import {
+  SendOtpRequest,
+  ValidateOtpRequest,
+  UserDetails,
+  SendMailRequest
+} from '../services/models/common-master-model';
+import { environment } from '../pages/confiq';
 @Injectable({
   providedIn: 'root'
 })
+
 export class AuthService {
 
-  private apiUrl = 'https://localhost:5001/api/Auth'; // Change to your API URL
+  private baseUrl = environment.authApiUrl;
 
-  constructor(
-    private http: HttpClient,
-    private router: Router,
-    private userDataService: UserDataService
-  ) { }
+  constructor(private http: HttpClient) { }
 
-  // Send OTP
   sendOtp(email: string): Observable<any> {
 
-    return this.http.post<any>(
-      `${this.apiUrl}/SendOtp`,
-      {
-        email: email
-      }
-    );
+    const request = {
+      emailId: email,
+      projectName: 'BI Reports'
+    };
 
+    return this.http.post(
+      `${this.baseUrl}User/SendOtpByProject`,
+      request
+    );
   }
 
-  // Validate OTP
   validateOtp(email: string, otp: string): Observable<any> {
 
-    return this.http.post<any>(
-      `${this.apiUrl}/ValidateOtp`,
-      {
-        email: email,
-        otp: otp
-      }
+    const request = {
+      emailId: email,
+      otp: otp,
+      projectName: 'BI Reports'
+    };
+
+    return this.http.post(
+      `${this.baseUrl}User/ValidateOtpByProject`,
+      request
     );
+  }
+logout(): void {
 
+  localStorage.removeItem('currentUser');
+
+  // Remove token if you use JWT
+  localStorage.removeItem('token');
+
+}
+  sendMail(data: SendMailRequest): Observable<any> {
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    return this.http.post<any>(`${this.baseUrl}api/Common/SendMailAsync`, data, { headers });
   }
 
-  // Login
-  login(user: any): void {
-
-    this.userDataService.setUser(user);
-
-  }
-
-  // Check Login
-  isLoggedIn(): boolean {
-
-    return this.userDataService.getUser() != null;
-
-  }
-
-  // Logout
-  logout(): void {
-
-    this.userDataService.clearUser();
-
-    this.router.navigate(['/login']);
-
-  }
-
-  // Token
-  getToken(): string {
-
-    return this.userDataService.getToken();
-
-  }
 
 }

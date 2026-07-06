@@ -1,29 +1,122 @@
 <div class="sidebar">
 
     <div class="logo">
-        <h3>LMS ERP</h3>
+        <h2>LMS</h2>
     </div>
 
-    <ul>
+    <ul class="menu">
 
+        <!-- Dashboard (All Users) -->
         <li routerLink="/dashboard"
             routerLinkActive="active">
 
             <i class="fa-solid fa-chart-line"></i>
 
-            Dashboard
+            <span>Dashboard</span>
 
         </li>
 
-        <li routerLink="/master-management"
-            routerLinkActive="active">
+        <!-- Logistics Admin -->
 
-            <i class="fa-solid fa-layer-group"></i>
+        <ng-container *ngIf="roleName === 'Logistics Admin'">
 
-            Masters
-        </li>
+            <li routerLink="/master-management"
+                routerLinkActive="active">
 
-      
+                <i class="fa-solid fa-building"></i>
+
+                <span>Organization</span>
+
+            </li>
+
+            <li routerLink="/administration"
+                routerLinkActive="active">
+
+                <i class="fa-solid fa-user-shield"></i>
+
+                <span>Administration</span>
+
+            </li>
+
+            <li routerLink="/operations"
+                routerLinkActive="active">
+
+                <i class="fa-solid fa-truck-fast"></i>
+
+                <span>Operations</span>
+
+            </li>
+
+            <li routerLink="/track-orders"
+                routerLinkActive="active">
+
+                <i class="fa-solid fa-location-dot"></i>
+
+                <span>Track Orders</span>
+
+            </li>
+
+               <li routerLink="/driver-console"
+                routerLinkActive="active">
+
+                <i class="fa-solid fa-truck"></i>
+
+                <span>Driver Console</span>
+
+            </li>
+
+        </ng-container>
+
+        <!-- Logistics Manager -->
+
+        <ng-container *ngIf="roleName === 'Logistics Manager'">
+
+            <li routerLink="/operations"
+                routerLinkActive="active">
+
+                <i class="fa-solid fa-truck-fast"></i>
+
+                <span>Operations</span>
+
+            </li>
+
+        
+
+            <li routerLink="/track-orders"
+                routerLinkActive="active">
+
+                <i class="fa-solid fa-location-dot"></i>
+
+                <span>Track Orders</span>
+
+            </li>
+
+        </ng-container>
+
+        <!-- Delivery Executive -->
+
+        <ng-container *ngIf="roleName === 'Delivery Executive'">
+
+            <li routerLink="/driver-console"
+                routerLinkActive="active">
+
+                <i class="fa-solid fa-truck"></i>
+
+                <span>Driver Console</span>
+
+            </li>
+
+            <li routerLink="/track-orders"
+                routerLinkActive="active">
+
+                <i class="fa-solid fa-location-dot"></i>
+
+                <span>Track Orders</span>
+
+            </li>
+
+        </ng-container>
+
     </ul>
 
 </div>

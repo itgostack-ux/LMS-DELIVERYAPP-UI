@@ -1,0 +1,823 @@
+/* ===== Page header ===== */
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.driver-badge {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e3a8a;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 20px;
+  padding: 6px 14px;
+}
+
+.driver-readonly {
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* ===== Cards ===== */
+
+.card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+/* ===== Toolbar ===== */
+
+.toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 220px;
+  flex: 1 1 220px;
+}
+
+.field label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.field select,
+.field input {
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #fff;
+}
+
+.field select:disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+/* ===== Buttons ===== */
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  height: 40px;
+}
+
+.btn-primary:disabled {
+  background: #93c5fd;
+  cursor: not-allowed;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.btn-action {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: #16a34a;
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-action:disabled {
+  background: #a7f3d0;
+  cursor: not-allowed;
+}
+
+.btn-action:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.btn-secondary {
+  padding: 10px 18px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.btn-secondary:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+/* ===== Hints / states ===== */
+
+.hint {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.text-danger {
+  color: #dc2626;
+}
+
+.empty-hint {
+  padding: 40px 20px;
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  color: #475569;
+  font-size: 14px;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #cbd5e1;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===== Status tab filter ===== */
+
+.status-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.status-tabs .tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #fff;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.status-tabs .tab:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+/* Active tab picks up the lifecycle color via --tab-color (fallback blue) */
+.status-tabs .tab.active {
+  background: #eef2ff;
+  border-color: var(--tab-color, #2563eb);
+  color: var(--tab-color, #1e3a8a);
+}
+
+.status-tabs .tab-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-tabs .tab-count {
+  min-width: 20px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.status-tabs .tab.active .tab-count {
+  background: #fff;
+  color: var(--tab-color, #1e3a8a);
+}
+
+/* ===== Manifest cards ===== */
+
+.manifest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.manifest-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.manifest-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  background: #eef2ff;
+  border-bottom: 1px solid #e2e8f0;
+  flex-wrap: wrap;
+}
+
+/* Manifest title row + its status chips (one per distinct status among
+   its orders) */
+.manifest-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e3a8a;
+}
+
+.manifest-sub {
+  margin-top: 2px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.manifest-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 4px 12px;
+  white-space: nowrap;
+}
+
+/* Manifest-level header is clickable to expand/collapse its orders */
+.manifest-header.clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.manifest-header.clickable:hover {
+  background: #e0e7ff;
+}
+
+.manifest-head-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: #64748b;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.chevron.open {
+  transform: rotate(90deg);
+  color: #2563eb;
+  border-color: #c7d2fe;
+}
+
+.done-info {
+  font-size: 13px;
+  color: #475569;
+}
+
+/* Status chip in the manifest header (one per distinct status present) */
+.status-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* Small status pill shown per order row in the table */
+.status-badge-sm {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.done-tag {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+/* ===== Manifest footer: status flow + action button(s) =====
+   Can stack more than one status-action row when a manifest has orders
+   sitting at more than one current status. */
+
+.manifest-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.manifest-footer.done {
+  background: #f8fafc;
+}
+
+.status-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.status-flow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.status-flow .label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.status-flow .status {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Current status — outlined pill, color is set inline from lifecycle colorCode */
+.status-flow .status.current {
+  background: #fff;
+  border: 1.5px solid #2563eb;
+  color: #2563eb;
+}
+
+/* Next status — solid green pill */
+.status-flow .status.next {
+  background: #dcfce7;
+  border: 1.5px solid #86efac;
+  color: #15803d;
+}
+
+.status-flow .arrow {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+/* ===== Table ===== */
+
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+thead th {
+  text-align: left;
+  padding: 10px 14px;
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+tbody tr:hover {
+  background: #f8fafc;
+}
+
+.mono {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 12.5px;
+  color: #334155;
+}
+
+.item-name {
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.num {
+  text-align: right;
+}
+
+input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* ===== OTP modal ===== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.modal-box {
+  background: #fff;
+  border-radius: 10px;
+  padding: 24px;
+  width: 100%;
+  max-width: 360px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+.modal-box h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: #0f172a;
+}
+
+.modal-text {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* --- Modal form fields (Bootstrap-style classes used in the template) --- */
+
+.modal-box .mb-2 {
+  margin-bottom: 8px;
+}
+
+.modal-box .mb-3 {
+  margin-bottom: 14px;
+}
+
+.modal-box .w-100 {
+  width: 100%;
+}
+
+.modal-box label,
+.modal-box .form-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.modal-box .form-control,
+.modal-box .form-select {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #fff;
+  outline: none;
+}
+
+.modal-box .form-control:focus,
+.modal-box .form-select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.modal-box .form-control[readonly] {
+  background: #f8fafc;
+  color: #64748b;
+}
+
+/* Native select arrow spacing */
+.modal-box .form-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+/* Send OTP button inside the modal */
+.modal-box .btn.btn-primary {
+  display: block;
+  width: 100%;
+  padding: 11px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.modal-box .btn.btn-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.modal-box .btn.btn-primary:disabled {
+  background: #93c5fd;
+  cursor: not-allowed;
+}
+
+/* Confirmation line shown after the OTP email goes out */
+.otp-sent-hint {
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  color: #15803d;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+}
+
+/* Inline OTP validation error */
+.otp-error {
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: #dc2626;
+}
+
+.otp-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  font-size: 18px;
+  letter-spacing: 6px;
+  text-align: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  outline: none;
+}
+
+.otp-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+/* ================= Responsive ================= */
+
+/* Tablet */
+@media (max-width: 992px) {
+
+  .card {
+    padding: 16px;
+  }
+
+  .center input {
+    max-width: 320px;
+  }
+
+  .toolbar {
+    gap: 12px;
+  }
+
+  .field {
+    min-width: 180px;
+  }
+
+}
+
+/* Large phone / small tablet */
+@media (max-width: 768px) {
+
+  .page-header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .toolbar {
+    align-items: stretch;
+  }
+
+  .field {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  .btn-primary {
+    width: 100%;
+  }
+
+  .manifest-header {
+    padding: 14px;
+  }
+
+  .manifest-count {
+    order: 3;
+  }
+
+  .table-wrap table {
+    font-size: 12.5px;
+  }
+
+  thead th,
+  tbody td {
+    padding: 8px 10px;
+  }
+
+}
+
+/* Phone */
+@media (max-width: 640px) {
+
+  .page {
+    padding: 0 4px;
+  }
+
+  .page-header h2 {
+    font-size: 19px;
+  }
+
+  .status-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    margin-bottom: 12px;
+  }
+
+  .status-tabs .tab {
+    flex-shrink: 0;
+  }
+
+  .manifest-head-left {
+    width: 100%;
+  }
+
+  .manifest-title {
+    font-size: 14.5px;
+  }
+
+  .manifest-sub {
+    font-size: 12px;
+  }
+
+  .manifest-footer {
+    padding: 12px 14px;
+  }
+
+  .status-action-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .status-action-row .btn-action {
+    width: 100%;
+  }
+
+  .status-flow {
+    justify-content: flex-start;
+  }
+
+  .modal-box {
+    padding: 18px;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .modal-actions button {
+    width: 100%;
+  }
+
+}
+
+/* Small phone */
+@media (max-width: 400px) {
+
+  .item-name {
+    max-width: 140px;
+  }
+
+  .manifest-count {
+    font-size: 12px;
+    padding: 3px 9px;
+  }
+
+  .status-badge,
+  .status-badge-sm {
+    font-size: 10.5px;
+    padding: 2px 8px;
+  }
+
+}

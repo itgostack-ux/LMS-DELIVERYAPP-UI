@@ -1,0 +1,513 @@
+<div class="page">
+
+    <div class="page-header">
+        <h2>Delivery Orders Management</h2>
+        <span class="record-count" *ngIf="!loading && transferLogs.length > 0">
+            {{transferLogs.length}} records
+        </span>
+    </div>
+
+    <div class="card toolbar-card">
+        <div class="toolbar">
+
+            <div class="field">
+                <label>Company</label>
+                <select [(ngModel)]="selectedCompanyId" (change)="onCompanyChange()">
+                    <option [ngValue]="0">Select Company</option>
+                    <option *ngFor="let company of companies" [ngValue]="company.compId">
+                        {{company.compName}}
+                    </option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Location Type</label>
+                <select [(ngModel)]="selectedLocationTypeId" (change)="onLocationTypeChange()"
+                    [disabled]="selectedCompanyId == 0">
+                    <option [ngValue]="0">All Location Types</option>
+                    <option *ngFor="let item of locationTypes" [ngValue]="item.locationTypeId">
+                        {{item.locationTypeDesc}}
+                    </option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Location</label>
+                <select [(ngModel)]="selectedLocationId" [disabled]="selectedLocationTypeId == 0">
+                    <option [ngValue]="0">All Locations</option>
+                    <option *ngFor="let loc of locations" [ngValue]="loc.locId">
+                        {{loc.locDesc}}
+                    </option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label>From Date</label>
+                <input type="date" [(ngModel)]="fromDate">
+            </div>
+
+            <div class="field">
+                <label>To Date</label>
+                <input type="date" [(ngModel)]="toDate">
+            </div>
+
+            <button class="btn-primary" (click)="loadTransferLogs()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <circle cx="11" cy="11" r="7" />
+                    <line x1="21" y1="21" x2="16.5" y2="16.5" />
+                </svg>
+                Search
+            </button>
+
+        </div>
+
+        <div class="hint" *ngIf="validationMessage">
+            {{validationMessage}}
+        </div>
+
+        <div class="action-toolbar" *ngIf="selectedCount > 0">
+
+            <div class="left-section">
+
+                <div class="count">
+                    <strong>{{selectedCount}}</strong> Order(s) Selected
+                </div>
+
+                <div *ngIf="isSameStatus" class="status-flow">
+
+                    <span class="label">Current</span>
+
+                    <span class="status current">
+                        {{ selectedStatus }}
+                    </span>
+
+                    <span class="arrow">➜</span>
+
+                    <span class="label">Next</span>
+
+                    <span class="status next" [class.no-next]="!actionButtonText">
+
+                        {{ actionButtonText || 'No Next Status' }}
+
+                    </span>
+
+                </div>
+
+                <div *ngIf="isSameStatus && !actionButtonText" class="text-danger mt-2">
+
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    No next status is configured for the selected Logistics Status.
+
+                </div>
+
+                <!-- Manifest grouping hint: shown when the next step is
+                     Pickup Assigned, since that's when manifest(s) get
+                     created — one per source location -->
+                <div *ngIf="isSameStatus && isManifestNext" class="manifest-hint"
+                    style="font-size:12px;color:#64748b;margin-top:4px;">
+                    {{selectedSourceLocationCount}} manifest(s) will be created —
+                    one per source location
+                </div>
+
+                <div class="text-danger" *ngIf="!isSameStatus">
+                    Please select orders with the same Logistics Status.
+                </div>
+
+            </div>
+
+            <div class="right-section">
+
+                <button class="btn-action" [disabled]="!isSameStatus || saving || !actionButtonText"
+                    (click)="processSelectedOrders()">
+
+                    {{ saving ? 'Saving...' : (actionButtonText || 'No Next Status') }}
+
+                </button>
+
+                <button class="btn-clear" (click)="clearSelection()">
+                    Clear Selection
+                </button>
+
+            </div>
+
+        </div>
+
+
+    </div>
+
+    <div *ngIf="loading" class="loading">
+        <span class="spinner"></span> Loading transfer logs...
+    </div>
+
+    <div class="card table-card" *ngIf="!loading">
+
+        <div class="table-wrap">
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>
+                            <input type="checkbox" [(ngModel)]="selectAll" (change)="toggleSelectAll()">
+                        </th>
+                        <th>S.No</th>
+                        <th>Transit ID</th>
+                        <th>Transfer Date</th>
+                        <th>Transfer Out Time</th>
+
+                        <th>Status</th>
+                        <th>Logistics Status</th>
+                        <th>Source</th>
+                        <th>Destination</th>
+                        <th>Delivery Note</th>
+                        <th>Item</th>
+                        <th>Item Code</th>
+                        <th>IMEI</th>
+
+                        <th class="num">Qty</th>
+                        <th>Transferred By</th>
+                        <th>Transfer In Time</th>
+                        <th>Received By</th>
+                        <th>Duration</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    <tr *ngFor="let item of pagedLogs; let i = index; trackBy: trackByTransitId">
+
+                        <td>
+                            <!-- Received rows have blank logisticsStatus and are not
+                                 part of the delivery workflow, so they can't be selected -->
+                            <input type="checkbox" [(ngModel)]="item.selected" [disabled]="!item.logisticsStatus">
+                        </td>
+
+                        <td>{{startIndex + i + 1}}</td>
+
+                        <td class="mono">{{item.transitID}}</td>
+
+                        <td>{{item.transferOutDate | date:'dd-MM-yyyy'}}</td>
+
+                        <td>{{item.transferOutTime | date:'dd-MM-yyyy HH:mm:ss'}}</td>
+
+                        <td>
+                            <span class="status" [ngClass]="{
+                received: item.transferStatus.trim() === 'Received',
+                pending: item.transferStatus.trim() !== 'Received'
+              }">
+                                {{item.transferStatus}}
+                            </span>
+                        </td>
+
+                        <td>
+
+                            <span class="status-badge" [style.background]="getLifecycleColor(item.logisticsStatus)"
+                                style="
+            color:#fff;
+            padding:5px 12px;
+            border-radius:20px;
+            font-size:12px;
+            font-weight:600;
+            display:inline-block;
+            min-width:120px;
+            text-align:center;">
+
+                                {{ item.logisticsStatus || '-' }}
+
+                            </span>
+
+                        </td>
+                        <td>{{item.sourceBranch}}</td>
+
+                        <td>{{item.destinationBranch}}</td>
+
+                        <td>{{item.deliveryNoteNo}}</td>
+
+                        <td class="item-name">{{item.itemName}}</td>
+
+                        <td class="mono">{{item.itemCode}}</td>
+
+                        <td class="mono">{{item.imei}}</td>
+
+                        <td class="num">{{item.transferQty}}</td>
+
+                        <td>{{item.transferOutByName}}</td>
+
+                        <td>
+                            {{item.transferInTime ? (item.transferInTime | date:'dd-MM-yyyy HH:mm:ss') : '-'}}
+                        </td>
+
+                        <td>{{item.inwardDoneByName}}</td>
+
+                        <td>{{item.transferDuration}}</td>
+
+                    </tr>
+                    <tr *ngIf="transferLogs.length == 0">
+                        <td colspan="18" class="empty">
+                            {{ selectedCompanyId == 0
+                            ? 'Select a company and click Search to view transfer logs'
+                            : 'No records found for the selected filters' }}
+                        </td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+        </div>
+
+
+        <!-- Pagination -->
+        <div class="pagination" *ngIf="transferLogs.length > 0">
+
+            <div class="page-size">
+                <label>Rows per page</label>
+                <select [(ngModel)]="pageSize" (change)="onPageSizeChange()">
+                    <option [value]="10">10</option>
+                    <option [value]="25">25</option>
+                    <option [value]="50">50</option>
+                    <option [value]="100">100</option>
+                </select>
+            </div>
+
+            <div class="page-info">
+                Showing {{startIndex + 1}}–{{endIndex}} of {{transferLogs.length}}
+            </div>
+
+            <div class="page-controls">
+
+                <button class="page-btn" (click)="goToPage(1)" [disabled]="currentPage == 1" title="First page">
+                    &laquo;
+                </button>
+
+                <button class="page-btn" (click)="goToPage(currentPage - 1)" [disabled]="currentPage == 1"
+                    title="Previous page">
+                    &lsaquo;
+                </button>
+
+                <button class="page-btn" *ngFor="let p of visiblePages" [class.active]="p == currentPage"
+                    (click)="goToPage(p)">
+                    {{p}}
+                </button>
+
+                <button class="page-btn" (click)="goToPage(currentPage + 1)" [disabled]="currentPage == totalPages"
+                    title="Next page">
+                    &rsaquo;
+                </button>
+
+                <button class="page-btn" (click)="goToPage(totalPages)" [disabled]="currentPage == totalPages"
+                    title="Last page">
+                    &raquo;
+                </button>
+
+            </div>
+
+        </div>
+
+
+    </div>
+
+</div>
+
+<!-- ================= PICKUP ASSIGNMENT MODAL ================= -->
+
+<div *ngIf="showPickupModal"
+    style="position:fixed; inset:0; background:rgba(15,23,42,.45); display:flex; align-items:center; justify-content:center; z-index:1000;">
+
+    <div
+        style="background:#fff; width:520px; max-width:95vw; border-radius:12px; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,.25);">
+
+        <!-- Header -->
+        <div
+            style="background:#eef2ff;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <div style="font-size:22px;font-weight:700;color:#1e3a8a;">
+                    Assign Pickup
+                </div>
+
+                <div style="color:#64748b;font-size:14px;">
+                    {{selectedCount}} Order(s) Selected
+                </div>
+            </div>
+
+            <button (click)="closePickupModal()" style="border:none;background:none;font-size:24px;cursor:pointer;">
+                ×
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div style="padding:22px;">
+
+            <!-- Transfer Mode -->
+            <label style="font-size:12px;font-weight:700;color:#475569;">
+                Transfer Mode
+            </label>
+
+            <div style="display:flex;gap:10px;margin-top:8px;margin-bottom:20px;">
+
+                <button *ngFor="let mode of transferModes" type="button" (click)="setTransferMode(mode)"
+                    [style.background]="pickupTransferModeId === mode.transferModeId ? '#2563eb' : '#f1f5f9'"
+                    [style.color]="pickupTransferModeId === mode.transferModeId ? '#fff' : '#334155'"
+                    style="flex:1;padding:12px;border:none;border-radius:8px;cursor:pointer;font-weight:600;">
+
+                    {{mode.transferModeName}}
+
+                </button>
+
+            </div>
+
+            <!-- ================= DIRECT ================= -->
+
+            <div *ngIf="pickupLoadMode === 'DIRECT'">
+
+                <label style="font-size:13px;font-weight:600;">
+                    Driver
+                </label>
+
+                <select [(ngModel)]="pickupDriverId"
+                    style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin:6px 0 16px;">
+
+                    <option [ngValue]="0">
+                        Select Driver
+                    </option>
+
+                    <option *ngFor="let user of users" [ngValue]="user.userId">
+
+                        {{user.fullName}}
+
+                    </option>
+
+                </select>
+
+                <label style="font-size:13px;font-weight:600;">
+                    Vehicle No
+                </label>
+
+                <input type="text" [(ngModel)]="pickupVehicleNo" placeholder="TN 09 AB 1234"
+                    style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+
+            </div>
+
+            <!-- ================= COURIER ================= -->
+
+            <div *ngIf="pickupLoadMode === 'COURIER'">
+
+                <label style="font-size:13px;font-weight:600;">
+                    Courier
+                </label>
+
+                <select [(ngModel)]="pickupCourierId"
+                    style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin:6px 0 16px;">
+
+                    <option [ngValue]="0">
+                        Select Courier
+                    </option>
+
+                    <option *ngFor="let courier of couriers" [ngValue]="courier.courierId">
+
+                        {{courier.courierName}}
+
+                    </option>
+
+                </select>
+
+                <label style="font-size:13px;font-weight:600;">
+                    AWB Bill No
+                </label>
+
+                <input type="text" [(ngModel)]="pickupAwbNo" placeholder="Enter AWB Bill Number"
+                    style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:16px;">
+
+                <label style="font-size:13px;font-weight:600;">
+                    Remarks
+                </label>
+
+                <input type="text" [(ngModel)]="pickupRemarks" placeholder="Remarks (optional)"
+                    style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+
+            </div>
+
+            <!-- ================= OTHER PARTY ================= -->
+
+            <div *ngIf="pickupLoadMode === 'OTHERS'">
+
+                <!-- Other Party Name -->
+
+                <label style="font-size:13px;font-weight:600;">
+                    <i class="fa-solid fa-building me-2"></i>
+                    Other Party Name
+                </label>
+
+                <input type="text" [(ngModel)]="pickupOtherPartyName" placeholder="Enter Other Party Name"
+                    style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin:6px 0 16px;">
+
+                <!-- Transport Type -->
+
+                <label style="font-size:13px;font-weight:600;">
+                    <i class="fa-solid fa-truck-fast me-2"></i>
+                    Transport Type
+                </label>
+
+                <select [(ngModel)]="pickupTransportType"
+                    style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin:6px 0 16px;">
+
+                    <option value="">
+                        Select Transport Type
+                    </option>
+
+                    <option value="Bike">
+                        <i class="fa-solid fa-motorcycle"></i> Bike
+                    </option>
+
+                    <option value="Auto">
+                        <i class="fa-solid fa-taxi"></i> Auto
+                    </option>
+
+                    <option value="Truck">
+                        <i class="fa-solid fa-truck"></i> Truck
+                    </option>
+
+                </select>
+
+                <!-- Vehicle No -->
+
+                <label style="font-size:13px;font-weight:600;">
+                    <i class="fa-solid fa-car-side me-2"></i>
+                    Vehicle No
+                </label>
+
+                <input type="text" [(ngModel)]="pickupVehicleNo" placeholder="TN 09 AB 1234"
+                    style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+
+            </div>
+            <!-- Validation -->
+
+            <div *ngIf="pickupValidationMessage" style="margin-top:12px;color:#dc2626;font-size:13px;">
+
+                {{pickupValidationMessage}}
+
+            </div>
+
+        </div>
+
+        <!-- Footer -->
+
+        <div style="display:flex;justify-content:flex-end;gap:10px;padding:18px 22px;border-top:1px solid #e2e8f0;">
+
+            <button (click)="closePickupModal()"
+                style="padding:10px 18px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;cursor:pointer;">
+
+                Cancel
+
+            </button>
+
+            <button (click)="confirmPickupAssignment()" [disabled]="saving"
+                style="padding:10px 18px;border:none;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer;">
+
+                {{ saving ? 'Saving...' : 'Assign Pickup' }}
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>

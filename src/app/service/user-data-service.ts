@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { UserDetails } from '../services/models/common-master-model';
 
 @Injectable({
   providedIn: 'root'
@@ -7,50 +8,45 @@ export class UserDataService {
 
   private readonly USER_KEY = 'currentUser';
 
-  constructor() { }
-
-  // Save User
-  setUser(user: any): void {
+  setUser(user: UserDetails): void {
     localStorage.setItem(this.USER_KEY, JSON.stringify(user));
   }
 
-  // Get User
-  getUser(): any {
+  getUser(): UserDetails | null {
+
     const user = localStorage.getItem(this.USER_KEY);
+
     return user ? JSON.parse(user) : null;
+
   }
 
-  // Get Token
-  getToken(): string {
-    const user = this.getUser();
-    return user?.token ?? '';
-  }
-
-  // Get User Id
   getUserId(): number {
-    const user = this.getUser();
-    return user?.userId ?? 0;
+    return this.getUser()?.userId ?? 0;
   }
 
-  // Get User Name
   getUserName(): string {
-    const user = this.getUser();
-    return user?.userName ?? '';
+    return this.getUser()?.userName ?? '';
   }
 
-  // Get Role
-  getUserRole(): string {
-    const user = this.getUser();
-    return user?.roleName ?? '';
+  getRoleId(): number {
+    return this.getUser()?.userProjectAccessList?.[0]?.roleId ?? 0;
   }
 
-  // Check Login
+  getRoleName(): string {
+    return this.getUser()?.userProjectAccessList?.[0]?.roleName ?? '';
+  }
+
+
+  clearUser(): void {
+    localStorage.removeItem(this.USER_KEY);
+  }
+
   isLoggedIn(): boolean {
     return this.getUser() != null;
   }
 
-  // Logout
-  clearUser(): void {
-    localStorage.removeItem(this.USER_KEY);
-  }
+
+
+
+
 }

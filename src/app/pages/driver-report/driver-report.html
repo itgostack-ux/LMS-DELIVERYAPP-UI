@@ -1,0 +1,116 @@
+<div class="page">
+
+    <div class="page-header">
+        <h2>Driver Report</h2>
+    </div>
+
+    <!-- ===== Filters: Status / Source / Destination + search + refresh ===== -->
+    <div class="card toolbar-card">
+        <div class="toolbar">
+
+            <div class="field">
+                <label>Order Status</label>
+                <select [(ngModel)]="statusFilter">
+                    <option value="ALL">All Statuses</option>
+                    <option *ngFor="let s of statusOptions" [value]="s.code">{{s.name}}</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Source Location</label>
+                <select [(ngModel)]="sourceFilter">
+                    <option value="ALL">All Sources</option>
+                    <option *ngFor="let src of sourceOptions" [value]="src">{{src}}</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Destination Location</label>
+                <select [(ngModel)]="destinationFilter">
+                    <option value="ALL">All Destinations</option>
+                    <option *ngFor="let dest of destinationOptions" [value]="dest">{{dest}}</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Search</label>
+                <input type="text" placeholder="Transit ID / User..." [(ngModel)]="searchText">
+            </div>
+
+            <button class="btn-secondary" (click)="clearFilters()">Clear</button>
+
+            <button class="btn-primary" (click)="refresh()" [disabled]="loading">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="23 4 23 10 17 10" />
+                    <polyline points="1 20 1 14 7 14" />
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                Refresh
+            </button>
+
+        </div>
+    </div>
+
+    <div *ngIf="loading" class="loading">
+        <span class="spinner"></span> Loading report...
+    </div>
+
+    <div *ngIf="errorMessage" class="hint text-danger">
+        {{errorMessage}}
+    </div>
+
+    <div *ngIf="!loading && rows.length === 0 && !errorMessage" class="empty-hint">
+        No manifest orders found.
+    </div>
+
+    <div *ngIf="!loading && rows.length > 0 && filteredRows.length === 0" class="empty-hint">
+        No records match your filters.
+    </div>
+
+    <!-- ===== Flat report table (no details / no expand) ===== -->
+    <div class="card report-card" *ngIf="!loading && filteredRows.length > 0">
+
+        <div class="report-meta">
+            Showing <b>{{filteredRows.length}}</b> record(s)
+        </div>
+
+        <div class="table-wrap">
+            <table>
+
+                <thead>
+                    <tr>
+                        <th class="num">#</th>
+                        <th>Manifest No</th>
+                        <th>Transit ID</th>
+                        <th>Source Location</th>
+                        <th>Destination Location</th>
+                        <th>Assigned User</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr *ngFor="let row of filteredRows; let i = index">
+                        <td class="num">{{i + 1}}</td>
+                        <td class="mono">{{row.manifestNo}}</td>
+                        <td class="mono">{{row.transitID}}</td>
+                        <td>{{row.sourceLocationName}}</td>
+                        <td>{{row.destinationLocationName}}</td>
+                        <td>{{row.assignedUserName || '—'}}</td>
+                        
+                    </tr>
+                </tbody>
+
+                <tfoot>
+                    <tr>
+                        <td colspan="5" class="total-label">Total Qty</td>
+                        <td class="num total-value">{{totalQty}}</td>
+                        <td colspan="2"></td>
+                    </tr>
+                </tfoot>
+
+            </table>
+        </div>
+
+    </div>
+
+</div>

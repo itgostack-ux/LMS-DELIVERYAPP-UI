@@ -1,0 +1,131 @@
+<div class="page" *ngIf="manifest">
+
+    <div class="header">
+
+        <div>
+
+            <h2>GoFix Delivery Manifest</h2>
+
+            <p><b>Manifest No :</b> {{manifest.manifestNo}}</p>
+
+            <p><b>Date :</b> {{manifest.manifestDate | date:'dd-MM-yyyy'}}</p>
+
+            <p><b>Status :</b> {{manifest.status}}</p>
+
+        </div>
+
+        <div>
+
+            <qrcode
+                [qrdata]="qrValue"
+                [width]="170"
+                [errorCorrectionLevel]="'M'">
+            </qrcode>
+
+        </div>
+
+    </div>
+
+    <hr>
+
+    <table class="info">
+
+        <tr>
+
+            <td><b>Driver</b></td>
+
+            <td>{{manifest.assignedUserName}}</td>
+
+            <td><b>Vehicle</b></td>
+
+            <td>{{manifest.vehicleNo}}</td>
+
+        </tr>
+
+        <tr>
+
+            <td><b>Source</b></td>
+
+            <td>{{manifest.sourceLocationName}}</td>
+
+            <td><b>Destination</b></td>
+
+            <td>{{manifest.destinationLocationName}}</td>
+
+        </tr>
+
+    </table>
+
+    <h3>Shipment Details</h3>
+
+    <table class="grid">
+
+        <thead>
+
+            <tr>
+
+                <th>S.No</th>
+
+                <th>Delivery Note</th>
+
+                <th>Item</th>
+
+                <th>IMEI</th>
+
+                <th>Qty</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+            <tr *ngFor="let item of manifestOrders; let i=index">
+
+                <td>{{i+1}}</td>
+
+                <td>{{item.deliveryNoteNo}}</td>
+
+                <td>{{item.itemName}}</td>
+
+                <td>{{item.imei}}</td>
+
+                <td>{{item.transferQty}}</td>
+
+            </tr>
+
+        </tbody>
+
+    </table>
+
+    <br><br>
+
+    <table class="sign">
+
+        <tr>
+
+            <td>
+
+                Driver Signature
+
+                <br><br><br>
+
+                __________________
+
+            </td>
+
+            <td>
+
+                Receiver Signature
+
+                <br><br><br>
+
+                __________________
+
+            </td>
+
+        </tr>
+
+    </table>
+
+</div>

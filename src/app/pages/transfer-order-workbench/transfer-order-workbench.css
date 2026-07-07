@@ -136,8 +136,38 @@ h2{
     overflow: hidden;
 }
 
+/*
+  Internal scrolling grid:
+  - the TABLE scrolls inside .table-wrap (both directions),
+    the PAGE itself no longer scrolls for the grid
+  - max-height caps the grid; the sticky thead stays pinned
+    while rows scroll underneath it
+*/
 .table-wrap{
     overflow-x: auto;
+    overflow-y: auto;
+    max-height: calc(100vh - 340px);
+    min-height: 220px;
+}
+
+/* Slimmer, themed scrollbars inside the grid */
+.table-wrap::-webkit-scrollbar{
+    width: 10px;
+    height: 10px;
+}
+
+.table-wrap::-webkit-scrollbar-track{
+    background: var(--bg);
+}
+
+.table-wrap::-webkit-scrollbar-thumb{
+    background: #cbd5e1;
+    border-radius: 8px;
+    border: 2px solid var(--bg);
+}
+
+.table-wrap::-webkit-scrollbar-thumb:hover{
+    background: #94a3b8;
 }
 
 table{
@@ -150,6 +180,7 @@ table{
 thead th{
     position: sticky;
     top: 0;
+    z-index: 5;               /* keep header above badges while scrolling */
     background: var(--primary);
     color: var(--white);
     font-weight: 500;
@@ -159,6 +190,33 @@ thead th{
     padding: 12px 14px;
     text-align: left;
     border: none;
+}
+
+/* ===== Sortable headers ===== */
+th.sortable{
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s ease;
+}
+
+th.sortable:hover{
+    background: var(--primary-light);
+}
+
+.sort-icon{
+    display: inline-block;
+    margin-left: 5px;
+    font-size: 10px;
+    opacity: 0.45;            /* faint ⇅ when the column is not sorted */
+    transition: opacity 0.15s ease;
+}
+
+.sort-icon.active{
+    opacity: 1;               /* solid ▲ / ▼ on the active sort column */
+}
+
+th.checkbox-col{
+    width: 36px;
 }
 
 td{
@@ -305,9 +363,10 @@ tbody tr:hover{
     .page{ padding: 14px; }
     .toolbar{ gap: 10px; }
     .pagination{ justify-content: center; }
+    .table-wrap{ max-height: calc(100vh - 280px); }
 }
 
-/* ===== Toolbar selects (Company / Location Type / Location) ===== */
+/* ===== Toolbar selects (Company / Location Type / Location / Status) ===== */
 .toolbar select{
     min-width: 180px;
     padding: 9px 12px;
@@ -340,142 +399,6 @@ tbody tr:hover{
     font-size: 12px;
     font-weight: 500;
     color: var(--danger);
-}
-
-.action-toolbar {
-
-    display: flex;
-
-    justify-content: space-between;
-
-    align-items: center;
-
-    margin-top: 16px;
-
-    padding: 12px 18px;
-
-    border: 1px solid #e5e7eb;
-
-    border-radius: 8px;
-
-    background: #f8fafc;
-
-}
-
-.selected-info {
-
-    font-size: 18px;
-
-    font-weight: 600;
-
-    color: #1f2937;
-
-}
-
-.actions {
-
-    display: flex;
-
-    align-items: center;
-
-    gap: 12px;
-
-}
-
-.current-status {
-
-    font-weight: 600;
-
-    color: #374151;
-
-}
-
-.status-badge {
-
-    margin-left: 8px;
-
-    padding: 5px 12px;
-
-    border-radius: 20px;
-
-    background: #2563eb;
-
-    color: #fff;
-
-    font-size: 13px;
-
-    font-weight: 600;
-
-}
-
-.action-toolbar {
-
-    display: flex;
-
-    justify-content: space-between;
-
-    align-items: center;
-
-    padding: 12px 18px;
-
-    margin-top: 15px;
-
-    border: 1px solid #e5e7eb;
-
-    border-radius: 8px;
-
-    background: #f8fafc;
-
-}
-
-.selected-info {
-
-    font-size: 17px;
-
-    font-weight: 600;
-
-}
-
-.status-info {
-
-    display: flex;
-
-    align-items: center;
-
-    gap: 12px;
-
-    font-size: 15px;
-
-}
-
-.current-status strong {
-
-    color: #2563eb;
-
-}
-
-.next-status strong {
-
-    color: #16a34a;
-
-}
-
-.arrow {
-
-    font-size: 20px;
-
-    font-weight: bold;
-
-    color: #6b7280;
-
-}
-
-.actions {
-
-    display: flex;
-
-    gap: 10px;
-
 }
 
 .action-toolbar{
@@ -531,7 +454,7 @@ tbody tr:hover{
 
 }
 
-.status{
+.status-flow .status{
 
     padding:6px 16px;
 

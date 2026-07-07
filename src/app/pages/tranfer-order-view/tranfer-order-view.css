@@ -1,5 +1,5 @@
 /*=========================================================
-  Transfer Order View (Track Orders) — Professional Theme
+  Transfer Manifest View (Track Orders) — Professional Theme
   Drop-in replacement: same class names, refined visuals.
   Uses global LMS theme variables (Fiori / D365 style)
 ==========================================================*/
@@ -172,6 +172,38 @@ h2::after{
 
 @keyframes spin{
     to{ transform: rotate(360deg); }
+}
+
+/* ===== Selection column / bar ===== */
+.select-cell{
+    width: 40px;
+    text-align: center;
+}
+
+.select-cell input[type="checkbox"]{
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--primary);
+}
+
+.selection-bar{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 22px;
+    background: rgba(37, 99, 235, 0.06);
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.selection-bar .btn-clear{
+    height: 32px;
+    padding: 0 14px;
+    font-size: 12px;
 }
 
 /* ===== Table ===== */

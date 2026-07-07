@@ -1,0 +1,202 @@
+<div class="page">
+
+    <h2>Delivery Manifest Print</h2>
+
+    <div class="toolbar">
+
+        <label>Manifest No</label>
+
+        <select [(ngModel)]="selectedManifestId" (change)="loadManifest()">
+
+            <option [ngValue]="0">
+
+                Select Manifest
+
+            </option>
+
+            <option *ngFor="let m of manifestList" [ngValue]="m.manifestId">
+
+                {{m.manifestNo}}
+
+            </option>
+
+        </select>
+        <div class="button-group">
+
+            <button class="btn-print" (click)="printQRCode()" [disabled]="selectedManifestId == 0">
+
+                <i class="fa-solid fa-qrcode"></i>
+                Print QR
+
+            </button>
+
+            <button class="btn-qr" (click)="downloadQRCode()" [disabled]="selectedManifestId == 0">
+
+                <i class="fa-solid fa-download"></i>
+                Download QR
+
+            </button>
+
+            <button class="btn-download" (click)="downloadPdf()" [disabled]="selectedManifestId == 0">
+
+                <i class="fa-solid fa-file-pdf"></i>
+                Download PDF
+
+            </button>
+
+        </div>
+
+    </div>
+
+    
+
+    <div id="manifest-content" *ngIf="manifestOrders.length>0">
+
+        <div class="header">
+
+            <div>
+
+                <h3>GoFix Delivery Manifest</h3>
+
+                <p>
+
+                    <b>Manifest No :</b>
+
+                    {{manifest.manifestNo}}
+
+                </p>
+
+                <p>
+
+                    <b>Date :</b>
+
+                    {{manifest.manifestDate | date:'dd-MM-yyyy'}}
+
+                </p>
+
+                <p>
+
+                    <b>Status :</b>
+
+                    {{manifest.status}}
+
+                </p>
+
+            </div>
+
+            <div>
+
+                <qrcode [qrdata]="qrValue" [width]="180" [errorCorrectionLevel]="'M'">
+                </qrcode>
+
+            </div>
+
+        </div>
+
+        <table class="info">
+
+            <tr>
+
+                <td><b>Driver</b></td>
+
+                <td>{{manifest.assignedUserName}}</td>
+
+                <td><b>Vehicle</b></td>
+
+                <td>{{manifest.vehicleNo}}</td>
+
+            </tr>
+
+            <tr>
+
+                <td><b>Source</b></td>
+
+                <td>{{manifest.sourceLocationName}}</td>
+
+                <td><b>Destination</b></td>
+
+                <td>{{manifest.destinationLocationName}}</td>
+
+            </tr>
+
+        </table>
+
+        <h3>Shipment Details</h3>
+
+        <table class="grid">
+
+            <thead>
+
+                <tr>
+
+                    <th>S.No</th>
+
+                    <th>Delivery Note</th>
+
+                    <th>Item Code</th>
+
+                    <th>Item Name</th>
+
+                    <th>IMEI</th>
+
+                    <th>Qty</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                <tr *ngFor="let item of manifestOrders;let i=index">
+
+                    <td>{{i+1}}</td>
+
+                    <td>{{item.deliveryNoteNo}}</td>
+
+                    <td>{{item.itemCode}}</td>
+
+                    <td>{{item.itemName}}</td>
+
+                    <td>{{item.imei}}</td>
+
+                    <td>{{item.transferQty}}</td>
+
+                </tr>
+
+            </tbody>
+
+        </table>
+
+        <br>
+
+        <table class="sign">
+
+            <tr>
+
+                <td>
+
+                    Driver Signature
+
+                    <br><br><br>
+
+                    _______________________
+
+                </td>
+
+                <td>
+
+                    Receiver Signature
+
+                    <br><br><br>
+
+                    _______________________
+
+                </td>
+
+            </tr>
+
+        </table>
+
+    </div>
+
+</div>

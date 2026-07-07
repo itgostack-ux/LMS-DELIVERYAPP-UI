@@ -1,0 +1,110 @@
+body{
+    background:#f5f5f5;
+}
+
+.page{
+
+    width:210mm;
+
+    min-height:297mm;
+
+    margin:auto;
+
+    background:white;
+
+    padding:15mm;
+
+    font-family:Arial,Helvetica,sans-serif;
+
+}
+
+.header{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:flex-start;
+
+}
+
+.info{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+    margin-top:20px;
+
+}
+
+.info td{
+
+    padding:8px;
+
+}
+
+.grid{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+    margin-top:20px;
+
+}
+
+.grid th{
+
+    background:#0d6efd;
+
+    color:white;
+
+}
+
+.grid th,
+.grid td{
+
+    border:1px solid #999;
+
+    padding:8px;
+
+    text-align:left;
+
+}
+
+.sign{
+
+    width:100%;
+
+}
+
+.sign td{
+
+    width:50%;
+
+    text-align:center;
+
+}
+
+@media print{
+
+body{
+
+    margin:0;
+
+    background:white;
+
+}
+
+.page{
+
+    margin:0;
+
+    box-shadow:none;
+
+    width:100%;
+
+}
+
+}

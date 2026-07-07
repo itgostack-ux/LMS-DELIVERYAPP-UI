@@ -1,9 +1,9 @@
 <div class="page">
 
     <div class="page-header">
-        <h2>Track Delivery Orders</h2>
-        <span class="record-count" *ngIf="!loading && filteredOrders.length > 0">
-            {{filteredOrders.length}} of {{orders.length}} records
+        <h2>Track Transfer Manifests</h2>
+        <span class="record-count" *ngIf="!loading && filteredGroups.length > 0">
+            {{filteredGroups.length}} of {{manifestGroups.length}} manifests
         </span>
     </div>
 
@@ -44,7 +44,7 @@
             <div class="field grow">
                 <label>Search</label>
                 <input type="text" [(ngModel)]="searchText" (input)="onFilterChange()"
-                    placeholder="Transit ID / Delivery Note / IMEI / Item / AWB">
+                    placeholder="Manifest No / OTP / AWB / Transit ID / Item / IMEI">
             </div>
 
             <button class="btn-clear" *ngIf="hasActiveFilters" (click)="clearFilters()">
@@ -56,26 +56,34 @@
 
     <!-- ===== Loading ===== -->
     <div *ngIf="loading" class="loading">
-        <span class="spinner"></span> Loading delivery orders...
+        <span class="spinner"></span> Loading transfer manifests...
     </div>
 
     <!-- ===== Table ===== -->
     <div class="card table-card" *ngIf="!loading">
+
+        <!-- Selection bar -->
+        <div class="selection-bar" *ngIf="selectedCount > 0">
+            <span>{{selectedCount}} selected</span>
+            <button class="btn-clear" (click)="clearSelection()">Clear Selection</button>
+        </div>
 
         <div class="table-wrap">
             <table>
 
                 <thead>
                     <tr>
+                        <th class="select-cell">
+                            <input type="checkbox" [checked]="isAllPagedSelected"
+                                (change)="toggleSelectAllOnPage($event)">
+                        </th>
                         <th></th>
                         <th>S.No</th>
-                        <th>Transit ID</th>
-                        <th>Delivery Note</th>
+                        <th>Manifest No</th>
                         <th>Transfer Date</th>
                         <th>Source</th>
                         <th>Destination</th>
-                        <th>Item</th>
-                        <th>IMEI</th>
+                        <th>Items</th>
                         <th>Status</th>
                         <th>Progress</th>
                         <th>Mode</th>
@@ -85,54 +93,57 @@
 
                 <tbody>
 
-                    <ng-container *ngFor="let order of pagedOrders; let i = index; trackBy: trackByOrderId">
+                    <ng-container *ngFor="let group of pagedGroups; let i = index; trackBy: trackByManifestNo">
 
-                        <tr class="order-row" [class.expanded]="isExpanded(order)" (click)="toggleTrack(order)">
+                        <tr class="order-row" [class.expanded]="isExpanded(group)" (click)="toggleTrack(group)">
+
+                            <td class="select-cell" (click)="$event.stopPropagation()">
+                                <input type="checkbox" [checked]="group.selected"
+                                    (change)="toggleRowSelection(group, $event)">
+                            </td>
 
                             <td class="expand-cell">
-                                <span class="chevron" [class.open]="isExpanded(order)">›</span>
+                                <span class="chevron" [class.open]="isExpanded(group)">›</span>
                             </td>
 
                             <td>{{startIndex + i + 1}}</td>
 
-                            <td class="mono">{{order.transitID}}</td>
+                            <td class="mono">{{group.manifestNo}}</td>
 
-                            <td>{{order.deliveryNoteNo}}</td>
+                            <td>{{group.transferOutDate | date:'dd-MM-yyyy'}}</td>
 
-                            <td>{{order.transferOutDate | date:'dd-MM-yyyy'}}</td>
+                            <td>{{group.sourceLocationName}}</td>
 
-                            <td>{{order.sourceLocationName}}</td>
-
-                            <td>{{order.destinationLocationName}}</td>
-
-                            <td class="item-name">{{order.itemName}}</td>
-
-                            <td class="mono">{{order.imei}}</td>
+                            <td>{{group.destinationLocationName}}</td>
 
                             <td>
-                                <span class="lc-badge" [ngClass]="statusClass(order.lifecycleCode)">
-                                    {{order.lifecycleName}}
+                                <span class="items-badge">{{group.orders.length}}</span>
+                            </td>
+
+                            <td>
+                                <span class="lc-badge" [ngClass]="statusClass(group.lifecycleCode)">
+                                    {{group.lifecycleName}}
                                 </span>
                             </td>
 
                             <td class="progress-cell">
                                 <div class="progress-track">
-                                    <div class="progress-fill" [style.width.%]="progressPercent(order)"></div>
+                                    <div class="progress-fill" [style.width.%]="progressPercent(group)"></div>
                                 </div>
-                                <span class="progress-label">{{progressPercent(order)}}%</span>
+                                <span class="progress-label">{{progressPercent(group)}}%</span>
                             </td>
 
-                            <td>{{order.transferModeName || '-'}}</td>
+                            <td>{{group.transferModeName || '-'}}</td>
 
                             <td>
-                                {{ order.assignedUserName || order.courierName || order.otherPartyName || '-' }}
+                                {{ group.assignedUserName || group.courierName || group.otherPartyName || '-' }}
                             </td>
 
                         </tr>
 
-                        <!-- ===== Expanded tracking timeline ===== -->
-                        <tr *ngIf="isExpanded(order)" class="track-row">
-                            <td colspan="13">
+                        <!-- ===== Expanded manifest panel ===== -->
+                        <tr *ngIf="isExpanded(group)" class="track-row">
+                            <td colspan="11">
 
                                 <div class="track-panel">
 
@@ -140,12 +151,9 @@
                                     <div class="route">
                                         <div class="route-point">
                                             <div class="route-label">From</div>
-                                            <div class="route-name">{{order.sourceLocationName}}</div>
+                                            <div class="route-name">{{group.sourceLocationName}}</div>
                                             <div class="route-sub">
-                                                {{order.transferOutTime | date:'dd-MM-yyyy HH:mm'}}
-                                                <span *ngIf="order.transferOutByName">
-                                                    · by {{order.transferOutByName}}
-                                                </span>
+                                                {{group.transferOutTime | date:'dd-MM-yyyy HH:mm'}}
                                             </div>
                                         </div>
 
@@ -153,13 +161,13 @@
 
                                         <div class="route-point right">
                                             <div class="route-label">To</div>
-                                            <div class="route-name">{{order.destinationLocationName}}</div>
+                                            <div class="route-name">{{group.destinationLocationName}}</div>
                                             <div class="route-sub">
-                                                {{ order.transferInTime
-                                                    ? (order.transferInTime | date:'dd-MM-yyyy HH:mm')
+                                                {{ group.transferInTime
+                                                    ? (group.transferInTime | date:'dd-MM-yyyy HH:mm')
                                                     : 'Not yet received' }}
-                                                <span *ngIf="order.inwardDoneByName">
-                                                    · by {{order.inwardDoneByName}}
+                                                <span *ngIf="group.inwardDoneByName">
+                                                    · by {{group.inwardDoneByName}}
                                                 </span>
                                             </div>
                                         </div>
@@ -169,10 +177,10 @@
                                     <div class="timeline">
 
                                         <div class="timeline-step" *ngFor="let stage of deliveryLifecycles"
-                                            [ngClass]="stageState(order, stage)">
+                                            [ngClass]="stageState(group, stage)">
 
                                             <div class="dot">
-                                                <span *ngIf="stageState(order, stage) === 'done'">✓</span>
+                                                <span *ngIf="stageState(group, stage) === 'done'">✓</span>
                                             </div>
 
                                             <div class="step-name">{{stage.statusName}}</div>
@@ -181,57 +189,115 @@
 
                                     </div>
 
-                                    <!-- Shipment details -->
+                                    <!-- Manifest details -->
                                     <div class="detail-grid">
 
-                                        <div class="detail" *ngIf="order.transferModeName">
+                                        <div class="detail" *ngIf="group.manifestNo">
+                                            <span class="detail-label">Manifest No</span>
+                                            <span class="detail-value mono">{{group.manifestNo}}</span>
+                                        </div>
+
+                                        <div class="detail" *ngIf="group.manifestDate">
+                                            <span class="detail-label">Manifest Date</span>
+                                            <span class="detail-value">{{group.manifestDate | date:'dd-MM-yyyy'}}</span>
+                                        </div>
+
+                                        <div class="detail" *ngIf="group.status">
+                                            <span class="detail-label">Manifest Status</span>
+                                            <span class="detail-value">{{group.status}}</span>
+                                        </div>
+
+                                        <div class="detail" *ngIf="group.receiverUserName">
+                                            <span class="detail-label">Receiver</span>
+                                            <span class="detail-value">{{group.receiverUserName}}</span>
+                                        </div>
+
+                                        <div class="detail" *ngIf="group.otp">
+                                            <span class="detail-label">OTP</span>
+                                            <span class="detail-value mono">{{group.otp}}</span>
+                                        </div>
+
+                                        <div class="detail" *ngIf="group.pickupManifestNo">
+                                            <span class="detail-label">Pickup Manifest No</span>
+                                            <span class="detail-value mono">{{group.pickupManifestNo}}</span>
+                                        </div>
+
+                                        <div class="detail" *ngIf="group.transferModeName">
                                             <span class="detail-label">Transfer Mode</span>
-                                            <span class="detail-value">{{order.transferModeName}}</span>
+                                            <span class="detail-value">{{group.transferModeName}}</span>
                                         </div>
 
-                                        <div class="detail" *ngIf="order.assignedUserName">
+                                        <div class="detail" *ngIf="group.assignedUserName">
                                             <span class="detail-label">Driver</span>
-                                            <span class="detail-value">{{order.assignedUserName}}</span>
+                                            <span class="detail-value">{{group.assignedUserName}}</span>
                                         </div>
 
-                                        <div class="detail" *ngIf="order.courierName">
+                                        <div class="detail" *ngIf="group.courierName">
                                             <span class="detail-label">Courier</span>
-                                            <span class="detail-value">{{order.courierName}}</span>
+                                            <span class="detail-value">{{group.courierName}}</span>
                                         </div>
 
-                                        <div class="detail" *ngIf="order.awbBillNo">
+                                        <div class="detail" *ngIf="group.awbBillNo">
                                             <span class="detail-label">AWB Bill No</span>
-                                            <span class="detail-value mono">{{order.awbBillNo}}</span>
+                                            <span class="detail-value mono">{{group.awbBillNo}}</span>
                                         </div>
 
-                                        <div class="detail" *ngIf="order.otherPartyName">
+                                        <div class="detail" *ngIf="group.otherPartyName">
                                             <span class="detail-label">Other Party</span>
-                                            <span class="detail-value">{{order.otherPartyName}}</span>
+                                            <span class="detail-value">{{group.otherPartyName}}</span>
                                         </div>
 
-                                        <div class="detail" *ngIf="order.otherPartyType">
-                                            <span class="detail-label">Transport Type</span>
-                                            <span class="detail-value">{{order.otherPartyType}}</span>
-                                        </div>
-
-                                        <div class="detail" *ngIf="order.vehicleNo">
+                                        <div class="detail" *ngIf="group.vehicleNo">
                                             <span class="detail-label">Vehicle No</span>
-                                            <span class="detail-value mono">{{order.vehicleNo}}</span>
+                                            <span class="detail-value mono">{{group.vehicleNo}}</span>
                                         </div>
 
-                                        <div class="detail" *ngIf="order.itemCode">
-                                            <span class="detail-label">Item Code</span>
-                                            <span class="detail-value mono">{{order.itemCode}}</span>
-                                        </div>
-
-                                        <div class="detail" *ngIf="order.transferDuration">
+                                        <div class="detail" *ngIf="group.transferDuration">
                                             <span class="detail-label">Duration</span>
-                                            <span class="detail-value">{{order.transferDuration}}</span>
+                                            <span class="detail-value">{{group.transferDuration}}</span>
                                         </div>
 
-                                        <div class="detail" *ngIf="order.remarks">
+                                        <div class="detail" *ngIf="group.remarks">
                                             <span class="detail-label">Remarks</span>
-                                            <span class="detail-value">{{order.remarks}}</span>
+                                            <span class="detail-value">{{group.remarks}}</span>
+                                        </div>
+
+                                    </div>
+
+                                    <!-- ===== Line items in this manifest ===== -->
+                                    <div class="items-section">
+
+                                        <div class="items-header">
+                                            Items in this manifest
+                                            <span class="items-count">{{group.orders.length}}</span>
+                                        </div>
+
+                                        <div class="items-table-wrap">
+                                            <table class="items-table">
+
+                                                <thead>
+                                                    <tr>
+                                                        <th>Transit ID</th>
+                                                        <th>Delivery Note</th>
+                                                        <th>Item Code</th>
+                                                        <th>Item Name</th>
+                                                        <th>IMEI</th>
+                                                        <th>Qty</th>
+                                                    </tr>
+                                                </thead>
+
+                                                <tbody>
+                                                    <tr *ngFor="let item of group.orders; trackBy: trackByTransitId">
+                                                        <td class="mono">{{item.transitID}}</td>
+                                                        <td>{{item.deliveryNoteNo}}</td>
+                                                        <td class="mono">{{item.itemCode}}</td>
+                                                        <td class="item-name">{{item.itemName}}</td>
+                                                        <td class="mono">{{item.imei}}</td>
+                                                        <td>{{item.transferQty}}</td>
+                                                    </tr>
+                                                </tbody>
+
+                                            </table>
                                         </div>
 
                                     </div>
@@ -243,11 +309,11 @@
 
                     </ng-container>
 
-                    <tr *ngIf="filteredOrders.length == 0">
-                        <td colspan="13" class="empty">
-                            {{ orders.length == 0
-                                ? 'No delivery orders found'
-                                : 'No orders match the selected filters' }}
+                    <tr *ngIf="filteredGroups.length == 0">
+                        <td colspan="11" class="empty">
+                            {{ manifestGroups.length == 0
+                                ? 'No transfer manifests found'
+                                : 'No manifests match the selected filters' }}
                         </td>
                     </tr>
 
@@ -257,7 +323,7 @@
         </div>
 
         <!-- ===== Pagination ===== -->
-        <div class="pagination" *ngIf="filteredOrders.length > 0">
+        <div class="pagination" *ngIf="filteredGroups.length > 0">
 
             <div class="page-size">
                 <label>Rows per page</label>
@@ -270,7 +336,7 @@
             </div>
 
             <div class="page-info">
-                Showing {{startIndex + 1}}–{{endIndex}} of {{filteredOrders.length}}
+                Showing {{startIndex + 1}}–{{endIndex}} of {{filteredGroups.length}}
             </div>
 
             <div class="page-controls">

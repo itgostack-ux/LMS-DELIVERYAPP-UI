@@ -3,7 +3,9 @@
     <div class="page-header">
         <h2>Delivery Orders Management</h2>
         <span class="record-count" *ngIf="!loading && transferLogs.length > 0">
-            {{transferLogs.length}} records
+            {{ selectedLifecycleStatus
+            ? (filteredLogs.length + ' of ' + transferLogs.length + ' records')
+            : (transferLogs.length + ' records') }}
         </span>
     </div>
 
@@ -49,6 +51,18 @@
             <div class="field">
                 <label>To Date</label>
                 <input type="date" [(ngModel)]="toDate">
+            </div>
+
+            <!-- Client-side filter over the loaded grid: filters by the
+                 Logistics Status (lifecycle) column without another API call -->
+            <div class="field">
+                <label>Logistics Status</label>
+                <select [(ngModel)]="selectedLifecycleStatus" (change)="onStatusFilterChange()">
+                    <option value="">All Statuses</option>
+                    <option *ngFor="let status of lifecycleStatusOptions" [value]="status">
+                        {{status}}
+                    </option>
+                </select>
             </div>
 
             <button class="btn-primary" (click)="loadTransferLogs()">
@@ -141,33 +155,83 @@
 
     <div class="card table-card" *ngIf="!loading">
 
+        <!-- .table-wrap has a fixed max-height with its OWN vertical
+             scrollbar (page no longer scrolls for the grid).
+             thead is sticky inside this scroll container. -->
         <div class="table-wrap">
             <table>
 
                 <thead>
                     <tr>
-                        <th>
+                        <th class="checkbox-col">
                             <input type="checkbox" [(ngModel)]="selectAll" (change)="toggleSelectAll()">
                         </th>
+
                         <th>S.No</th>
-                        <th>Transit ID</th>
-                        <th>Transfer Date</th>
-                        <th>Transfer Out Time</th>
 
-                        <th>Status</th>
-                        <th>Logistics Status</th>
-                        <th>Source</th>
-                        <th>Destination</th>
-                        <th>Delivery Note</th>
-                        <th>Item</th>
-                        <th>Item Code</th>
-                        <th>IMEI</th>
+                        <th class="sortable" (click)="sortBy('transitID')">
+                            Transit ID <span class="sort-icon" [class.active]="sortColumn === 'transitID'">{{ sortIcon('transitID') }}</span>
+                        </th>
 
-                        <th class="num">Qty</th>
-                        <th>Transferred By</th>
-                        <th>Transfer In Time</th>
-                        <th>Received By</th>
-                        <th>Duration</th>
+                        <th class="sortable" (click)="sortBy('transferOutDate')">
+                            Transfer Date <span class="sort-icon" [class.active]="sortColumn === 'transferOutDate'">{{ sortIcon('transferOutDate') }}</span>
+                        </th>
+
+                        <th class="sortable" (click)="sortBy('transferOutTime')">
+                            Transfer Out Time <span class="sort-icon" [class.active]="sortColumn === 'transferOutTime'">{{ sortIcon('transferOutTime') }}</span>
+                        </th>
+
+                        <th class="sortable" (click)="sortBy('transferStatus')">
+                            Status <span class="sort-icon" [class.active]="sortColumn === 'transferStatus'">{{ sortIcon('transferStatus') }}</span>
+                        </th>
+
+                        <th class="sortable" (click)="sortBy('logisticsStatus')">
+                            Logistics Status <span class="sort-icon" [class.active]="sortColumn === 'logisticsStatus'">{{ sortIcon('logisticsStatus') }}</span>
+                        </th>
+
+                        <th class="sortable" (click)="sortBy('sourceBranch')">
+                            Source <span class="sort-icon" [class.active]="sortColumn === 'sourceBranch'">{{ sortIcon('sourceBranch') }}</span>
+                        </th>
+
+                        <th class="sortable" (click)="sortBy('destinationBranch')">
+                            Destination <span class="sort-icon" [class.active]="sortColumn === 'destinationBranch'">{{ sortIcon('destinationBranch') }}</span>
+                        </th>
+
+                        <th class="sortable" (click)="sortBy('deliveryNoteNo')">
+                            Delivery Note <span class="sort-icon" [class.active]="sortColumn === 'deliveryNoteNo'">{{ sortIcon('deliveryNoteNo') }}</span>
+                        </th>
+
+                        <th class="sortable" (click)="sortBy('itemName')">
+                            Item <span class="sort-icon" [class.active]="sortColumn === 'itemName'">{{ sortIcon('itemName') }}</span>
+                        </th>
+
+                        <th class="sortable" (click)="sortBy('itemCode')">
+                            Item Code <span class="sort-icon" [class.active]="sortColumn === 'itemCode'">{{ sortIcon('itemCode') }}</span>
+                        </th>
+
+                        <th class="sortable" (click)="sortBy('imei')">
+                            IMEI <span class="sort-icon" [class.active]="sortColumn === 'imei'">{{ sortIcon('imei') }}</span>
+                        </th>
+
+                        <th class="num sortable" (click)="sortBy('transferQty')">
+                            Qty <span class="sort-icon" [class.active]="sortColumn === 'transferQty'">{{ sortIcon('transferQty') }}</span>
+                        </th>
+
+                        <th class="sortable" (click)="sortBy('transferOutByName')">
+                            Transferred By <span class="sort-icon" [class.active]="sortColumn === 'transferOutByName'">{{ sortIcon('transferOutByName') }}</span>
+                        </th>
+
+                        <th class="sortable" (click)="sortBy('transferInTime')">
+                            Transfer In Time <span class="sort-icon" [class.active]="sortColumn === 'transferInTime'">{{ sortIcon('transferInTime') }}</span>
+                        </th>
+
+                        <th class="sortable" (click)="sortBy('inwardDoneByName')">
+                            Received By <span class="sort-icon" [class.active]="sortColumn === 'inwardDoneByName'">{{ sortIcon('inwardDoneByName') }}</span>
+                        </th>
+
+                        <th class="sortable" (click)="sortBy('transferDuration')">
+                            Duration <span class="sort-icon" [class.active]="sortColumn === 'transferDuration'">{{ sortIcon('transferDuration') }}</span>
+                        </th>
                     </tr>
                 </thead>
 
@@ -241,11 +305,13 @@
                         <td>{{item.transferDuration}}</td>
 
                     </tr>
-                    <tr *ngIf="transferLogs.length == 0">
+                    <tr *ngIf="filteredLogs.length == 0">
                         <td colspan="18" class="empty">
                             {{ selectedCompanyId == 0
                             ? 'Select a company and click Search to view transfer logs'
-                            : 'No records found for the selected filters' }}
+                            : (transferLogs.length > 0
+                                ? 'No records match the selected Logistics Status filter'
+                                : 'No records found for the selected filters') }}
                         </td>
                     </tr>
 
@@ -256,7 +322,7 @@
 
 
         <!-- Pagination -->
-        <div class="pagination" *ngIf="transferLogs.length > 0">
+        <div class="pagination" *ngIf="filteredLogs.length > 0">
 
             <div class="page-size">
                 <label>Rows per page</label>
@@ -269,7 +335,7 @@
             </div>
 
             <div class="page-info">
-                Showing {{startIndex + 1}}–{{endIndex}} of {{transferLogs.length}}
+                Showing {{startIndex + 1}}–{{endIndex}} of {{filteredLogs.length}}
             </div>
 
             <div class="page-controls">

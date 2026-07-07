@@ -45,6 +45,9 @@ export class TransferOrderWorkbench implements OnInit {
   selectedLocationTypeId = 0;
   selectedLocationId = 0;
 
+  // Client-side grid filter: '' = All Statuses
+  selectedLifecycleStatus = '';
+
   transferModes: TransferMode[] = [];
   transferLogs: TransferStockLogDetail[] = [];
 
@@ -61,6 +64,24 @@ export class TransferOrderWorkbench implements OnInit {
   // ===== Pagination state =====
   currentPage = 1;
   pageSize = 10;
+
+  // ===== Sorting state =====
+  // '' = no column sort -> keep the default load order
+  // (workflow rows first, then by transitID)
+  sortColumn: keyof TransferStockLogDetail | '' = '';
+  sortDirection: 'asc' | 'desc' = 'asc';
+
+  // Columns that must be compared as dates / numbers instead of strings
+  private readonly DATE_COLUMNS = new Set<string>([
+    'transferOutDate',
+    'transferOutTime',
+    'transferInTime'
+  ]);
+
+  private readonly NUMBER_COLUMNS = new Set<string>([
+    'transitID',
+    'transferQty'
+  ]);
 
   deliveryLifecycles: DeliveryLifecycle[] = [];
 
@@ -102,9 +123,6 @@ export class TransferOrderWorkbench implements OnInit {
   constructor(
     private logisticsService: LogisticsService,
     private userDataService: UserDataService
-
-
-
   ) { }
 
   ngOnInit(): void {
@@ -123,6 +141,7 @@ export class TransferOrderWorkbench implements OnInit {
   private today(): string {
     return new Date().toISOString().split('T')[0];
   }
+
   loadDeliveryLifecycles(): void {
 
     const userId = this.userDataService.getUserId();
@@ -189,27 +208,27 @@ export class TransferOrderWorkbench implements OnInit {
   }
 
 
-loadNextManifestNo(): void {
+  loadNextManifestNo(): void {
 
-  this.logisticsService.getNextManifestNo().subscribe({
+    this.logisticsService.getNextManifestNo().subscribe({
 
-    next: (res) => {
+      next: (res) => {
 
-      this.manifestNo = res;
+        this.manifestNo = res;
 
-      console.log('Next Manifest No:', this.manifestNo);
+        console.log('Next Manifest No:', this.manifestNo);
 
-    },
+      },
 
-    error: (err) => {
+      error: (err) => {
 
-      console.error('Failed to load Manifest No', err);
+        console.error('Failed to load Manifest No', err);
 
-    }
+      }
 
-  });
+    });
 
-}
+  }
 
   // ===== Master data loading =====
   loadCompanies(): void {
@@ -514,10 +533,152 @@ loadNextManifestNo(): void {
 
   }
 
+  // ===== Logistics Status filter =====
+
+  // Distinct non-blank statuses present in the loaded grid,
+  // ordered by their lifecycle sequenceNo when known.
+  get lifecycleStatusOptions(): string[] {
+
+    const distinct = new Set<string>();
+
+    for (const item of this.transferLogs) {
+      if (item.logisticsStatus) {
+        distinct.add(item.logisticsStatus);
+      }
+    }
+
+    const seq = (status: string): number => {
+      const lc = this.deliveryLifecycles.find(x => x.statusName === status);
+      return lc ? lc.sequenceNo : 999;
+    };
+
+    return [...distinct].sort(
+      (a, b) => seq(a) - seq(b) || a.localeCompare(b)
+    );
+
+  }
+
+  onStatusFilterChange(): void {
+
+    this.currentPage = 1;
+
+    // Hidden rows must not stay silently selected,
+    // so any status filter change clears the selection.
+    this.clearSelection();
+
+  }
+
+  // Rows after the client-side Logistics Status filter is applied
+  get filteredLogs(): TransferStockLogDetail[] {
+
+    if (!this.selectedLifecycleStatus) {
+      return this.transferLogs;
+    }
+
+    return this.transferLogs.filter(
+      x => x.logisticsStatus === this.selectedLifecycleStatus
+    );
+
+  }
+
+  // ===== Column sorting =====
+
+  sortBy(column: keyof TransferStockLogDetail): void {
+
+    if (this.sortColumn === column) {
+      // Same column: toggle asc -> desc -> off (back to default order)
+      if (this.sortDirection === 'asc') {
+        this.sortDirection = 'desc';
+      } else {
+        this.sortColumn = '';
+        this.sortDirection = 'asc';
+      }
+    } else {
+      this.sortColumn = column;
+      this.sortDirection = 'asc';
+    }
+
+    this.currentPage = 1;
+
+  }
+
+  sortIcon(column: keyof TransferStockLogDetail): string {
+
+    if (this.sortColumn !== column) {
+      return '⇅';
+    }
+
+    return this.sortDirection === 'asc' ? '▲' : '▼';
+
+  }
+
+  private compareValues(
+    a: TransferStockLogDetail,
+    b: TransferStockLogDetail,
+    column: keyof TransferStockLogDetail
+  ): number {
+
+    const rawA = a[column];
+    const rawB = b[column];
+
+    const emptyA = rawA === null || rawA === undefined || rawA === '';
+    const emptyB = rawB === null || rawB === undefined || rawB === '';
+
+    // Empty values always sink to the bottom, in both directions
+    if (emptyA && emptyB) return 0;
+    if (emptyA) return this.sortDirection === 'asc' ? 1 : -1;
+    if (emptyB) return this.sortDirection === 'asc' ? -1 : 1;
+
+    if (this.NUMBER_COLUMNS.has(column as string)) {
+      return Number(rawA) - Number(rawB);
+    }
+
+    if (this.DATE_COLUMNS.has(column as string)) {
+
+      const timeA = new Date(rawA as any).getTime();
+      const timeB = new Date(rawB as any).getTime();
+
+      const validA = !isNaN(timeA);
+      const validB = !isNaN(timeB);
+
+      if (validA && validB) return timeA - timeB;
+      if (validA) return -1;
+      if (validB) return 1;
+      return 0;
+
+    }
+
+    return String(rawA).localeCompare(String(rawB), undefined, {
+      numeric: true,
+      sensitivity: 'base'
+    });
+
+  }
+
+  // Filtered rows with the active column sort applied.
+  // With no sort column, the default load order is kept
+  // (workflow rows first, then by transitID).
+  get sortedLogs(): TransferStockLogDetail[] {
+
+    const rows = this.filteredLogs;
+
+    if (!this.sortColumn) {
+      return rows;
+    }
+
+    const column = this.sortColumn;
+    const dir = this.sortDirection === 'asc' ? 1 : -1;
+
+    return [...rows].sort(
+      (a, b) => this.compareValues(a, b, column) * dir
+    );
+
+  }
+
   // ===== Pagination: computed getters =====
 
   get totalPages(): number {
-    return Math.max(1, Math.ceil(this.transferLogs.length / this.pageSize));
+    return Math.max(1, Math.ceil(this.filteredLogs.length / this.pageSize));
   }
 
   get startIndex(): number {
@@ -525,11 +686,11 @@ loadNextManifestNo(): void {
   }
 
   get endIndex(): number {
-    return Math.min(this.startIndex + Number(this.pageSize), this.transferLogs.length);
+    return Math.min(this.startIndex + Number(this.pageSize), this.filteredLogs.length);
   }
 
   get pagedLogs(): TransferStockLogDetail[] {
-    return this.transferLogs.slice(this.startIndex, this.endIndex);
+    return this.sortedLogs.slice(this.startIndex, this.endIndex);
   }
 
   get visiblePages(): number[] {
@@ -869,42 +1030,42 @@ loadNextManifestNo(): void {
   // Saves ONE source-location group:
   //   - first order goes with blank ManifestNo -> backend generates a new number
   //   - remaining orders in the same group reuse that generated number
- private saveManifestGroup(
-  orders: TransferStockLogDetail[],
-  nextLifecycle: DeliveryLifecycle,
-  extra: Partial<DeliveryOrderTransaction> = {}
-): Observable<any> {
+  private saveManifestGroup(
+    orders: TransferStockLogDetail[],
+    nextLifecycle: DeliveryLifecycle,
+    extra: Partial<DeliveryOrderTransaction> = {}
+  ): Observable<any> {
 
-  return this.logisticsService.getNextManifestNo().pipe(
+    return this.logisticsService.getNextManifestNo().pipe(
 
-    concatMap((manifestNo: string) => {
+      concatMap((manifestNo: string) => {
 
-      console.log('Manifest No:', manifestNo);
+        console.log('Manifest No:', manifestNo);
 
-      return forkJoin(
+        return forkJoin(
 
-        orders.map(order =>
+          orders.map(order =>
 
-          this.logisticsService.saveTransferManifest(
+            this.logisticsService.saveTransferManifest(
 
-            this.buildManifest(
-              order,
-              nextLifecycle,
-              manifestNo,
-              extra
+              this.buildManifest(
+                order,
+                nextLifecycle,
+                manifestNo,
+                extra
+              )
+
             )
 
           )
 
-        )
+        );
 
-      );
+      })
 
-    })
+    );
 
-  );
-
-}
+  }
 
   // Groups the selected orders by sourceLocationId and creates ONE manifest
   // per group, sequentially (concatMap) so every group gets its own

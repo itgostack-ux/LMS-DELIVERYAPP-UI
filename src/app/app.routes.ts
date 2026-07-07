@@ -20,7 +20,8 @@ import { RoleLifecyleMapping } from './pages/role-lifecyle-mapping/role-lifecyle
 import { TransferOrderWorkbench } from './pages/transfer-order-workbench/transfer-order-workbench';
 import { DriverConsole } from './pages/driver-console/driver-console';
 import { TranferOrderView } from './pages/tranfer-order-view/tranfer-order-view';
-
+import { ManifestPrintComponent } from '../app/pages/manifest-print/manifest-print'
+import { DriverReport } from './pages/driver-report/driver-report';
 export const routes: Routes = [
 
   {
@@ -149,6 +150,19 @@ export const routes: Routes = [
           { path: '', redirectTo: 'role', pathMatch: 'full' },
 
           { path: 'role', component: RoleMaster },
+
+
+        ]
+      },
+
+        {
+        path: 'd-report',
+        component: DriverReport,
+        children: [
+
+          { path: '', redirectTo: 'role', pathMatch: 'full' },
+
+          { path: 'role', component: DriverReport },
 
 
         ]

@@ -7,8 +7,7 @@
     <ul class="menu">
 
         <!-- Dashboard (All Users) -->
-        <li routerLink="/dashboard"
-            routerLinkActive="active">
+        <li routerLink="/dashboard" routerLinkActive="active">
 
             <i class="fa-solid fa-chart-line"></i>
 
@@ -16,12 +15,14 @@
 
         </li>
 
+        
+
+
         <!-- Logistics Admin -->
 
         <ng-container *ngIf="roleName === 'Logistics Admin'">
 
-            <li routerLink="/master-management"
-                routerLinkActive="active">
+            <li routerLink="/master-management" routerLinkActive="active">
 
                 <i class="fa-solid fa-building"></i>
 
@@ -29,8 +30,7 @@
 
             </li>
 
-            <li routerLink="/administration"
-                routerLinkActive="active">
+            <li routerLink="/administration" routerLinkActive="active">
 
                 <i class="fa-solid fa-user-shield"></i>
 
@@ -38,8 +38,7 @@
 
             </li>
 
-            <li routerLink="/operations"
-                routerLinkActive="active">
+            <li routerLink="/operations" routerLinkActive="active">
 
                 <i class="fa-solid fa-truck-fast"></i>
 
@@ -47,8 +46,7 @@
 
             </li>
 
-            <li routerLink="/track-orders"
-                routerLinkActive="active">
+            <li routerLink="/track-orders" routerLinkActive="active">
 
                 <i class="fa-solid fa-location-dot"></i>
 
@@ -56,23 +54,27 @@
 
             </li>
 
-               <li routerLink="/driver-console"
-                routerLinkActive="active">
+            <li routerLink="/driver-console" routerLinkActive="active">
 
                 <i class="fa-solid fa-truck"></i>
 
                 <span>Driver Console</span>
 
             </li>
+            <li routerLink="/d-report" routerLinkActive="active">
 
+                <i class="fa-solid fa-location-dot"></i>
+
+                <span>Driver Report</span>
+
+            </li>
         </ng-container>
 
         <!-- Logistics Manager -->
 
         <ng-container *ngIf="roleName === 'Logistics Manager'">
 
-            <li routerLink="/operations"
-                routerLinkActive="active">
+            <li routerLink="/operations" routerLinkActive="active">
 
                 <i class="fa-solid fa-truck-fast"></i>
 
@@ -80,10 +82,16 @@
 
             </li>
 
-        
+            <li routerLink="/track-orders" routerLinkActive="active">
 
-            <li routerLink="/track-orders"
-                routerLinkActive="active">
+                <i class="fa-solid fa-location-dot"></i>
+
+                <span>Track Orders</span>
+
+            </li>
+
+
+            <li routerLink="/track-orders" routerLinkActive="active">
 
                 <i class="fa-solid fa-location-dot"></i>
 
@@ -97,8 +105,7 @@
 
         <ng-container *ngIf="roleName === 'Delivery Executive'">
 
-            <li routerLink="/driver-console"
-                routerLinkActive="active">
+            <li routerLink="/driver-console" routerLinkActive="active">
 
                 <i class="fa-solid fa-truck"></i>
 
@@ -106,8 +113,7 @@
 
             </li>
 
-            <li routerLink="/track-orders"
-                routerLinkActive="active">
+            <li routerLink="/track-orders" routerLinkActive="active">
 
                 <i class="fa-solid fa-location-dot"></i>
 

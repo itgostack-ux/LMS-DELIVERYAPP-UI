@@ -5,8 +5,72 @@ import { FormsModule } from '@angular/forms';
 import { LogisticsService } from '../../services/logistics-service';
 import {
   DeliveryLifecycle,
-  DeliveryOrderTransaction
+  TransferManifestResponse
 } from '../../services/models/common-master-model';
+
+// One row per manifestNo — every record sharing that manifest number
+// (including duplicates with different manifestId) is nested inside `orders`
+export interface ManifestGroup {
+  manifestNo: string;
+  manifestIds: number[]; // all manifestId values folded into this group
+
+  assignedUserId: number;
+  assignedUserName: string;
+
+  receiverUserId: number;
+  receiverUserName: string;
+
+  otp: string;
+
+  lifecycleId: number;
+  lifecycleSequenceNo: number;
+  lifecycleCode: string;
+  lifecycleName: string;
+
+  manifestDate: Date | null;
+  status: string;
+
+  sourceLocationId: number;
+  sourceLocationName: string;
+
+  destinationLocationId: number;
+  destinationLocationName: string;
+
+  transferModeId: number;
+  transferModeName: string;
+
+  courierId: number | null;
+  courierName: string;
+
+  awbBillNo: string;
+
+  transferOutDate: Date | null;
+  transferOutTime: Date | null;
+  transferInTime: Date | null;
+
+  inwardDoneById: number | null;
+  inwardDoneByName: string;
+
+  transferDuration: string;
+  remarks: string;
+
+  vehicleNo: string;
+  otherPartyName: string;
+
+  companyId: number;
+  companyName: string;
+
+  locationTypeId: number;
+  locationTypeName: string;
+
+  pickupManifestId: number | null;
+  pickupManifestNo: string;
+
+  selected?: boolean;
+
+  // Line items belonging to this manifest number (deduped by transitID)
+  orders: TransferManifestResponse[];
+}
 
 @Component({
   selector: 'app-tranfer-order-view',
@@ -21,7 +85,7 @@ import {
 export class TranferOrderView implements OnInit {
 
   // ===== Data =====
-  orders: DeliveryOrderTransaction[] = [];
+  manifestGroups: ManifestGroup[] = [];
   deliveryLifecycles: DeliveryLifecycle[] = [];
 
   loading = false;
@@ -36,8 +100,8 @@ export class TranferOrderView implements OnInit {
   sourceLocations: { id: number; name: string }[] = [];
   destinationLocations: { id: number; name: string }[] = [];
 
-  // ===== Expanded tracking row =====
-  expandedOrderId: number | null = null;
+  // ===== Expanded tracking row (keyed by manifestNo) =====
+  expandedManifestNo: string | null = null;
 
   // ===== Pagination state =====
   currentPage = 1;
@@ -67,16 +131,17 @@ export class TranferOrderView implements OnInit {
 
     this.loading = true;
 
-    this.logisticsService.getDeliveryOrderTransactions().subscribe({
+    this.logisticsService.getManifestOrders().subscribe({
 
       next: (res) => {
 
-        this.orders = (res ?? []).sort((a, b) => {
-          // Latest activity first
-          const aDate = a.modifiedDate ?? a.createdDate ?? '';
-          const bDate = b.modifiedDate ?? b.createdDate ?? '';
-          return bDate.localeCompare(aDate);
-        });
+        this.manifestGroups = this.groupByManifestNo(res ?? [])
+          .sort((a, b) => {
+            // Latest manifest activity first
+            const aDate = (a.manifestDate ?? a.transferOutDate ?? '').toString();
+            const bDate = (b.manifestDate ?? b.transferOutDate ?? '').toString();
+            return bDate.localeCompare(aDate);
+          });
 
         this.buildFilterOptions();
 
@@ -86,12 +151,114 @@ export class TranferOrderView implements OnInit {
       },
 
       error: (err) => {
-        console.error('Failed to load delivery order transactions:', err);
-        this.orders = [];
+        console.error('Failed to load manifest orders:', err);
+        this.manifestGroups = [];
         this.loading = false;
       }
 
     });
+
+  }
+
+  // Collapse every row sharing the same manifestNo into a single group,
+  // regardless of manifestId — dedupe line items by transitID within the group.
+  private groupByManifestNo(rows: TransferManifestResponse[]): ManifestGroup[] {
+
+    const map = new Map<string, ManifestGroup>();
+
+    for (const r of rows) {
+
+      const key = r.manifestNo ?? `__no_manifest_${r.manifestId}`;
+
+      let group = map.get(key);
+
+      if (!group) {
+
+        group = {
+          manifestNo: r.manifestNo,
+          manifestIds: [],
+
+          assignedUserId: r.assignedUserId,
+          assignedUserName: r.assignedUserName,
+
+          receiverUserId: r.receiverUserId,
+          receiverUserName: r.receiverUserName,
+
+          otp: r.otp,
+
+          lifecycleId: r.lifecycleId,
+          lifecycleSequenceNo: r.lifecycleSequenceNo,
+          lifecycleCode: r.lifecycleCode,
+          lifecycleName: r.lifecycleName,
+
+          manifestDate: r.manifestDate,
+          status: r.status,
+
+          sourceLocationId: r.sourceLocationId,
+          sourceLocationName: r.sourceLocationName,
+
+          destinationLocationId: r.destinationLocationId,
+          destinationLocationName: r.destinationLocationName,
+
+          transferModeId: r.transferModeId,
+          transferModeName: r.transferModeName,
+
+          courierId: r.courierId,
+          courierName: r.courierName,
+
+          awbBillNo: r.awbBillNo,
+
+          transferOutDate: r.transferOutDate,
+          transferOutTime: r.transferOutTime,
+          transferInTime: r.transferInTime,
+
+          inwardDoneById: r.inwardDoneById,
+          inwardDoneByName: r.inwardDoneByName,
+
+          transferDuration: r.transferDuration,
+          remarks: r.remarks,
+
+          vehicleNo: r.vehicleNo,
+          otherPartyName: r.otherPartyName,
+
+          companyId: r.companyId,
+          companyName: r.companyName,
+
+          locationTypeId: r.locationTypeId,
+          locationTypeName: r.locationTypeName,
+
+          pickupManifestId: r.pickupManifestId,
+          pickupManifestNo: r.pickupManifestNo,
+
+          selected: false,
+
+          orders: []
+        };
+
+        map.set(key, group);
+
+      }
+
+      if (!group.manifestIds.includes(r.manifestId)) {
+        group.manifestIds.push(r.manifestId);
+      }
+
+      // Prefer the most "advanced" lifecycle across duplicate rows for this manifest
+      if (r.lifecycleSequenceNo > group.lifecycleSequenceNo) {
+        group.lifecycleSequenceNo = r.lifecycleSequenceNo;
+        group.lifecycleCode = r.lifecycleCode;
+        group.lifecycleName = r.lifecycleName;
+      }
+
+      // Avoid duplicate line items (same transitID appearing twice)
+      const alreadyHasItem = group.orders.some(o => o.transitID === r.transitID);
+      if (!alreadyHasItem) {
+        group.orders.push(r);
+      }
+
+    }
+
+    return Array.from(map.values());
 
   }
 
@@ -101,14 +268,14 @@ export class TranferOrderView implements OnInit {
     const sourceMap = new Map<number, string>();
     const destMap = new Map<number, string>();
 
-    for (const o of this.orders) {
+    for (const g of this.manifestGroups) {
 
-      if (o.sourceLocationId && !sourceMap.has(o.sourceLocationId)) {
-        sourceMap.set(o.sourceLocationId, o.sourceLocationName ?? '');
+      if (g.sourceLocationId && !sourceMap.has(g.sourceLocationId)) {
+        sourceMap.set(g.sourceLocationId, g.sourceLocationName ?? '');
       }
 
-      if (o.destinationLocationId && !destMap.has(o.destinationLocationId)) {
-        destMap.set(o.destinationLocationId, o.destinationLocationName ?? '');
+      if (g.destinationLocationId && !destMap.has(g.destinationLocationId)) {
+        destMap.set(g.destinationLocationId, g.destinationLocationName ?? '');
       }
 
     }
@@ -123,40 +290,48 @@ export class TranferOrderView implements OnInit {
 
   // ===== Filtering =====
 
-  get filteredOrders(): DeliveryOrderTransaction[] {
+  get filteredGroups(): ManifestGroup[] {
 
     const search = this.searchText.trim().toLowerCase();
 
-    return this.orders.filter(o => {
+    return this.manifestGroups.filter(g => {
 
       if (this.selectedSourceId !== 0 &&
-          o.sourceLocationId !== this.selectedSourceId) {
+          g.sourceLocationId !== this.selectedSourceId) {
         return false;
       }
 
       if (this.selectedDestinationId !== 0 &&
-          o.destinationLocationId !== this.selectedDestinationId) {
+          g.destinationLocationId !== this.selectedDestinationId) {
         return false;
       }
 
       if (this.selectedLifecycleCode !== '' &&
-          o.lifecycleCode !== this.selectedLifecycleCode) {
+          g.lifecycleCode !== this.selectedLifecycleCode) {
         return false;
       }
 
       if (search) {
-        const haystack = [
+
+        const manifestHaystack = [
+          g.manifestNo,
+          g.otp,
+          g.pickupManifestNo,
+          g.awbBillNo
+        ].join(' ').toLowerCase();
+
+        const itemsMatch = g.orders.some(o => [
           o.transitID?.toString(),
           o.deliveryNoteNo,
           o.imei,
           o.itemName,
-          o.itemCode,
-          o.awbBillNo
-        ].join(' ').toLowerCase();
+          o.itemCode
+        ].join(' ').toLowerCase().includes(search));
 
-        if (!haystack.includes(search)) {
+        if (!manifestHaystack.includes(search) && !itemsMatch) {
           return false;
         }
+
       }
 
       return true;
@@ -167,7 +342,7 @@ export class TranferOrderView implements OnInit {
 
   onFilterChange(): void {
     this.currentPage = 1;
-    this.expandedOrderId = null;
+    this.expandedManifestNo = null;
   }
 
   clearFilters(): void {
@@ -185,27 +360,51 @@ export class TranferOrderView implements OnInit {
       || this.searchText.trim() !== '';
   }
 
-  // ===== Tracking timeline =====
+  // ===== Row selection (bulk actions) =====
 
-  toggleTrack(order: DeliveryOrderTransaction): void {
-    this.expandedOrderId =
-      this.expandedOrderId === order.transferOrderId
-        ? null
-        : (order.transferOrderId ?? null);
+  toggleRowSelection(group: ManifestGroup, event: Event): void {
+    event.stopPropagation();
+    group.selected = !group.selected;
   }
 
-  isExpanded(order: DeliveryOrderTransaction): boolean {
-    return this.expandedOrderId === order.transferOrderId;
+  get selectedCount(): number {
+    return this.manifestGroups.filter(g => g.selected).length;
+  }
+
+  get isAllPagedSelected(): boolean {
+    return this.pagedGroups.length > 0 && this.pagedGroups.every(g => g.selected);
+  }
+
+  toggleSelectAllOnPage(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.pagedGroups.forEach(g => g.selected = checked);
+  }
+
+  clearSelection(): void {
+    this.manifestGroups.forEach(g => g.selected = false);
+  }
+
+  // ===== Tracking timeline =====
+
+  toggleTrack(group: ManifestGroup): void {
+    this.expandedManifestNo =
+      this.expandedManifestNo === group.manifestNo
+        ? null
+        : group.manifestNo;
+  }
+
+  isExpanded(group: ManifestGroup): boolean {
+    return this.expandedManifestNo === group.manifestNo;
   }
 
   // Stage state for the timeline: 'done' | 'current' | 'pending'
-  stageState(order: DeliveryOrderTransaction, stage: DeliveryLifecycle): string {
+  stageState(group: ManifestGroup, stage: DeliveryLifecycle): string {
 
-    if (stage.sequenceNo < order.lifecycleSequenceNo) {
+    if (stage.sequenceNo < group.lifecycleSequenceNo) {
       return 'done';
     }
 
-    if (stage.sequenceNo === order.lifecycleSequenceNo) {
+    if (stage.sequenceNo === group.lifecycleSequenceNo) {
       return 'current';
     }
 
@@ -214,7 +413,7 @@ export class TranferOrderView implements OnInit {
   }
 
   // % of the lifecycle completed — drives the progress bar
-  progressPercent(order: DeliveryOrderTransaction): number {
+  progressPercent(group: ManifestGroup): number {
 
     if (this.deliveryLifecycles.length <= 1) {
       return 0;
@@ -223,7 +422,7 @@ export class TranferOrderView implements OnInit {
     const maxSeq = this.deliveryLifecycles[this.deliveryLifecycles.length - 1].sequenceNo;
     const minSeq = this.deliveryLifecycles[0].sequenceNo;
 
-    const pct = ((order.lifecycleSequenceNo - minSeq) / (maxSeq - minSeq)) * 100;
+    const pct = ((group.lifecycleSequenceNo - minSeq) / (maxSeq - minSeq)) * 100;
 
     return Math.max(0, Math.min(100, Math.round(pct)));
 
@@ -249,7 +448,7 @@ export class TranferOrderView implements OnInit {
   // ===== Pagination =====
 
   get totalPages(): number {
-    return Math.max(1, Math.ceil(this.filteredOrders.length / this.pageSize));
+    return Math.max(1, Math.ceil(this.filteredGroups.length / this.pageSize));
   }
 
   get startIndex(): number {
@@ -257,11 +456,11 @@ export class TranferOrderView implements OnInit {
   }
 
   get endIndex(): number {
-    return Math.min(this.startIndex + Number(this.pageSize), this.filteredOrders.length);
+    return Math.min(this.startIndex + Number(this.pageSize), this.filteredGroups.length);
   }
 
-  get pagedOrders(): DeliveryOrderTransaction[] {
-    return this.filteredOrders.slice(this.startIndex, this.endIndex);
+  get pagedGroups(): ManifestGroup[] {
+    return this.filteredGroups.slice(this.startIndex, this.endIndex);
   }
 
   get visiblePages(): number[] {
@@ -284,7 +483,7 @@ export class TranferOrderView implements OnInit {
       return;
     }
     this.currentPage = page;
-    this.expandedOrderId = null;
+    this.expandedManifestNo = null;
   }
 
   onPageSizeChange(): void {
@@ -292,7 +491,11 @@ export class TranferOrderView implements OnInit {
     this.currentPage = 1;
   }
 
-  trackByOrderId(index: number, item: DeliveryOrderTransaction): number {
-    return item.transferOrderId ?? item.transitID;
+  trackByManifestNo(index: number, item: ManifestGroup): string {
+    return item.manifestNo;
+  }
+
+  trackByTransitId(index: number, item: TransferManifestResponse): string {
+    return item.transitID ?? index.toString();
   }
 }

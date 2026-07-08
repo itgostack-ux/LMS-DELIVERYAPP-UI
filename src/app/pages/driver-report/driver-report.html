@@ -4,6 +4,19 @@
         <h2>Driver Report</h2>
     </div>
 
+    <!-- ===== Summary KPI tiles ===== -->
+    <div class="stat-grid" *ngIf="!loading && statCards.length > 0">
+        <div class="stat-card" *ngFor="let card of statCards" [style.--accent]="card.color">
+            <div class="stat-icon">
+                <i [class]="card.icon"></i>
+            </div>
+            <div class="stat-info">
+                <span class="stat-label">{{card.label}}</span>
+                <span class="stat-value">{{card.value}}</span>
+            </div>
+        </div>
+    </div>
+
     <!-- ===== Filters: Status / Source / Destination + search + refresh ===== -->
     <div class="card toolbar-card">
         <div class="toolbar">
@@ -85,6 +98,7 @@
                         <th>Source Location</th>
                         <th>Destination Location</th>
                         <th>Assigned User</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
 
@@ -96,11 +110,16 @@
                         <td>{{row.sourceLocationName}}</td>
                         <td>{{row.destinationLocationName}}</td>
                         <td>{{row.assignedUserName || '—'}}</td>
-                        
+                        <td>
+                            <span class="status-badge-sm"
+                                [style.background]="getStatusColor(row.lifecycleCode)">
+                                {{row.lifecycleName || row.lifecycleCode}}
+                            </span>
+                        </td>
                     </tr>
                 </tbody>
 
-              
+                
 
             </table>
         </div>

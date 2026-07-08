@@ -473,40 +473,42 @@ export class DriverConsole implements OnInit {
       this.otpSent = false;
       this.generatedOtp = '';
 
-      // Load users first
-      this.logisticsService.getUsers().subscribe({
+      this.logisticsService.getCompanyUserLifecycleAccess().subscribe({
 
-        next: (res) => {
+        next: (res: any[]) => {
 
-          this.users = res.sort((a, b) =>
-            (a.fullName || '')
-              .trim()
-              .toLowerCase()
-              .localeCompare(
-                (b.fullName || '')
-                  .trim()
-                  .toLowerCase()
+          this.users = res
+            .filter(x =>
+              x.isActive &&
+              (
+                x.roleName?.trim() === 'Store Manager' ||
+                x.roleName?.trim() === 'Store Executive'
               )
-          );
+            )
+            .map(x => ({
+              userId: x.userId,
+              fullName: x.userName,
+              loginName: x.loginName ?? '',
+              emailId: x.emailId ?? '',
+              mobileNo: x.mobileNo ?? ''
+            }))
+            .sort((a, b) => a.fullName.localeCompare(b.fullName));
 
-          // Populate the dropdown list — it binds to filteredUsers.
           this.filteredUsers = [...this.users];
 
-          // Open popup after users are loaded
           this.showOtpModal = true;
 
         },
 
         error: (err) => {
 
-          console.error('Failed to load users', err);
+          console.error(err);
 
           alert('Unable to load receiver users.');
 
         }
 
       });
-
       return;
 
     }
@@ -785,234 +787,250 @@ export class DriverConsole implements OnInit {
 
     };
 
-  }
+  } loadUsers(): void {
 
-  loadUsers(): void {
+    this.logisticsService.getCompanyUserLifecycleAccess().subscribe({
 
-    this.logisticsService.getUsers().subscribe({
+      next: (res: any[]) => {
 
-      next: (res) => {
-
-        this.users = res.sort((a, b) =>
-          (a.fullName || '')
-            .trim()
-            .toLowerCase()
-            .localeCompare(
-              (b.fullName || '')
-                .trim()
-                .toLowerCase()
+        this.users = res
+          .filter(x =>
+            x.isActive &&
+            (
+              (x.roleName ?? '').trim() === 'Store Manager' ||
+              (x.roleName ?? '').trim() === 'Store Executive'
             )
-        );
+          )
+          .map(x => ({
+            userId: x.userId,
+            fullName: x.userName,
+            loginName: x.loginName ?? '',
+            emailId: x.emailId ?? '',
+            mobileNo: x.mobileNo ?? ''
+          }));
 
         this.filteredUsers = [...this.users];
 
-      },
-
-      error: (err) => {
-
-        console.error(err);
+        this.showOtpModal = true;
 
       }
 
     });
 
+  }receiverChanged(): void {
+
+  const receiver = this.users.find(
+    x => x.userId === this.selectedReceiverId
+  );
+
+  if (!receiver) {
+    this.selectedReceiverName = '';
+    this.selectedReceiverEmail = '';
+    return;
   }
 
-  receiverChanged(): void {
+  this.selectedReceiverName = receiver.fullName;
 
-    const receiver = this.users.find(
-      x => x.userId == this.selectedReceiverId
-    );
+  this.logisticsService.getUsers().subscribe({
 
-    if (!receiver) {
-      this.selectedReceiverName = '';
-      this.selectedReceiverEmail = '';
-      return;
+    next: (users: User[]) => {
+
+     // console.table(users);
+
+      const user = users.find(
+        x => x.userId === this.selectedReceiverId
+      );
+
+      console.log('Selected User:', user);
+
+      this.selectedReceiverEmail = user?.emailId ?? '';
+
+      console.log('Email:', this.selectedReceiverEmail);
+
+    },
+
+    error: (err) => {
+
+      console.error('Failed to load user email', err);
+
     }
 
-    this.selectedReceiverName = receiver.fullName;
-    this.selectedReceiverEmail = receiver.emailId;
+  });
+
+}
+
+sendOtp(): void {
+
+  if (this.selectedReceiverId === 0) {
+
+    alert('Please select Receiver.');
+
+    return;
 
   }
 
-  sendOtp(): void {
+  const receiver = this.users.find(
+    x => x.userId === this.selectedReceiverId
+  );
 
-    if (this.selectedReceiverId === 0) {
+  if (!receiver) {
 
-      alert('Please select Receiver.');
+    alert('Receiver not found.');
 
-      return;
+    return;
 
-    }
+  }
 
-    const receiver = this.users.find(
-      x => x.userId === this.selectedReceiverId
-    );
+  // Use the email loaded in receiverChanged()
+  if (!this.selectedReceiverEmail) {
 
-    if (!receiver) {
+    alert('Receiver email is not available.');
 
-      alert('Receiver not found.');
+    return;
 
-      return;
+  }
 
-    }
+  // Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    if (!receiver.emailId) {
+  this.generatedOtp = otp;
 
-      alert('Receiver email is not available.');
+  this.pendingGroup.receiverUserId = receiver.userId;
+  this.pendingGroup.receiverUserName = receiver.fullName;
+  this.pendingGroup.otp = otp;
 
-      return;
+  const currentStatusCode = this.pendingOrders[0]?.lifecycleCode;
 
-    }
+  const currentLifecycle =
+    (currentStatusCode
+      ? this.findLifecycle(currentStatusCode)
+      : undefined) ?? this.pendingLifecycle;
 
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  this.sendingOtp = true;
 
-    // Save locally
-    this.generatedOtp = otp;
+  const pendingOrder = this.pendingOrders[0];
 
-    // Update pending manifest (used by confirmOtp + buildManifestRequest)
-    this.pendingGroup.receiverUserId = receiver.userId;
-    this.pendingGroup.receiverUserName = receiver.fullName;
-    this.pendingGroup.otp = otp;
+  this.logisticsService.saveTransferManifest({
 
-    // At "send OTP" time the order is NOT delivered yet — save the
-    // receiver + OTP against the CURRENT order's lifecycle (e.g. Picked
-    // Up), and only move to Delivered after the OTP is verified in
-    // confirmOtp().
-    const currentStatusCode = this.pendingOrders[0]?.lifecycleCode;
-    const currentLifecycle =
-      (currentStatusCode ? this.findLifecycle(currentStatusCode) : undefined)
-      ?? this.pendingLifecycle;
+    manifestId: pendingOrder.manifestId,
 
-    this.sendingOtp = true;
+    manifestNo: this.pendingGroup.manifestNo,
 
-    // Save OTP & Receiver against the SPECIFIC order/manifestId being
-    // delivered - not group.manifestId, since a card can be backed by more
-    // than one manifestId row sharing the same manifestNo.
-    const pendingOrder = this.pendingOrders[0];
+    transferOrderId: pendingOrder.transferOrderId,
 
-    this.logisticsService.saveTransferManifest({
+    assignedUserId: pendingOrder.assignedUserId,
 
-      manifestId: pendingOrder.manifestId,
+    assignedUserName: pendingOrder.assignedUserName,
 
-      manifestNo: this.pendingGroup.manifestNo,
+    receiverUserId: receiver.userId,
 
-      transferOrderId: pendingOrder.transferOrderId,
+    receiverUserName: receiver.fullName,
 
-      assignedUserId: pendingOrder.assignedUserId,
+    otp: otp,
 
-      assignedUserName: pendingOrder.assignedUserName,
+    lifecycleId: currentLifecycle.lifecycleId,
 
-      receiverUserId: receiver.userId,
+    lifecycleSequenceNo: currentLifecycle.sequenceNo,
 
-      receiverUserName: receiver.fullName,
+    lifecycleCode: currentLifecycle.statusCode,
 
-      otp: otp,
+    lifecycleName: currentLifecycle.statusName,
 
-      lifecycleId: currentLifecycle.lifecycleId,
+    manifestDate: new Date(),
 
-      lifecycleSequenceNo: currentLifecycle.sequenceNo,
+    status: currentLifecycle.statusName
 
-      lifecycleCode: currentLifecycle.statusCode,
+  }).subscribe({
 
-      lifecycleName: currentLifecycle.statusName,
+    next: () => {
 
-      manifestDate: new Date(),
+      const body = `
+      Dear <b>${receiver.fullName}</b>,<br><br>
 
-      status: currentLifecycle.statusName
+      Your Delivery Verification OTP is:
 
-    }).subscribe({
+      <h2 style="color:#2563EB">${otp}</h2>
 
-      next: () => {
+      <table cellpadding="5">
 
-        const body = `
-        Dear <b>${receiver.fullName}</b>,<br><br>
+        <tr>
+          <td><b>Manifest No</b></td>
+          <td>${this.pendingGroup.manifestNo}</td>
+        </tr>
 
-        Your Delivery Verification OTP is:
+        <tr>
+          <td><b>Driver</b></td>
+          <td>${this.driverName}</td>
+        </tr>
 
-        <h2 style="color:#2563EB">${otp}</h2>
+      </table>
 
-        <table cellpadding="5">
+      <br>
 
-            <tr>
+      Please share this OTP with the delivery executive to complete your delivery.
 
-                <td><b>Manifest No</b></td>
+      <br><br>
 
-                <td>${this.pendingGroup.manifestNo}</td>
+      Regards,<br>
 
-            </tr>
-
-            <tr>
-
-                <td><b>Driver</b></td>
-
-                <td>${this.driverName}</td>
-
-            </tr>
-
-        </table>
-
-        <br>
-
-        Please share this OTP with the delivery executive to complete your delivery.
-
-        <br><br>
-
-        Regards,<br>
-
-        Logistics Management System
+      Logistics Management System
       `;
 
-        this.authservice.sendMail({
+      console.log('Sending OTP to:', this.selectedReceiverEmail);
 
-          subject: 'Delivery Verification OTP',
+      this.authservice.sendMail({
 
-          message: body,
+        subject: 'Delivery Verification OTP',
 
-          emailAddress: receiver.emailId,
+        message: body,
 
-          isGofix: false,
+        emailAddress: this.selectedReceiverEmail,
 
-          projectName: 'Logistics Management System'
+        isGofix: false,
 
-        }).subscribe({
+        projectName: 'Logistics Management System'
 
-          next: () => {
+      }).subscribe({
 
-            this.sendingOtp = false;
+        next: () => {
 
-            alert('OTP sent successfully.');
+          this.sendingOtp = false;
 
-            this.otpSent = true;
-            this.otpError = '';
+          this.otpSent = true;
 
-          },
+          this.otpError = '';
 
-          error: () => {
+          alert('OTP sent successfully.');
 
-            this.sendingOtp = false;
+        },
 
-            alert('Failed to send OTP email.');
+        error: (err) => {
 
-          }
+          this.sendingOtp = false;
 
-        });
+          console.error(err);
 
-      },
+          alert('Failed to send OTP email.');
 
-      error: () => {
+        }
 
-        this.sendingOtp = false;
+      });
 
-        alert('Failed to save OTP.');
+    },
 
-      }
+    error: (err) => {
 
-    });
+      this.sendingOtp = false;
 
-  }
+      console.error(err);
 
+      alert('Failed to save OTP.');
+
+    }
+
+  });
+
+}
   filterUsers(): void {
 
     const search = this.receiverSearch.trim().toLowerCase();

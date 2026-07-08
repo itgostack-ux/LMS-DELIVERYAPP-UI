@@ -266,17 +266,36 @@ export class TransferOrderWorkbench implements OnInit {
     });
 
   }
+loadUsers(): void {
 
-  loadUsers(): void {
-    this.logisticsService.getUsers().subscribe({
-      next: (res: any) => {
-        this.users = res;
-      },
-      error: err => console.error('Users API Error', err)
-    });
-  }
+  this.logisticsService.getCompanyUserLifecycleAccess().subscribe({
 
-  loadTransferModes(): void {
+    next: (res: any[]) => {
+
+      this.users = res
+        .filter(x =>
+          x.isActive &&
+          x.roleName === 'Delivery Executive'
+        )
+        .map(x => ({
+          userId: x.userId,
+          fullName: x.userName,
+          loginName: x.loginName ?? '',
+          emailId: x.emailId ?? '',
+          mobileNo: x.mobileNo ?? ''
+        }));
+
+      console.log('Delivery Executives:', this.users);
+
+    },
+
+    error: err => {
+      console.error('Failed to load Delivery Executives', err);
+    }
+
+  });
+
+}  loadTransferModes(): void {
     this.logisticsService.getTransferModes().subscribe({
       next: (res) => {
 

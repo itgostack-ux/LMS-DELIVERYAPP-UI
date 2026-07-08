@@ -1,14 +1,22 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 
 import { LogisticsService } from '../../services/logistics-service';
 import { UserDataService } from '../../service/user-data-service';
-import { TransferManifestResponse } from '../../services/models/common-master-model';
+import { DeliveryLifecycle, TransferManifestResponse } from '../../services/models/common-master-model';
+
+interface StatCard {
+  label: string;
+  value: number | string;
+  color: string;
+  icon: string;
+}
 
 // Flat report - one row per manifest order. No manifest grouping / no details.
-// Columns: Transit ID, Source Location, Destination Location, Qty,
-// Assigned User Name (+ Status, so the status filter is meaningful).
+// Columns: Transit ID, Source Location, Destination Location, Qty, Status,
+// Assigned User Name.
 // Filters: Order Status, Source Location, Destination Location, plus a
 // free-text search.
 @Component({
@@ -28,6 +36,12 @@ export class DriverReport implements OnInit {
 
   // All manifest-order rows (raw from API)
   rows: TransferManifestResponse[] = [];
+
+  // Lifecycle master (for color codes)
+  private lifecycles: DeliveryLifecycle[] = [];
+
+  // Summary stat cards
+  statCards: StatCard[] = [];
 
   // ===== Filters =====
   searchText = '';
@@ -65,15 +79,16 @@ export class DriverReport implements OnInit {
     this.loading = true;
     this.errorMessage = '';
 
-    this.logisticsService.getManifestOrders().subscribe({
+    forkJoin({
+      manifests: this.logisticsService.getManifestOrders(),
+      lifecycles: this.logisticsService.getDeliveryLifecycles()
+    }).subscribe({
 
-      next: (rows: TransferManifestResponse[]) => {
+      next: ({ manifests, lifecycles }) => {
 
-        // NOTE: this report shows ALL drivers' orders. To restrict it to
-        // the logged-in driver only, add:
-        //   .filter(r => r.assignedUserId === this.driverId)
-        this.rows = [...rows];
-
+        this.lifecycles = (lifecycles ?? []).sort((a, b) => a.sequenceNo - b.sequenceNo);
+        this.rows = [...manifests];
+        this.buildStatCards();
         this.loading = false;
 
       },
@@ -179,9 +194,30 @@ export class DriverReport implements OnInit {
     );
   }
 
+  private isFinalCode(code: string): boolean {
+    const lc = this.lifecycles.find(l => l.statusCode === code);
+    return !!lc && !lc.nextStatusCode;
+  }
+
+  private buildStatCards(): void {
+    const total = this.rows.length;
+    const delivered = this.rows.filter(r => this.isFinalCode(r.lifecycleCode)).length;
+    const pending = total - delivered;
+    const totalQtyAll = this.rows.reduce((s, r) => s + (r.transferQty ?? 0), 0);
+    const distinctManifests = new Set(this.rows.map(r => r.manifestNo || `#${r.manifestId}`)).size;
+
+    this.statCards = [
+      { label: 'Total Orders',      value: total,             color: '#2563eb', icon: 'fa-solid fa-boxes-stacked' },
+      { label: 'Manifests',         value: distinctManifests, color: '#7c3aed', icon: 'fa-solid fa-clipboard-list' },
+      { label: 'Pending',           value: pending,           color: '#f59e0b', icon: 'fa-solid fa-clock' },
+      { label: 'Delivered',         value: delivered,         color: '#16a34a', icon: 'fa-solid fa-circle-check' },
+      { label: 'Total Qty',         value: totalQtyAll,       color: '#0891b2', icon: 'fa-solid fa-cubes' },
+    ];
+  }
+
   getStatusColor(statusCode: string): string {
-    const row = this.rows.find(r => r.lifecycleCode === statusCode);
-    return row?.lifecycleCode || '#6B7280';
+    const lc = this.lifecycles.find(l => l.statusCode === statusCode);
+    return lc?.colorCode || '#6B7280';
   }
 
   clearFilters(): void {

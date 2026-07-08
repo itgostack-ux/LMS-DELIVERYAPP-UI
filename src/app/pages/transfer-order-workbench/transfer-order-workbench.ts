@@ -266,36 +266,36 @@ export class TransferOrderWorkbench implements OnInit {
     });
 
   }
-loadUsers(): void {
+  loadUsers(): void {
 
-  this.logisticsService.getCompanyUserLifecycleAccess().subscribe({
+    this.logisticsService.getCompanyUserLifecycleAccess().subscribe({
 
-    next: (res: any[]) => {
+      next: (res: any[]) => {
 
-      this.users = res
-        .filter(x =>
-          x.isActive &&
-          x.roleName === 'Delivery Executive'
-        )
-        .map(x => ({
-          userId: x.userId,
-          fullName: x.userName,
-          loginName: x.loginName ?? '',
-          emailId: x.emailId ?? '',
-          mobileNo: x.mobileNo ?? ''
-        }));
+        this.users = res
+          .filter(x =>
+            x.isActive &&
+            x.roleName === 'Delivery Executive'
+          )
+          .map(x => ({
+            userId: x.userId,
+            fullName: x.userName,
+            loginName: x.loginName ?? '',
+            emailId: x.emailId ?? '',
+            mobileNo: x.mobileNo ?? ''
+          }));
 
-      console.log('Delivery Executives:', this.users);
+        console.log('Delivery Executives:', this.users);
 
-    },
+      },
 
-    error: err => {
-      console.error('Failed to load Delivery Executives', err);
-    }
+      error: err => {
+        console.error('Failed to load Delivery Executives', err);
+      }
 
-  });
+    });
 
-}  loadTransferModes(): void {
+  } loadTransferModes(): void {
     this.logisticsService.getTransferModes().subscribe({
       next: (res) => {
 
@@ -429,6 +429,14 @@ loadUsers(): void {
 
           if (Array.isArray(response)) {
             data = response;
+            console.log('API Data', data);
+            console.log('First Qty', data[0]?.transferQty);
+            console.table(
+              this.transferLogs.map(x => ({
+                Note: x.deliveryNoteNo,
+                Qty: x.transferQty
+              }))
+            );
           }
           else if (response?.data) {
             data = response.data;
@@ -438,6 +446,7 @@ loadUsers(): void {
             .map((item: any): TransferStockLogDetail => ({
 
               transferOrderId: item.transferOrderId ?? 0,
+              
 
               transitID: item.transitID,
               deliveryNoteNo: item.deliveryNoteNo ?? '',
@@ -448,10 +457,14 @@ loadUsers(): void {
               sourceLocationId: item.sourceLocationId ?? 0,
               sourceLocationName: item.sourceLocationName ?? item.sourceBranch ?? '',
               sourceBranch: item.sourceBranch ?? '',
+              sourceLocationTypeId: item.sourceLocationTypeId ?? item.locationTypeId ?? 0,
+              sourceLocationTypeName: item.sourceLocationTypeName ?? item.locationTypeName ?? '',
 
               destinationLocationId: item.destinationLocationId ?? 0,
               destinationLocationName: item.destinationLocationName ?? item.destinationBranch ?? '',
               destinationBranch: item.destinationBranch ?? '',
+              destinationLocationTypeId: item.destinationLocationTypeId ?? item.locationTypeId ?? 0,
+              destinationLocationTypeName: item.destinationLocationTypeName ?? item.locationTypeName ?? '',
 
               itemCode: item.itemCode ?? '',
               itemName: item.itemName ?? '',
@@ -461,10 +474,10 @@ loadUsers(): void {
 
               transferStatus: item.transferStatus ?? '',
 
-              // SP returns TransferOutByUserId / TransferredOutBy —
-              // map them onto the DeliveryOrderTransaction field names
-              transferOutById: item.transferOutByUserId,
-              transferOutByName: item.transferredOutBy,
+              // JSON API uses transferOutByUserId/transferredOutBy;
+              // SP uses transferOutById/transferOutByName — handle both
+              transferOutById: item.transferOutById ?? item.transferOutByUserId,
+              transferOutByName: item.transferOutByName ?? item.transferredOutBy ?? '',
 
               transferInTime: item.transferInTime ?? undefined,
 
@@ -482,8 +495,8 @@ loadUsers(): void {
               transferModeId: item.transferModeId ?? 0,
               transferModeName: item.transferModeName ?? '',
 
-              assignedUserId: item.pickupDriverId ?? 0,
-              assignedUserName: item.fullName ?? '',
+              assignedUserId: item.assignedUserId ?? item.pickupDriverId ?? 0,
+              assignedUserName: item.assignedUserName ?? item.fullName ?? '',
 
               courierId: item.courierId ?? 0,
               courierName: item.courierName ?? '',
@@ -513,6 +526,15 @@ loadUsers(): void {
               //   In Transit + lifecycle row      -> stage name
               //   In Transit + no lifecycle row   -> 'Open'
               logisticsStatus: item.logisticsStatus ?? '',
+
+              companyId: item.companyId ?? 0,
+              companyName: item.companyName ?? '',
+
+              locationTypeId: item.locationTypeId ?? 0,
+              locationTypeName: item.locationTypeName ?? '',
+
+              pickupManifestId: item.pickupManifestId ?? 0,
+              pickupManifestNo: item.pickupManifestNo ?? '',
 
               selected: false,
 
@@ -839,7 +861,12 @@ loadUsers(): void {
     extra: Partial<DeliveryOrderTransaction> = {}
   ): DeliveryOrderTransaction {
 
+    const selectedCompany = this.companies.find(c => c.compId === this.selectedCompanyId);
+
     return {
+
+      companyId: order.companyId ?? this.selectedCompanyId,
+      companyName: order.companyName || selectedCompany?.compName || '',
 
       transferOrderId: order.transferOrderId ?? 0,
 
@@ -851,9 +878,13 @@ loadUsers(): void {
 
       sourceLocationId: order.sourceLocationId,
       sourceLocationName: order.sourceLocationName ?? '',
+      sourceLocationTypeId: order.sourceLocationTypeId || order.locationTypeId || this.selectedLocationTypeId || 0,
+      sourceLocationTypeName: order.sourceLocationTypeName || order.locationTypeName || '',
 
       destinationLocationId: order.destinationLocationId,
       destinationLocationName: order.destinationLocationName ?? '',
+      destinationLocationTypeId: order.destinationLocationTypeId || order.locationTypeId || this.selectedLocationTypeId || 0,
+      destinationLocationTypeName: order.destinationLocationTypeName || order.locationTypeName || '',
 
       itemCode: order.itemCode ?? '',
       itemName: order.itemName ?? '',

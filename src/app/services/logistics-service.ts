@@ -15,8 +15,8 @@ import {
 })
 export class LogisticsService {
 
-   //private readonly apiUrl = 'http://localhost:5089/api/Logistics';
-private readonly apiUrl = 'https://n8n.gogizmo.co/api/Logistics';
+  private readonly apiUrl = 'http://localhost:5089/api/Logistics';
+//private readonly apiUrl = 'https://n8n.gogizmo.co/api/Logistics';
 
   constructor(private http: HttpClient) { }
 

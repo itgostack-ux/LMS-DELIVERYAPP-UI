@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import jsPDF from 'jspdf';
 
 import { LogisticsService } from '../../services/logistics-service';
 import {
@@ -498,4 +499,124 @@ export class TranferOrderView implements OnInit {
   trackByTransitId(index: number, item: TransferManifestResponse): string {
     return item.transitID ?? index.toString();
   }
+
+  // ===== Export =====
+
+  exportToExcel(): void {
+
+    const headers = [
+      'S.No', 'Manifest No', 'Transfer Date', 'Source Location',
+      'Destination Location', 'Items', 'Status', 'Transfer Mode',
+      'Assigned To', 'OTP', 'AWB Bill No', 'Duration'
+    ];
+
+    const rows = this.filteredGroups.map((g, i) => [
+      i + 1,
+      g.manifestNo ?? '',
+      g.transferOutDate ? new Date(g.transferOutDate as any).toLocaleDateString('en-GB') : '',
+      g.sourceLocationName ?? '',
+      g.destinationLocationName ?? '',
+      g.orders.length,
+      g.lifecycleName ?? '',
+      g.transferModeName ?? '',
+      g.assignedUserName ?? g.courierName ?? g.otherPartyName ?? '',
+      g.otp ?? '',
+      g.awbBillNo ?? '',
+      g.transferDuration ?? ''
+    ]);
+
+    const csv = [headers, ...rows]
+      .map(row => row.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transfer-manifests-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+  }
+
+  exportToPdf(): void {
+
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+    const headers = ['#', 'Manifest No', 'Date', 'Source', 'Destination', 'Items', 'Status', 'Mode', 'Assigned To'];
+    const colWidths = [10, 38, 22, 38, 38, 12, 30, 22, 38];
+    const rowH = 8;
+    const startX = 8;
+    let y = 28;
+
+    // Title
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Transfer Manifests Report', startX, 14);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      `Generated: ${new Date().toLocaleString()}   |   Total: ${this.filteredGroups.length} manifest(s)`,
+      startX, 20
+    );
+    doc.setTextColor(0, 0, 0);
+
+    // Header row
+    doc.setFillColor(37, 99, 235);
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    let x = startX;
+    headers.forEach((h, i) => {
+      doc.rect(x, y, colWidths[i], rowH, 'F');
+      doc.text(h, x + 2, y + 5.2);
+      x += colWidths[i];
+    });
+    y += rowH;
+
+    // Data rows
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+
+    this.filteredGroups.forEach((g, idx) => {
+
+      if (y > 195) {
+        doc.addPage();
+        y = 15;
+      }
+
+      const row = [
+        (idx + 1).toString(),
+        g.manifestNo ?? '',
+        g.transferOutDate ? new Date(g.transferOutDate as any).toLocaleDateString('en-GB') : '',
+        g.sourceLocationName ?? '',
+        g.destinationLocationName ?? '',
+        g.orders.length.toString(),
+        g.lifecycleName ?? '',
+        g.transferModeName ?? '',
+        g.assignedUserName ?? g.courierName ?? g.otherPartyName ?? ''
+      ];
+
+      const fill = idx % 2 === 0 ? [248, 250, 252] as const : [255, 255, 255] as const;
+      doc.setTextColor(30, 41, 59);
+      x = startX;
+
+      row.forEach((cell, i) => {
+        doc.setFillColor(fill[0], fill[1], fill[2]);
+        doc.setDrawColor(226, 232, 240);
+        doc.rect(x, y, colWidths[i], rowH, 'FD');
+        const clipped = doc.splitTextToSize(cell, colWidths[i] - 3)[0];
+        doc.text(clipped, x + 2, y + 5.2);
+        x += colWidths[i];
+      });
+
+      y += rowH;
+
+    });
+
+    doc.save(`transfer-manifests-${new Date().toISOString().slice(0, 10)}.pdf`);
+
+  }
+
 }

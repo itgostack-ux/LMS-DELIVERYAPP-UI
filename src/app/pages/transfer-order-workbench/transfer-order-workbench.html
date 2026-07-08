@@ -170,67 +170,94 @@
                         <th>S.No</th>
 
                         <th class="sortable" (click)="sortBy('transitID')">
-                            Transit ID <span class="sort-icon" [class.active]="sortColumn === 'transitID'">{{ sortIcon('transitID') }}</span>
+                            Transit ID <span class="sort-icon" [class.active]="sortColumn === 'transitID'">{{
+                                sortIcon('transitID') }}</span>
                         </th>
 
                         <th class="sortable" (click)="sortBy('transferOutDate')">
-                            Transfer Date <span class="sort-icon" [class.active]="sortColumn === 'transferOutDate'">{{ sortIcon('transferOutDate') }}</span>
+                            Transfer Date <span class="sort-icon" [class.active]="sortColumn === 'transferOutDate'">{{
+                                sortIcon('transferOutDate') }}</span>
                         </th>
 
                         <th class="sortable" (click)="sortBy('transferOutTime')">
-                            Transfer Out Time <span class="sort-icon" [class.active]="sortColumn === 'transferOutTime'">{{ sortIcon('transferOutTime') }}</span>
+                            Transfer Out Time <span class="sort-icon"
+                                [class.active]="sortColumn === 'transferOutTime'">{{ sortIcon('transferOutTime')
+                                }}</span>
                         </th>
 
                         <th class="sortable" (click)="sortBy('transferStatus')">
-                            Status <span class="sort-icon" [class.active]="sortColumn === 'transferStatus'">{{ sortIcon('transferStatus') }}</span>
+                            Status <span class="sort-icon" [class.active]="sortColumn === 'transferStatus'">{{
+                                sortIcon('transferStatus') }}</span>
                         </th>
 
                         <th class="sortable" (click)="sortBy('logisticsStatus')">
-                            Logistics Status <span class="sort-icon" [class.active]="sortColumn === 'logisticsStatus'">{{ sortIcon('logisticsStatus') }}</span>
+                            Logistics Status <span class="sort-icon"
+                                [class.active]="sortColumn === 'logisticsStatus'">{{ sortIcon('logisticsStatus')
+                                }}</span>
                         </th>
 
                         <th class="sortable" (click)="sortBy('sourceBranch')">
-                            Source <span class="sort-icon" [class.active]="sortColumn === 'sourceBranch'">{{ sortIcon('sourceBranch') }}</span>
+                            Source <span class="sort-icon" [class.active]="sortColumn === 'sourceBranch'">{{
+                                sortIcon('sourceBranch') }}</span>
                         </th>
 
                         <th class="sortable" (click)="sortBy('destinationBranch')">
-                            Destination <span class="sort-icon" [class.active]="sortColumn === 'destinationBranch'">{{ sortIcon('destinationBranch') }}</span>
+                            Destination <span class="sort-icon" [class.active]="sortColumn === 'destinationBranch'">{{
+                                sortIcon('destinationBranch') }}</span>
                         </th>
 
                         <th class="sortable" (click)="sortBy('deliveryNoteNo')">
-                            Delivery Note <span class="sort-icon" [class.active]="sortColumn === 'deliveryNoteNo'">{{ sortIcon('deliveryNoteNo') }}</span>
+                            Delivery Note <span class="sort-icon" [class.active]="sortColumn === 'deliveryNoteNo'">{{
+                                sortIcon('deliveryNoteNo') }}</span>
                         </th>
 
                         <th class="sortable" (click)="sortBy('itemName')">
-                            Item <span class="sort-icon" [class.active]="sortColumn === 'itemName'">{{ sortIcon('itemName') }}</span>
+                            Item <span class="sort-icon" [class.active]="sortColumn === 'itemName'">{{
+                                sortIcon('itemName') }}</span>
                         </th>
 
                         <th class="sortable" (click)="sortBy('itemCode')">
-                            Item Code <span class="sort-icon" [class.active]="sortColumn === 'itemCode'">{{ sortIcon('itemCode') }}</span>
+                            Item Code <span class="sort-icon" [class.active]="sortColumn === 'itemCode'">{{
+                                sortIcon('itemCode') }}</span>
                         </th>
 
                         <th class="sortable" (click)="sortBy('imei')">
-                            IMEI <span class="sort-icon" [class.active]="sortColumn === 'imei'">{{ sortIcon('imei') }}</span>
+                            IMEI <span class="sort-icon" [class.active]="sortColumn === 'imei'">{{ sortIcon('imei')
+                                }}</span>
                         </th>
 
                         <th class="num sortable" (click)="sortBy('transferQty')">
-                            Qty <span class="sort-icon" [class.active]="sortColumn === 'transferQty'">{{ sortIcon('transferQty') }}</span>
+                            Transfer Qty
+                            <span class="sort-icon" [class.active]="sortColumn === 'transferQty'">
+                                {{ sortIcon('transferQty') }}
+                            </span>
                         </th>
 
+                        <th class="num sortable" (click)="sortBy('acceptedQty')">
+                            Accepted Qty
+                            <span class="sort-icon" [class.active]="sortColumn === 'acceptedQty'">
+                                {{ sortIcon('acceptedQty') }}
+                            </span>
+                        </th>
                         <th class="sortable" (click)="sortBy('transferOutByName')">
-                            Transferred By <span class="sort-icon" [class.active]="sortColumn === 'transferOutByName'">{{ sortIcon('transferOutByName') }}</span>
+                            Transferred By <span class="sort-icon"
+                                [class.active]="sortColumn === 'transferOutByName'">{{ sortIcon('transferOutByName')
+                                }}</span>
                         </th>
 
                         <th class="sortable" (click)="sortBy('transferInTime')">
-                            Transfer In Time <span class="sort-icon" [class.active]="sortColumn === 'transferInTime'">{{ sortIcon('transferInTime') }}</span>
+                            Transfer In Time <span class="sort-icon" [class.active]="sortColumn === 'transferInTime'">{{
+                                sortIcon('transferInTime') }}</span>
                         </th>
 
                         <th class="sortable" (click)="sortBy('inwardDoneByName')">
-                            Received By <span class="sort-icon" [class.active]="sortColumn === 'inwardDoneByName'">{{ sortIcon('inwardDoneByName') }}</span>
+                            Received By <span class="sort-icon" [class.active]="sortColumn === 'inwardDoneByName'">{{
+                                sortIcon('inwardDoneByName') }}</span>
                         </th>
 
                         <th class="sortable" (click)="sortBy('transferDuration')">
-                            Duration <span class="sort-icon" [class.active]="sortColumn === 'transferDuration'">{{ sortIcon('transferDuration') }}</span>
+                            Duration <span class="sort-icon" [class.active]="sortColumn === 'transferDuration'">{{
+                                sortIcon('transferDuration') }}</span>
                         </th>
                     </tr>
                 </thead>
@@ -292,7 +319,13 @@
 
                         <td class="mono">{{item.imei}}</td>
 
-                        <td class="num">{{item.transferQty}}</td>
+                        <td class="num">
+                            {{ item.transferQty ?? 0 }}
+                        </td>
+
+                        <td class="num">
+                            {{ item.acceptedQty ?? 0 }}
+                        </td>
 
                         <td>{{item.transferOutByName}}</td>
 
@@ -310,8 +343,8 @@
                             {{ selectedCompanyId == 0
                             ? 'Select a company and click Search to view transfer logs'
                             : (transferLogs.length > 0
-                                ? 'No records match the selected Logistics Status filter'
-                                : 'No records found for the selected filters') }}
+                            ? 'No records match the selected Logistics Status filter'
+                            : 'No records found for the selected filters') }}
                         </td>
                     </tr>
 

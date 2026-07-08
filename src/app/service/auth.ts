@@ -23,7 +23,7 @@ export class AuthService {
 
     const request = {
       emailId: email,
-      projectName: 'BI Reports'
+      projectName: 'Delivery App'
     };
 
     return this.http.post(
@@ -37,7 +37,7 @@ export class AuthService {
     const request = {
       emailId: email,
       otp: otp,
-      projectName: 'BI Reports'
+      projectName: 'Delivery App'
     };
 
     return this.http.post(

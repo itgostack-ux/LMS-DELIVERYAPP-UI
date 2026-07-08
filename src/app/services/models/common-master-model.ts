@@ -230,8 +230,12 @@ export interface RoleLifecycleMappingView {
 
 export interface TransferStockLogDetail {
 
+  // Company (not always returned by the SP)
+  companyId?: number;
+  companyName?: string;
+acceptedQty?  : number;
+  // Transfer
   transferOrderId: number;
-
   transitID: number;
 
   deliveryNoteNo: string;
@@ -239,25 +243,35 @@ export interface TransferStockLogDetail {
   transferOutDate: string;
   transferOutTime: string;
 
+  // Source
   sourceLocationId: number;
   sourceLocationName: string;
   sourceBranch: string;
+  sourceLocationTypeId?: number;
+  sourceLocationTypeName?: string;
 
+  // Destination
   destinationLocationId: number;
   destinationLocationName: string;
   destinationBranch: string;
+  destinationLocationTypeId?: number;
+  destinationLocationTypeName?: string;
 
+  // Item
   itemCode: string;
   itemName: string;
   imei: string;
 
   transferQty: number;
-
   transferStatus: string;
 
   // Transfer Out User
   transferOutById?: number;
   transferOutByName?: string;
+
+  // Added (API names)
+  transferOutByUserId?: number;
+  transferredOutBy?: string;
 
   // Assigned Driver
   assignedUserId?: number;
@@ -273,6 +287,10 @@ export interface TransferStockLogDetail {
   inwardDoneById?: number;
   inwardDoneByName?: string;
 
+  // Added (API names)
+  inwardDoneByUserId?: number;
+  inwardDoneBy?: string;
+
   transferDuration?: string;
 
   // Lifecycle
@@ -281,10 +299,14 @@ export interface TransferStockLogDetail {
   lifecycleCode: string;
   lifecycleName: string;
 
+  // Logistics
+  logisticsStatus: string;
+
   // Transfer Mode
   transferModeId: number;
   transferModeName: string;
 
+  // Remarks
   remarks?: string;
 
   // Audit
@@ -298,18 +320,30 @@ export interface TransferStockLogDetail {
   modifiedByName?: string;
   modifiedDate?: string;
 
-  // UI Only
-  logisticsStatus: string;
-  selected: boolean;
-
+  // Other Party
   otherPartyType?: string;
   otherPartyName?: string;
   vehicleNo?: string;
+
+  // Pickup Manifest
+  pickupManifestId?: number;
+  pickupManifestNo?: string;
+
+  // Location Type
+  locationTypeId?: number;
+  locationTypeName?: string;
+
+  // UI Only
+  selected: boolean;
 
   deliveryLifecycles?: DeliveryLifecycle[];
   currentLifecycle?: DeliveryLifecycle;
 }
 export interface DeliveryOrderTransaction {
+
+  // Company
+  companyId?: number;
+  companyName?: string;
 
   transferOrderId: number;
 
@@ -373,6 +407,16 @@ export interface DeliveryOrderTransaction {
   modifiedBy?: number;
   modifiedByName?: string;
   modifiedDate?: string;
+
+  pickupManifestId?: number;
+  pickupManifestNo?: string;
+
+  locationTypeId?: number;
+  locationTypeName?: string;
+  sourceLocationTypeId?: number;
+  sourceLocationTypeName?: string;
+  destinationLocationTypeId?: number;
+  destinationLocationTypeName?: string;
 }
 
 export interface TransferMode {

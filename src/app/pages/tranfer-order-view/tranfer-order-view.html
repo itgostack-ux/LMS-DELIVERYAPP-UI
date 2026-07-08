@@ -35,6 +35,16 @@
         <div class="toolbar">
 
             <div class="field">
+                <label>Company</label>
+                <select [(ngModel)]="selectedCompanyId" (change)="onFilterChange()">
+                    <option [ngValue]="0">All Companies</option>
+                    <option *ngFor="let c of companies" [ngValue]="c.id">
+                        {{c.name}}
+                    </option>
+                </select>
+            </div>
+
+            <div class="field">
                 <label>Source Location</label>
                 <select [(ngModel)]="selectedSourceId" (change)="onFilterChange()">
                     <option [ngValue]="0">All Sources</option>
@@ -104,6 +114,7 @@
                         <th>S.No</th>
                         <th>Manifest No</th>
                         <th>Transfer Date</th>
+                        <th>Company</th>
                         <th>Source</th>
                         <th>Destination</th>
                         <th>Items</th>
@@ -134,6 +145,8 @@
                             <td class="mono">{{group.manifestNo}}</td>
 
                             <td>{{group.transferOutDate | date:'dd-MM-yyyy'}}</td>
+
+                            <td>{{group.companyName || '-'}}</td>
 
                             <td>{{group.sourceLocationName}}</td>
 
@@ -166,7 +179,7 @@
 
                         <!-- ===== Expanded manifest panel ===== -->
                         <tr *ngIf="isExpanded(group)" class="track-row">
-                            <td colspan="11">
+                            <td colspan="13">
 
                                 <div class="track-panel">
 
@@ -175,6 +188,9 @@
                                         <div class="route-point">
                                             <div class="route-label">From</div>
                                             <div class="route-name">{{group.sourceLocationName}}</div>
+                                            <div class="route-sub" *ngIf="group.sourceLocationTypeName">
+                                                {{group.sourceLocationTypeName}}
+                                            </div>
                                             <div class="route-sub">
                                                 {{group.transferOutTime | date:'dd-MM-yyyy HH:mm'}}
                                             </div>
@@ -185,6 +201,9 @@
                                         <div class="route-point right">
                                             <div class="route-label">To</div>
                                             <div class="route-name">{{group.destinationLocationName}}</div>
+                                            <div class="route-sub" *ngIf="group.destinationLocationTypeName">
+                                                {{group.destinationLocationTypeName}}
+                                            </div>
                                             <div class="route-sub">
                                                 {{ group.transferInTime
                                                     ? (group.transferInTime | date:'dd-MM-yyyy HH:mm')
@@ -215,6 +234,11 @@
                                     <!-- Manifest details -->
                                     <div class="detail-grid">
 
+                                        <div class="detail" *ngIf="group.companyName">
+                                            <span class="detail-label">Company</span>
+                                            <span class="detail-value">{{group.companyName}}</span>
+                                        </div>
+
                                         <div class="detail" *ngIf="group.manifestNo">
                                             <span class="detail-label">Manifest No</span>
                                             <span class="detail-value mono">{{group.manifestNo}}</span>
@@ -228,6 +252,21 @@
                                         <div class="detail" *ngIf="group.status">
                                             <span class="detail-label">Manifest Status</span>
                                             <span class="detail-value">{{group.status}}</span>
+                                        </div>
+
+                                        <div class="detail" *ngIf="group.sourceLocationTypeName">
+                                            <span class="detail-label">Source Location Type</span>
+                                            <span class="detail-value">{{group.sourceLocationTypeName}}</span>
+                                        </div>
+
+                                        <div class="detail" *ngIf="group.destinationLocationTypeName">
+                                            <span class="detail-label">Destination Location Type</span>
+                                            <span class="detail-value">{{group.destinationLocationTypeName}}</span>
+                                        </div>
+
+                                        <div class="detail" *ngIf="group.locationTypeName">
+                                            <span class="detail-label">Location Type</span>
+                                            <span class="detail-value">{{group.locationTypeName}}</span>
                                         </div>
 
                                         <div class="detail" *ngIf="group.receiverUserName">
@@ -309,17 +348,16 @@
                                                     </tr>
                                                 </thead>
 
-                                                <tbody>
-                                                    <tr *ngFor="let item of group.orders; trackBy: trackByTransitId">
-                                                        <td class="mono">{{item.transitID}}</td>
-                                                        <td>{{item.deliveryNoteNo}}</td>
-                                                        <td class="mono">{{item.itemCode}}</td>
-                                                        <td class="item-name">{{item.itemName}}</td>
-                                                        <td class="mono">{{item.imei}}</td>
-                                                        <td>{{item.transferQty}}</td>
-                                                    </tr>
-                                                </tbody>
-
+                                             <tbody>
+    <tr *ngFor="let item of group.orders; trackBy: trackByTransitId">
+        <td class="mono">{{item.transitID}}</td>
+        <td>{{item.deliveryNoteNo}}</td>
+        <td class="mono">{{item.itemCode}}</td>
+        <td class="item-name">{{item.itemName}}</td>
+        <td class="mono">{{item.imei}}</td>
+        <td>{{item.transferQty}}</td>
+    </tr>
+</tbody>
                                             </table>
                                         </div>
 
@@ -333,7 +371,7 @@
                     </ng-container>
 
                     <tr *ngIf="filteredGroups.length == 0">
-                        <td colspan="11" class="empty">
+                        <td colspan="13" class="empty">
                             {{ manifestGroups.length == 0
                                 ? 'No transfer manifests found'
                                 : 'No manifests match the selected filters' }}

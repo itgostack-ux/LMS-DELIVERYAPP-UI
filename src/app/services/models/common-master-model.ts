@@ -233,7 +233,7 @@ export interface TransferStockLogDetail {
   // Company (not always returned by the SP)
   companyId?: number;
   companyName?: string;
-acceptedQty?  : number;
+  acceptedQty?: number;
   // Transfer
   transferOrderId: number;
   transitID: number;
@@ -539,4 +539,9 @@ export interface TransferManifestResponse {
 
   // UI only
   selected?: boolean;
+  sourceLocationTypeId?: number;
+  sourceLocationTypeName?: string;
+  destinationLocationTypeId?: number;
+  destinationLocationTypeName?: string;
+
 }

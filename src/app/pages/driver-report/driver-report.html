@@ -38,9 +38,17 @@
         </div>
     </div>
 
-    <!-- ===== Filters: Status / Source / Destination + search + refresh ===== -->
+    <!-- ===== Filters: Company / Status / Source / Destination + search + refresh ===== -->
     <div class="card toolbar-card">
         <div class="toolbar">
+
+            <div class="field">
+                <label>Company</label>
+                <select [(ngModel)]="companyFilter">
+                    <option value="ALL">All Companies</option>
+                    <option *ngFor="let c of companyOptions" [value]="c">{{c}}</option>
+                </select>
+            </div>
 
             <div class="field">
                 <label>Order Status</label>
@@ -114,6 +122,7 @@
                 <thead>
                     <tr>
                         <th class="num">#</th>
+                        <th>Company</th>
                         <th>Manifest No</th>
                         <th>Transit ID</th>
                         <th>Source Location</th>
@@ -126,6 +135,7 @@
                 <tbody>
                     <tr *ngFor="let row of filteredRows; let i = index">
                         <td class="num">{{i + 1}}</td>
+                        <td>{{row.companyName || '—'}}</td>
                         <td class="mono">{{row.manifestNo}}</td>
                         <td class="mono">{{row.transitID}}</td>
                         <td>{{row.sourceLocationName}}</td>
@@ -139,8 +149,6 @@
                         </td>
                     </tr>
                 </tbody>
-
-                
 
             </table>
         </div>

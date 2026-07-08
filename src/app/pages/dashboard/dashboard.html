@@ -74,52 +74,7 @@
 
         </div>
 
-        <!-- ===== Recent manifests ===== -->
-        <div class="panel">
-
-            <div class="panel-title">
-                <i class="fa-solid fa-clipboard-list"></i>
-                Recent Manifests
-            </div>
-
-            <div class="panel-empty" *ngIf="recentManifests.length === 0">
-                No manifests found.
-            </div>
-
-            <div class="table-wrap" *ngIf="recentManifests.length > 0">
-                <table>
-
-                    <thead>
-                        <tr>
-                            <th>Manifest No</th>
-                            <th>Assigned To</th>
-                            <th>Receiver</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-
-                        <tr *ngFor="let m of recentManifests">
-                            <td class="mono">{{m.manifestNo || ('#' + m.manifestId)}}</td>
-                            <td>{{m.assignedUserName || '—'}}</td>
-                            <td>{{m.receiverUserName || '—'}}</td>
-                            <td>
-                                <span class="status-pill"
-                                    [style.background]="getStatusColor(m.lifecycleCode)">
-                                    {{m.lifecycleName}}
-                                </span>
-                            </td>
-                            <td>{{m.manifestDate | date:'dd MMM yyyy, hh:mm a'}}</td>
-                        </tr>
-
-                    </tbody>
-
-                </table>
-            </div>
-
-        </div>
+   
 
     </ng-container>
 

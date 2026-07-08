@@ -16,9 +16,9 @@ interface StatCard {
 }
 
 // Flat report - one row per manifest order. No manifest grouping / no details.
-// Columns: Transit ID, Source Location, Destination Location, Qty, Status,
-// Assigned User Name.
-// Filters: Order Status, Source Location, Destination Location, plus a
+// Columns: Company, Transit ID, Source Location, Destination Location, Qty,
+// Status, Assigned User Name.
+// Filters: Company, Order Status, Source Location, Destination Location, plus a
 // free-text search.
 @Component({
   selector: 'app-driver-report',
@@ -47,6 +47,7 @@ export class DriverReport implements OnInit {
   // ===== Filters =====
   searchText = '';
   statusFilter = 'ALL';        // lifecycleCode or 'ALL'
+  companyFilter = 'ALL';       // companyName or 'ALL'
   sourceFilter = 'ALL';        // sourceLocationName or 'ALL'
   destinationFilter = 'ALL';   // destinationLocationName or 'ALL'
 
@@ -120,6 +121,10 @@ export class DriverReport implements OnInit {
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 
+  get companyOptions(): string[] {
+    return this.distinctValues(r => r.companyName);
+  }
+
   get sourceOptions(): string[] {
     return this.distinctValues(r => r.sourceLocationName);
   }
@@ -154,6 +159,13 @@ export class DriverReport implements OnInit {
       }
 
       if (
+        this.companyFilter !== 'ALL' &&
+        (r.companyName ?? '') !== this.companyFilter
+      ) {
+        return false;
+      }
+
+      if (
         this.sourceFilter !== 'ALL' &&
         (r.sourceLocationName ?? '') !== this.sourceFilter
       ) {
@@ -169,6 +181,7 @@ export class DriverReport implements OnInit {
 
       if (search) {
         const haystack = [
+          r.companyName,
           r.manifestNo,
           r.transitID,
           r.sourceLocationName,
@@ -224,6 +237,7 @@ export class DriverReport implements OnInit {
   clearFilters(): void {
     this.searchText = '';
     this.statusFilter = 'ALL';
+    this.companyFilter = 'ALL';
     this.sourceFilter = 'ALL';
     this.destinationFilter = 'ALL';
   }
@@ -233,12 +247,13 @@ export class DriverReport implements OnInit {
   exportToExcel(): void {
 
     const headers = [
-      'S.No', 'Manifest No', 'Transit ID', 'Source Location',
+      'S.No', 'Company', 'Manifest No', 'Transit ID', 'Source Location',
       'Destination Location', 'Assigned User', 'Status', 'Qty'
     ];
 
     const dataRows = this.filteredRows.map((r, i) => [
       i + 1,
+      r.companyName ?? '',
       r.manifestNo ?? '',
       r.transitID ?? '',
       r.sourceLocationName ?? '',
@@ -248,7 +263,7 @@ export class DriverReport implements OnInit {
       r.transferQty ?? 0
     ]);
 
-    const totalRow = ['', '', '', '', '', '', 'Total', this.totalQty];
+    const totalRow = ['', '', '', '', '', '', '', 'Total', this.totalQty];
 
     const csv = [headers, ...dataRows, totalRow]
       .map(row => row.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
@@ -268,8 +283,8 @@ export class DriverReport implements OnInit {
 
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
-    const headers = ['#', 'Manifest No', 'Transit ID', 'Source Location', 'Destination Location', 'Assigned User', 'Status', 'Qty'];
-    const colWidths = [10, 38, 22, 42, 42, 38, 32, 14];
+    const headers = ['#', 'Company', 'Manifest No', 'Transit ID', 'Source Location', 'Destination Location', 'Assigned User', 'Status', 'Qty'];
+    const colWidths = [8, 34, 32, 20, 40, 40, 34, 28, 12];
     const rowH = 8;
     const startX = 8;
     let y = 28;
@@ -313,6 +328,7 @@ export class DriverReport implements OnInit {
 
       const row = [
         (idx + 1).toString(),
+        r.companyName ?? '',
         r.manifestNo ?? '',
         (r.transitID ?? '').toString(),
         r.sourceLocationName ?? '',
@@ -346,7 +362,7 @@ export class DriverReport implements OnInit {
     doc.setDrawColor(226, 232, 240);
     doc.setTextColor(30, 27, 138);
     x = startX;
-    const totalCells = ['', '', '', '', '', '', 'Total', this.totalQty.toString()];
+    const totalCells = ['', '', '', '', '', '', '', 'Total', this.totalQty.toString()];
     totalCells.forEach((cell, i) => {
       doc.rect(x, y, colWidths[i], rowH, 'FD');
       doc.text(cell, x + 2, y + 5.2);

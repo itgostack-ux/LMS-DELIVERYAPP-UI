@@ -114,6 +114,45 @@
   font-weight: 600;
 }
 
+/* ===== Filters ===== */
+
+.dash-filters {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 180px;
+}
+
+.filter-field label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #6b7280;
+}
+
+.filter-field select {
+  padding: 9px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13.5px;
+  color: #1f2937;
+  cursor: pointer;
+}
+
+.filter-field select:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
 /* ===== KPI tiles ===== */
 
 .stat-grid {
@@ -212,16 +251,6 @@
   color: #2563eb;
 }
 
-.panel-empty {
-  padding: 24px;
-  text-align: center;
-  color: #64748b;
-  font-size: 14px;
-  background: #f8fafc;
-  border: 1px dashed #cbd5e1;
-  border-radius: 10px;
-}
-
 /* ===== Status strip ===== */
 
 .status-strip {
@@ -259,59 +288,6 @@
   font-weight: 800;
 }
 
-/* ===== Recent manifests table ===== */
-
-.table-wrap {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13.5px;
-}
-
-thead th {
-  text-align: left;
-  padding: 10px 14px;
-  background: #f8fafc;
-  color: #475569;
-  font-weight: 700;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  border-bottom: 1px solid #e2e8f0;
-  white-space: nowrap;
-}
-
-tbody td {
-  padding: 11px 14px;
-  border-bottom: 1px solid #f1f5f9;
-  color: #1e293b;
-  vertical-align: middle;
-}
-
-tbody tr:hover {
-  background: #f8fafc;
-}
-
-.mono {
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-  font-size: 12.5px;
-  color: #334155;
-  font-weight: 600;
-}
-
-.status-pill {
-  display: inline-block;
-  padding: 3px 12px;
-  border-radius: 999px;
-  font-size: 11.5px;
-  font-weight: 700;
-  color: #fff;
-  white-space: nowrap;
-}
-
 /* ===== Responsive ===== */
 
 @media (max-width: 992px) {
@@ -336,6 +312,10 @@ tbody tr:hover {
   .btn-refresh {
     width: 100%;
     justify-content: center;
+  }
+
+  .filter-field {
+    min-width: 100%;
   }
 
 }

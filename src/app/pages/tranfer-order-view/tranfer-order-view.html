@@ -348,16 +348,17 @@
                                                     </tr>
                                                 </thead>
 
-                                             <tbody>
-    <tr *ngFor="let item of group.orders; trackBy: trackByTransitId">
-        <td class="mono">{{item.transitID}}</td>
-        <td>{{item.deliveryNoteNo}}</td>
-        <td class="mono">{{item.itemCode}}</td>
-        <td class="item-name">{{item.itemName}}</td>
-        <td class="mono">{{item.imei}}</td>
-        <td>{{item.transferQty}}</td>
-    </tr>
-</tbody>
+                                                <tbody>
+                                                    <tr *ngFor="let item of group.orders; trackBy: trackByTransitId">
+                                                        <td class="mono">{{item.transitID}}</td>
+                                                        <td>{{item.deliveryNoteNo}}</td>
+                                                        <td class="mono">{{item.itemCode}}</td>
+                                                        <td class="item-name">{{item.itemName}}</td>
+                                                        <td class="mono">{{item.imei}}</td>
+                                                        <td>{{item.transferQty}}</td>
+                                                    </tr>
+                                                </tbody>
+
                                             </table>
                                         </div>
 

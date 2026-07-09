@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
@@ -19,18 +20,10 @@ interface StatCard {
   route?: string;     // optional click-through
 }
 
-// One status pill in the lifecycle breakdown strip
-interface StatusCount {
-  code: string;
-  name: string;
-  color: string;
-  count: number;
-}
-
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
@@ -45,17 +38,22 @@ export class Dashboard implements OnInit {
 
   today = new Date();
 
-  // KPI tiles for the current role
+  // KPI tiles for the current role (one card per lifecycle status)
   statCards: StatCard[] = [];
 
-  // Lifecycle status breakdown (built dynamically from the lifecycle master,
-  // so a new status added in the DB shows up here automatically)
-  statusCounts: StatusCount[] = [];
+  // ===== Filters (built from the loaded rows, same for all roles) =====
+  companies: { id: number; name: string }[] = [];
+  locations: { id: number; name: string }[] = [];      // source locations
+  locationTypes: { id: number; name: string }[] = [];
 
-  // Latest manifests table (driver sees only their own)
-  recentManifests: TransferManifestResponse[] = [];
+  selectedCompanyId = 0;
+  selectedLocationId = 0;
+  selectedLocationTypeId = 0;
 
   private lifecycles: DeliveryLifecycle[] = [];
+
+  // Raw (role-scoped) rows kept so filters re-run without re-fetching
+  private allRows: TransferManifestResponse[] = [];
 
   constructor(
     private logisticsService: LogisticsService,
@@ -95,7 +93,7 @@ export class Dashboard implements OnInit {
     }
   }
 
-  // ===== Load role, then all dashboard data in parallel =====
+  // ===== Load role, then manifests + lifecycles in parallel =====
 
   private loadDashboard(): void {
 
@@ -130,36 +128,27 @@ export class Dashboard implements OnInit {
 
   private loadCounts(): void {
 
-    const isAdmin = this.roleName === 'Logistics Admin';
-
     forkJoin({
-
-      lifecycles: this.logisticsService.getDeliveryLifecycles(),
-
       manifests: this.logisticsService.getManifestOrders(),
-
-      companies: isAdmin
-        ? this.logisticsService.getCompanies()
-        : this.logisticsService.getUsers(), // placeholder stream, ignored for non-admin
-
-      users: this.logisticsService.getUsers()
-
+      lifecycles: this.logisticsService.getDeliveryLifecycles()
     }).subscribe({
 
-      next: ({ lifecycles, manifests, companies, users }) => {
+      next: ({ manifests, lifecycles }) => {
 
         this.lifecycles = (lifecycles ?? []).sort(
           (a, b) => a.sequenceNo - b.sequenceNo
         );
 
-        // Delivery Executive only sees their own manifests
-        const rows = this.roleName === 'Delivery Executive'
-          ? manifests.filter(r => r.assignedUserId === this.userId)
-          : manifests;
+        // Delivery Executive only sees rows where they are the assigned user
+        // (logged-in userId === row.assignedUserId).
+        const scoped = this.roleName === 'Delivery Executive'
+          ? (manifests ?? []).filter(r => r.assignedUserId === this.userId)
+          : (manifests ?? []);
 
-        this.buildStatusCounts(rows);
-        this.buildStatCards(rows, companies?.length ?? 0, users?.length ?? 0);
-        this.buildRecentManifests(rows);
+        this.allRows = scoped;
+
+        this.buildFilterOptions(scoped);
+        this.applyFilters();   // builds cards from the filtered rows
 
         this.loading = false;
 
@@ -175,123 +164,104 @@ export class Dashboard implements OnInit {
 
   }
 
-  // ===== Counting helpers =====
+  // ===== Filters =====
 
-  // Distinct manifest numbers under a given status
-  private manifestCount(rows: TransferManifestResponse[], statusCode: string): number {
-    const set = new Set(
-      rows
-        .filter(r => r.lifecycleCode === statusCode)
-        .map(r => (r.manifestNo || `#${r.manifestId}`).trim())
-    );
-    return set.size;
+  // Distinct company / location / location-type options present in the data.
+  // "Location" here is the SOURCE location — swap sourceLocationId/Name for
+  // destinationLocationId/Name below if you want to filter by destination.
+  private buildFilterOptions(rows: TransferManifestResponse[]): void {
+
+    const companyMap = new Map<number, string>();
+    const locationMap = new Map<number, string>();
+    const locTypeMap = new Map<number, string>();
+
+    for (const r of rows) {
+
+      if (r.companyId) {
+        companyMap.set(r.companyId, r.companyName || `Company ${r.companyId}`);
+      }
+
+      if (r.sourceLocationId) {
+        locationMap.set(
+          r.sourceLocationId,
+          r.sourceLocationName || `Location ${r.sourceLocationId}`
+        );
+      }
+
+      if (r.locationTypeId) {
+        locTypeMap.set(r.locationTypeId, r.locationTypeName || `Type ${r.locationTypeId}`);
+      }
+
+    }
+
+    this.companies = [...companyMap.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    this.locations = [...locationMap.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    this.locationTypes = [...locTypeMap.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
   }
+
+  // Re-runs whenever any filter dropdown changes
+  applyFilters(): void {
+
+    let rows = this.allRows;
+
+    if (this.selectedCompanyId !== 0) {
+      rows = rows.filter(r => r.companyId === this.selectedCompanyId);
+    }
+
+    if (this.selectedLocationId !== 0) {
+      rows = rows.filter(r => r.sourceLocationId === this.selectedLocationId);
+    }
+
+    if (this.selectedLocationTypeId !== 0) {
+      rows = rows.filter(r => r.locationTypeId === this.selectedLocationTypeId);
+    }
+
+    this.buildStatCards(rows);
+
+  }
+
+  // ===== Counting helpers =====
 
   // Order-level count for a status
   private orderCount(rows: TransferManifestResponse[], statusCode: string): number {
     return rows.filter(r => r.lifecycleCode === statusCode).length;
   }
 
-  private isFinalCode(code: string): boolean {
-    const lc = this.lifecycles.find(l => l.statusCode === code);
-    return !!lc && !lc.nextStatusCode;
-  }
+  // One KPI card per lifecycle status, in sequence order, using each status's
+  // own color from the master — a new status added in the DB appears
+  // automatically. Same set of cards for every role.
+  private buildStatCards(rows: TransferManifestResponse[]): void {
 
-  // One pill per lifecycle status, in sequence order, with live order counts
-  private buildStatusCounts(rows: TransferManifestResponse[]): void {
+    const icons: Record<string, string> = {
+      OPEN: 'fa-solid fa-folder-open',
+      PICKUP_READY: 'fa-solid fa-box-open',
+      PICKUP_ASSIGNED: 'fa-solid fa-user-check',
+      PICKED_UP: 'fa-solid fa-box',
+      DELIVERED: 'fa-solid fa-circle-check'
+    };
 
-    this.statusCounts = this.lifecycles.map(l => ({
-      code: l.statusCode,
-      name: l.statusName,
-      color: l.colorCode || '#6B7280',
-      count: this.orderCount(rows, l.statusCode)
+    const route = this.roleName === 'Delivery Executive'
+      ? '/driver-console'
+      : (this.roleName === 'Logistics Manager' || this.roleName === 'Logistics Admin')
+        ? '/operations'
+        : undefined;
+
+    this.statCards = this.lifecycles.map(l => ({
+      label: l.statusName,
+      value: this.orderCount(rows, l.statusCode),
+      icon: icons[l.statusCode] || 'fa-solid fa-circle-dot',
+      color: l.colorCode || '#2563eb',
+      route
     }));
-
-  }
-
-  private buildStatCards(
-    rows: TransferManifestResponse[],
-    companyCount: number,
-    userCount: number
-  ): void {
-
-    const deliveredOrders = rows.filter(r => this.isFinalCode(r.lifecycleCode)).length;
-    const pendingOrders = rows.length - deliveredOrders;
-
-    const assignedManifests = new Set(
-      rows
-        .filter(r => !this.isFinalCode(r.lifecycleCode))
-        .map(r => (r.manifestNo || `#${r.manifestId}`).trim())
-    ).size;
-
-    if (this.roleName === 'Logistics Admin') {
-
-      this.statCards = [
-        { label: 'Total Companies', value: companyCount, icon: 'fa-solid fa-building', color: '#2563eb', route: '/master-management' },
-        { label: 'Total Users', value: userCount, icon: 'fa-solid fa-users', color: '#7c3aed', route: '/administration' },
-        { label: 'Pending Orders', value: pendingOrders, icon: 'fa-solid fa-truck-fast', color: '#f59e0b', route: '/operations' },
-        { label: 'Delivered', value: deliveredOrders, icon: 'fa-solid fa-circle-check', color: '#16a34a', route: '/track-orders' }
-      ];
-
-    }
-    else if (this.roleName === 'Logistics Manager') {
-
-      this.statCards = [
-        { label: 'Pickup Assigned', value: this.orderCount(rows, 'PICKUP_ASSIGNED'), icon: 'fa-solid fa-user-check', color: '#2563eb', route: '/operations' },
-        { label: 'Picked Up', value: this.orderCount(rows, 'PICKED_UP'), icon: 'fa-solid fa-box', color: '#f59e0b', route: '/operations' },
-        { label: 'Delivered', value: deliveredOrders, icon: 'fa-solid fa-circle-check', color: '#16a34a', route: '/track-orders' },
-        { label: 'Pending Orders', value: pendingOrders, icon: 'fa-solid fa-clock', color: '#dc2626', route: '/operations' }
-      ];
-
-    }
-    else if (this.roleName === 'Delivery Executive') {
-
-      this.statCards = [
-        { label: 'Assigned Manifests', value: assignedManifests, icon: 'fa-solid fa-clipboard-list', color: '#2563eb', route: '/driver-console' },
-        { label: 'Picked Up', value: this.orderCount(rows, 'PICKED_UP'), icon: 'fa-solid fa-box', color: '#f59e0b', route: '/driver-console' },
-        { label: 'Delivered', value: deliveredOrders, icon: 'fa-solid fa-circle-check', color: '#16a34a', route: '/track-orders' },
-        { label: 'Pending Orders', value: pendingOrders, icon: 'fa-solid fa-clock', color: '#dc2626', route: '/driver-console' }
-      ];
-
-    }
-    else {
-
-      // Unknown role — show a generic overview instead of a blank page
-      this.statCards = [
-        { label: 'Total Orders', value: rows.length, icon: 'fa-solid fa-boxes-stacked', color: '#2563eb' },
-        { label: 'Pending Orders', value: pendingOrders, icon: 'fa-solid fa-clock', color: '#f59e0b' },
-        { label: 'Delivered', value: deliveredOrders, icon: 'fa-solid fa-circle-check', color: '#16a34a' }
-      ];
-
-    }
-
-  }
-
-  // Latest 5 manifests (distinct manifest numbers, newest date first)
-  private buildRecentManifests(rows: TransferManifestResponse[]): void {
-
-    const seen = new Set<string>();
-    const distinct: TransferManifestResponse[] = [];
-
-    const sorted = [...rows].sort((a, b) => {
-      const da = a.manifestDate ? new Date(a.manifestDate).getTime() : 0;
-      const db = b.manifestDate ? new Date(b.manifestDate).getTime() : 0;
-      return db - da;
-    });
-
-    for (const row of sorted) {
-      const no = (row.manifestNo || `#${row.manifestId}`).trim();
-      if (seen.has(no)) {
-        continue;
-      }
-      seen.add(no);
-      distinct.push(row);
-      if (distinct.length === 5) {
-        break;
-      }
-    }
-
-    this.recentManifests = distinct;
 
   }
 

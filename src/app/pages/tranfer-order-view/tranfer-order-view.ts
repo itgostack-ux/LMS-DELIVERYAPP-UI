@@ -61,6 +61,13 @@ export interface ManifestGroup {
   companyId: number;
   companyName: string;
 
+  // Source / Destination location types
+  sourceLocationTypeId: number | null;
+  sourceLocationTypeName: string;
+
+  destinationLocationTypeId: number | null;
+  destinationLocationTypeName: string;
+
   locationTypeId: number;
   locationTypeName: string;
 
@@ -92,12 +99,14 @@ export class TranferOrderView implements OnInit {
   loading = false;
 
   // ===== Filter selections =====
+  selectedCompanyId = 0;
   selectedSourceId = 0;
   selectedDestinationId = 0;
   selectedLifecycleCode = '';
   searchText = '';
 
   // ===== Filter dropdown options (built from loaded data) =====
+  companies: { id: number; name: string }[] = [];
   sourceLocations: { id: number; name: string }[] = [];
   destinationLocations: { id: number; name: string }[] = [];
 
@@ -225,6 +234,12 @@ export class TranferOrderView implements OnInit {
           companyId: r.companyId,
           companyName: r.companyName,
 
+          sourceLocationTypeId: r.sourceLocationTypeId ?? null,
+          sourceLocationTypeName: r.sourceLocationTypeName ?? '',
+
+          destinationLocationTypeId: r.destinationLocationTypeId ?? null,
+          destinationLocationTypeName: r.destinationLocationTypeName ?? '',
+
           locationTypeId: r.locationTypeId,
           locationTypeName: r.locationTypeName,
 
@@ -263,13 +278,18 @@ export class TranferOrderView implements OnInit {
 
   }
 
-  // Distinct source / destination locations from the loaded data
+  // Distinct company / source / destination options from the loaded data
   private buildFilterOptions(): void {
 
+    const companyMap = new Map<number, string>();
     const sourceMap = new Map<number, string>();
     const destMap = new Map<number, string>();
 
     for (const g of this.manifestGroups) {
+
+      if (g.companyId && !companyMap.has(g.companyId)) {
+        companyMap.set(g.companyId, g.companyName ?? '');
+      }
 
       if (g.sourceLocationId && !sourceMap.has(g.sourceLocationId)) {
         sourceMap.set(g.sourceLocationId, g.sourceLocationName ?? '');
@@ -280,6 +300,9 @@ export class TranferOrderView implements OnInit {
       }
 
     }
+
+    this.companies = Array.from(companyMap, ([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
 
     this.sourceLocations = Array.from(sourceMap, ([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -296,6 +319,11 @@ export class TranferOrderView implements OnInit {
     const search = this.searchText.trim().toLowerCase();
 
     return this.manifestGroups.filter(g => {
+
+      if (this.selectedCompanyId !== 0 &&
+          g.companyId !== this.selectedCompanyId) {
+        return false;
+      }
 
       if (this.selectedSourceId !== 0 &&
           g.sourceLocationId !== this.selectedSourceId) {
@@ -347,6 +375,7 @@ export class TranferOrderView implements OnInit {
   }
 
   clearFilters(): void {
+    this.selectedCompanyId = 0;
     this.selectedSourceId = 0;
     this.selectedDestinationId = 0;
     this.selectedLifecycleCode = '';
@@ -355,7 +384,8 @@ export class TranferOrderView implements OnInit {
   }
 
   get hasActiveFilters(): boolean {
-    return this.selectedSourceId !== 0
+    return this.selectedCompanyId !== 0
+      || this.selectedSourceId !== 0
       || this.selectedDestinationId !== 0
       || this.selectedLifecycleCode !== ''
       || this.searchText.trim() !== '';
@@ -505,8 +535,10 @@ export class TranferOrderView implements OnInit {
   exportToExcel(): void {
 
     const headers = [
-      'S.No', 'Manifest No', 'Transfer Date', 'Source Location',
-      'Destination Location', 'Items', 'Status', 'Transfer Mode',
+      'S.No', 'Manifest No', 'Transfer Date', 'Company',
+      'Source Location', 'Source Location Type',
+      'Destination Location', 'Destination Location Type',
+      'Items', 'Status', 'Transfer Mode',
       'Assigned To', 'OTP', 'AWB Bill No', 'Duration'
     ];
 
@@ -514,8 +546,11 @@ export class TranferOrderView implements OnInit {
       i + 1,
       g.manifestNo ?? '',
       g.transferOutDate ? new Date(g.transferOutDate as any).toLocaleDateString('en-GB') : '',
+      g.companyName ?? '',
       g.sourceLocationName ?? '',
+      g.sourceLocationTypeName ?? '',
       g.destinationLocationName ?? '',
+      g.destinationLocationTypeName ?? '',
       g.orders.length,
       g.lifecycleName ?? '',
       g.transferModeName ?? '',
@@ -543,8 +578,8 @@ export class TranferOrderView implements OnInit {
 
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
-    const headers = ['#', 'Manifest No', 'Date', 'Source', 'Destination', 'Items', 'Status', 'Mode', 'Assigned To'];
-    const colWidths = [10, 38, 22, 38, 38, 12, 30, 22, 38];
+    const headers = ['#', 'Manifest No', 'Date', 'Company', 'Source', 'Destination', 'Items', 'Status', 'Mode', 'Assigned To'];
+    const colWidths = [8, 34, 20, 34, 34, 34, 11, 28, 20, 34];
     const rowH = 8;
     const startX = 8;
     let y = 28;
@@ -590,6 +625,7 @@ export class TranferOrderView implements OnInit {
         (idx + 1).toString(),
         g.manifestNo ?? '',
         g.transferOutDate ? new Date(g.transferOutDate as any).toLocaleDateString('en-GB') : '',
+        g.companyName ?? '',
         g.sourceLocationName ?? '',
         g.destinationLocationName ?? '',
         g.orders.length.toString(),

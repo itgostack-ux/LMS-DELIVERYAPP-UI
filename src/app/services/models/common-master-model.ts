@@ -545,3 +545,122 @@ export interface TransferManifestResponse {
   destinationLocationTypeName?: string;
 
 }
+
+
+
+export interface DeliveryOrderTimeline {
+
+  //==========================
+  // Delivery Order
+  //==========================
+  transferOrderId: number;
+  transitID?: number;
+
+  deliveryNoteNo?: string;
+
+  transferOutDate?: Date;
+  transferOutTime?: Date;
+
+  itemCode?: string;
+  itemName?: string;
+  imei?: string;
+  transferQty?: number;
+
+  //==========================
+  // Company
+  //==========================
+  companyId?: number;
+  companyName?: string;
+
+  //==========================
+  // Source
+  //==========================
+  sourceLocationId?: number;
+  sourceLocationName?: string;
+  sourceLocationTypeId?: number;
+  sourceLocationTypeName?: string;
+
+  //==========================
+  // Destination
+  //==========================
+  destinationLocationId?: number;
+  destinationLocationName?: string;
+  destinationLocationTypeId?: number;
+  destinationLocationTypeName?: string;
+
+  //==========================
+  // Transfer Details
+  //==========================
+  transferModeId?: number;
+  transferModeName?: string;
+
+  assignedUserId?: number;
+  assignedUserName?: string;
+
+  transferOutById?: number;
+  transferOutByName?: string;
+
+  courierId?: number;
+  courierName?: string;
+
+  awbBillNo?: string;
+
+  transferInTime?: Date;
+
+  inwardDoneById?: number;
+  inwardDoneByName?: string;
+
+  remarks?: string;
+
+  //==========================
+  // Manifest
+  //==========================
+  manifestId?: number;
+  manifestNo?: string;
+
+  manifestAssignedUserId?: number;
+  manifestAssignedUserName?: string;
+
+  receiverUserId?: number;
+  receiverUserName?: string;
+
+  otp?: string;
+
+  manifestDate?: Date;
+
+  //==========================
+  // Lifecycle
+  //==========================
+  lifecycleId: number;
+  sequenceNo: number;
+
+  statusCode: string;
+  statusName: string;
+
+  colorCode?: string;
+  description?: string;
+
+  //==========================
+  // Order Log
+  //==========================
+  orderStatusStartTime?: Date;
+  orderStatusEndTime?: Date;
+  orderDurationMinutes?: number;
+  orderChangedById?: number;
+  orderChangedByName?: string;
+
+  //==========================
+  // Manifest Log
+  //==========================
+  manifestStatusStartTime?: Date;
+  manifestStatusEndTime?: Date;
+  manifestDurationMinutes?: number;
+  manifestChangedById?: number;
+  manifestChangedByName?: string;
+
+  //==========================
+  // Current Status
+  //==========================
+  orderStatus?: string;
+  manifestStatus?: string;
+}

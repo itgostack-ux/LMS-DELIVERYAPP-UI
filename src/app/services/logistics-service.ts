@@ -8,7 +8,8 @@ import {
   DeliveryOrderTransaction, RoleLifecycleMappingView,
   TransferManifestResponse,
 
-  TransferMode, Company, RoleLifecycleMapping, User, Role, TransferManifest, Rolelifecycle
+  TransferMode, Company, RoleLifecycleMapping, User, Role, TransferManifest, Rolelifecycle,
+  DeliveryOrderTimeline
 } from './models/common-master-model';
 @Injectable({
   providedIn: 'root'
@@ -291,5 +292,11 @@ export class LogisticsService {
       }
     );
 
+  }
+
+    getDeliveryOrderTimeline(): Observable<DeliveryOrderTimeline[]> {
+    return this.http.get<DeliveryOrderTimeline[]>(
+      `${this.apiUrl}/delivery-order-timeline`
+    );
   }
 }

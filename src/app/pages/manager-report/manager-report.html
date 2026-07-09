@@ -1,0 +1,498 @@
+<div class="page">
+
+  <!-- ===== Page Header ===== -->
+  <div class="page-header">
+    <div class="page-title">
+      <h2>Manager Report</h2>
+      <span class="page-subtitle">Delivery Order &amp; Manifest Lifecycle Tracker</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn-export btn-excel" (click)="exportToExcel()"
+        [disabled]="loading || filteredRows.length === 0" title="Download Excel (CSV)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/>
+        </svg>
+        Excel
+      </button>
+      <button class="btn-export btn-pdf" (click)="exportToPdf()"
+        [disabled]="loading || filteredRows.length === 0" title="Download PDF">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+        PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== KPI Stat Cards ===== -->
+  <div class="stat-grid" *ngIf="!loading && statCards.length > 0">
+    <div class="stat-card" *ngFor="let card of statCards" [style.--accent]="card.color">
+      <div class="stat-icon"><i [class]="card.icon"></i></div>
+      <div class="stat-info">
+        <span class="stat-label">{{card.label}}</span>
+        <span class="stat-value">{{card.value}}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== View Switcher + Filters ===== -->
+  <div class="card toolbar-card">
+
+    <div class="view-switch">
+      <button class="seg" [class.active]="view === 'pipeline'"  (click)="setView('pipeline')">
+        <i class="fa-solid fa-diagram-project"></i> Pipeline
+      </button>
+      <button class="seg" [class.active]="view === 'lifecycle'" (click)="setView('lifecycle')">
+        <i class="fa-solid fa-timeline"></i> Lifecycle
+      </button>
+      <button class="seg" [class.active]="view === 'manifest'"  (click)="setView('manifest')">
+        <i class="fa-solid fa-clipboard-list"></i> Manifests
+      </button>
+      <button class="seg" [class.active]="view === 'table'"     (click)="setView('table')">
+        <i class="fa-solid fa-table"></i> Table
+      </button>
+
+      <span class="switch-spacer"></span>
+
+      <button class="btn-primary compact" (click)="refresh()" [disabled]="loading" title="Reload">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+        Refresh
+      </button>
+    </div>
+
+    <div class="toolbar">
+      <div class="field">
+        <label>Company</label>
+        <select [(ngModel)]="companyFilter">
+          <option value="ALL">All Companies</option>
+          <option *ngFor="let c of companyOptions" [value]="c">{{c}}</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select [(ngModel)]="statusFilter">
+          <option value="ALL">All Statuses</option>
+          <option *ngFor="let s of statusOptions" [value]="s.code">{{s.name}}</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Source</label>
+        <select [(ngModel)]="sourceFilter">
+          <option value="ALL">All Sources</option>
+          <option *ngFor="let src of sourceOptions" [value]="src">{{src}}</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Destination</label>
+        <select [(ngModel)]="destinationFilter">
+          <option value="ALL">All Destinations</option>
+          <option *ngFor="let dest of destinationOptions" [value]="dest">{{dest}}</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Search</label>
+        <input type="text" placeholder="Transit ID / Item / User / Manifest..." [(ngModel)]="searchText">
+      </div>
+      <button class="btn-secondary" (click)="clearFilters()" [disabled]="!hasActiveFilters">Clear</button>
+    </div>
+  </div>
+
+  <!-- ===== States ===== -->
+  <div *ngIf="loading" class="loading"><span class="spinner"></span> Loading tracker...</div>
+  <div *ngIf="errorMessage" class="hint text-danger">{{errorMessage}}</div>
+  <div *ngIf="!loading && rows.length === 0 && !errorMessage" class="empty-hint">No timeline data found.</div>
+
+  <!-- ================================================================= -->
+  <!--  PIPELINE (KANBAN) VIEW                                            -->
+  <!-- ================================================================= -->
+  <div *ngIf="!loading && rows.length > 0 && view === 'pipeline'">
+    <div class="board-meta">
+      <span><b>{{filteredOrderCards.length}}</b> orders across <b>{{lifecycleStages.length}}</b> stages</span>
+      <span class="dot-sep">•</span>
+      <span>Total Qty <b>{{totalQty}}</b></span>
+    </div>
+
+    <div class="kanban">
+      <div class="kanban-col" *ngFor="let col of pipelineColumns; trackBy: trackByStage">
+        <div class="kanban-head" [style.--accent]="col.stage.color">
+          <span class="stage-dot"></span>
+          <span class="stage-name">{{col.stage.name}}</span>
+          <span class="stage-count">{{col.cards.length}}</span>
+        </div>
+        <div class="kanban-subhead" *ngIf="col.cards.length">Qty {{col.qty}}</div>
+
+        <div class="kanban-body">
+          <div class="order-card" *ngFor="let card of col.cards; trackBy: trackByCard"
+               [style.--accent]="card.color" (click)="openDetail(card)">
+            <div class="oc-top">
+              <span class="oc-transit mono">#{{card.transitID || card.orderId || '—'}}</span>
+              <span class="oc-qty">{{card.qty}}</span>
+            </div>
+            <div class="oc-item" [title]="card.itemName">{{card.itemName || '—'}}</div>
+            <div class="oc-route">
+              <span class="loc">{{card.source || '—'}}</span>
+              <i class="fa-solid fa-arrow-right-long"></i>
+              <span class="loc">{{card.destination || '—'}}</span>
+            </div>
+            <div class="oc-foot">
+              <span class="oc-user" *ngIf="card.assignedUser">
+                <i class="fa-solid fa-user"></i> {{card.assignedUser}}
+              </span>
+              <span class="oc-manifest mono" *ngIf="card.manifestNo">{{card.manifestNo}}</span>
+            </div>
+          </div>
+
+          <div class="kanban-empty" *ngIf="col.cards.length === 0">No orders</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================= -->
+  <!--  LIFECYCLE STEPPER VIEW                                            -->
+  <!-- ================================================================= -->
+  <div *ngIf="!loading && rows.length > 0 && view === 'lifecycle'" class="lifecycle-wrap">
+
+    <div class="card lc-picker">
+      <label class="lc-picker-label">Select Order</label>
+      <select [(ngModel)]="selectedOrderKey">
+        <option *ngFor="let c of filteredOrderCards; trackBy: trackByCard" [value]="c.key">
+          #{{c.transitID || c.orderId}} — {{c.itemName}} ({{c.currentName}})
+        </option>
+      </select>
+    </div>
+
+    <ng-container *ngIf="selectedOrder as order">
+      <div class="card lc-summary">
+        <div class="lc-summary-grid">
+          <div class="lc-kv"><span>Transit ID</span><b class="mono">#{{order.transitID || order.orderId || '—'}}</b></div>
+          <div class="lc-kv"><span>Company</span><b>{{order.companyName || '—'}}</b></div>
+          <div class="lc-kv"><span>Item</span><b>{{order.itemName || '—'}}</b></div>
+          <div class="lc-kv"><span>Qty</span><b>{{order.qty}}</b></div>
+          <div class="lc-kv"><span>Route</span><b>{{order.source || '—'}} → {{order.destination || '—'}}</b></div>
+          <div class="lc-kv"><span>Manifest</span><b class="mono">{{order.manifestNo || '—'}}</b></div>
+          <div class="lc-kv"><span>Assigned</span><b>{{order.assignedUser || '—'}}</b></div>
+          <div class="lc-kv"><span>Total Duration</span><b>{{order.totalDuration}} min</b></div>
+        </div>
+
+        <div class="lc-progress">
+          <div class="lc-progress-bar">
+            <div class="lc-progress-fill" [style.width.%]="progressOf(order)"
+                 [style.background]="order.color"></div>
+          </div>
+          <span class="lc-progress-pct">{{progressOf(order)}}%</span>
+          <span class="status-badge" [style.background]="order.color">{{order.currentName}}</span>
+        </div>
+      </div>
+
+      <!-- Horizontal stepper -->
+      <div class="card lc-stepper-card">
+        <div class="lc-stepper">
+          <div class="lc-step" *ngFor="let step of lifecycleSteps(order)"
+               [class.done]="step.state === 'done'"
+               [class.current]="step.state === 'current'"
+               [class.pending]="step.state === 'pending'"
+               [style.--accent]="step.stage.color">
+            <div class="lc-node">
+              <i class="fa-solid fa-check" *ngIf="step.state === 'done'"></i>
+              <i class="fa-solid fa-location-dot" *ngIf="step.state === 'current'"></i>
+              <span *ngIf="step.state === 'pending'">{{step.stage.order + 1}}</span>
+            </div>
+            <div class="lc-step-name">{{step.stage.name}}</div>
+            <div class="lc-step-meta" *ngIf="step.at">{{step.at | date:'dd/MM HH:mm'}}</div>
+            <div class="lc-step-meta muted" *ngIf="!step.at && step.state === 'pending'">Pending</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detailed history timeline -->
+      <div class="card lc-history-card">
+        <div class="lc-history-title">Status History</div>
+        <div class="lc-timeline">
+          <div class="lc-tl-item" *ngFor="let step of lifecycleSteps(order)"
+               [class.pending]="step.state === 'pending'" [style.--accent]="step.stage.color">
+            <div class="lc-tl-marker"></div>
+            <div class="lc-tl-content">
+              <div class="lc-tl-head">
+                <span class="lc-tl-status">{{step.stage.name}}</span>
+                <span class="lc-tl-badge" *ngIf="step.state === 'current'">Current</span>
+              </div>
+              <div class="lc-tl-detail" *ngIf="step.at; else noData">
+                <span><i class="fa-solid fa-play"></i> {{step.at | date:'dd/MM/yy HH:mm'}}</span>
+                <span *ngIf="step.end"><i class="fa-solid fa-flag-checkered"></i> {{step.end | date:'dd/MM/yy HH:mm'}}</span>
+                <span *ngIf="step.duration != null"><i class="fa-solid fa-stopwatch"></i> {{step.duration}} min</span>
+                <span *ngIf="step.by"><i class="fa-solid fa-user-pen"></i> {{step.by}}</span>
+              </div>
+              <ng-template #noData>
+                <div class="lc-tl-detail muted">{{ step.state === 'pending' ? 'Not yet reached' : 'No timestamp recorded' }}</div>
+              </ng-template>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <div *ngIf="!selectedOrder" class="empty-hint">No orders match your filters.</div>
+  </div>
+
+  <!-- ================================================================= -->
+  <!--  MANIFEST TRACKER VIEW                                             -->
+  <!-- ================================================================= -->
+  <div *ngIf="!loading && rows.length > 0 && view === 'manifest'" class="manifest-wrap">
+    <div class="manifest-grid">
+      <div class="card manifest-card" *ngFor="let g of manifestGroups; trackBy: trackByManifest">
+        <div class="mf-head">
+          <div class="mf-title">
+            <i class="fa-solid fa-clipboard-list"></i>
+            <span class="mono">{{g.manifestNo}}</span>
+          </div>
+          <span class="lifecycle-tag manifest-tag" *ngIf="g.manifestStatus">{{g.manifestStatus}}</span>
+        </div>
+
+        <div class="mf-sub">{{g.companyName || '—'}}</div>
+
+        <div class="mf-progress">
+          <div class="mf-progress-bar">
+            <div class="mf-progress-fill" [style.width.%]="g.progress"></div>
+          </div>
+          <span class="mf-progress-pct">{{g.progress}}%</span>
+        </div>
+
+        <div class="mf-stats">
+          <div class="mf-stat"><b>{{g.orders.length}}</b><span>Orders</span></div>
+          <div class="mf-stat"><b>{{g.totalQty}}</b><span>Qty</span></div>
+          <div class="mf-stat"><b>{{g.delivered}}</b><span>Delivered</span></div>
+        </div>
+
+        <div class="mf-orders">
+          <div class="mf-order" *ngFor="let o of g.orders; trackBy: trackByCard" (click)="openDetail(o)">
+            <span class="mf-order-dot" [style.background]="o.color"></span>
+            <span class="mf-order-id mono">#{{o.transitID || o.orderId}}</span>
+            <span class="mf-order-item">{{o.itemName}}</span>
+            <span class="mf-order-status" [style.color]="o.color">{{o.currentName}}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="manifestGroups.length === 0" class="empty-hint">No manifests match your filters.</div>
+  </div>
+
+  <!-- ================================================================= -->
+  <!--  TABLE VIEW (original)                                             -->
+  <!-- ================================================================= -->
+  <div *ngIf="!loading && rows.length > 0 && view === 'table'">
+    <div *ngIf="manifestGroups.length === 0" class="empty-hint">No records match your filters.</div>
+
+    <div class="card report-card" *ngIf="manifestGroups.length > 0">
+      <div class="report-meta">
+        <b>{{manifestGroups.length}}</b> manifest(s) &nbsp;|&nbsp;
+        Orders: <b>{{manifestTotalOrders}}</b> &nbsp;|&nbsp;
+        Total Qty: <b>{{manifestTotalQty}}</b> &nbsp;|&nbsp;
+        Delivered: <b>{{manifestTotalDelivered}}</b>
+      </div>
+      <div class="table-wrap">
+        <table class="mf-table">
+          <thead>
+            <tr>
+              <th class="col-toggle"></th>
+              <th>Manifest No</th>
+              <th>Company</th>
+              <th>Manifest Status</th>
+              <th class="num">Orders</th>
+              <th class="num">Qty</th>
+              <th class="num">Delivered</th>
+              <th>Progress</th>
+            </tr>
+          </thead>
+
+          <ng-container *ngFor="let g of manifestGroups; trackBy: trackByManifest">
+            <!-- Manifest summary row -->
+            <tbody class="mf-group" [class.open]="isManifestExpanded(g.manifestNo)">
+              <tr class="mf-row" (click)="toggleManifest(g.manifestNo)">
+                <td class="col-toggle">
+                  <span class="chevron" [class.rot]="isManifestExpanded(g.manifestNo)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                  </span>
+                </td>
+                <td class="mono mf-no">{{g.manifestNo}}</td>
+                <td>{{g.companyName || '—'}}</td>
+                <td>
+                  <span class="lifecycle-tag manifest-tag" *ngIf="g.manifestStatus">{{g.manifestStatus}}</span>
+                  <span *ngIf="!g.manifestStatus">—</span>
+                </td>
+                <td class="num">{{g.orders.length}}</td>
+                <td class="num">{{g.totalQty}}</td>
+                <td class="num">{{g.delivered}}</td>
+                <td>
+                  <div class="cell-progress">
+                    <div class="cell-progress-bar"><div class="cell-progress-fill" [style.width.%]="g.progress"></div></div>
+                    <span class="cell-progress-pct">{{g.progress}}%</span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Order detail rows -->
+              <tr class="mf-detail-row" *ngIf="isManifestExpanded(g.manifestNo)">
+                <td class="col-toggle"></td>
+                <td colspan="7" class="mf-detail-cell">
+                  <table class="order-subtable">
+                    <thead>
+                      <tr>
+                        <th>Transit ID</th><th>Item</th><th class="num">Qty</th>
+                        <th>Route</th><th>Assigned</th><th>Lifecycle Status</th>
+                        <th>Start</th><th>End</th><th class="num">Duration (min)</th><th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let o of g.orders; trackBy: trackByCard">
+                        <td class="mono">#{{o.transitID || o.orderId || '—'}}</td>
+                        <td>
+                          <span class="item-cell">
+                            <span class="item-name">{{o.itemName || '—'}}</span>
+                            <span class="item-code" *ngIf="o.itemCode && o.itemName">{{o.itemCode}}</span>
+                          </span>
+                        </td>
+                        <td class="num">{{o.qty}}</td>
+                        <td>{{o.source || '—'}} → {{o.destination || '—'}}</td>
+                        <td>{{o.assignedUser || '—'}}</td>
+                        <td>
+                          <span class="status-badge" [style.background]="o.color">{{o.currentName}}</span>
+                        </td>
+                        <td class="mono">{{o.currentStart ? (o.currentStart | date:'dd/MM/yy HH:mm') : '—'}}</td>
+                        <td class="mono">{{o.currentEnd ? (o.currentEnd | date:'dd/MM/yy HH:mm') : '—'}}</td>
+                        <td class="num">{{o.totalDuration}}</td>
+                        <td class="num">
+                          <button class="link-btn" (click)="openDetail(o); $event.stopPropagation()" title="View lifecycle">
+                            <i class="fa-solid fa-timeline"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+            </tbody>
+          </ng-container>
+
+          <tfoot>
+            <tr class="total-row">
+              <td></td>
+              <td colspan="3" class="total-label">Total</td>
+              <td class="num"><b>{{manifestTotalOrders}}</b></td>
+              <td class="num"><b>{{manifestTotalQty}}</b></td>
+              <td class="num"><b>{{manifestTotalDelivered}}</b></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================= -->
+  <!--  LIFECYCLE DETAIL POPUP                                            -->
+  <!-- ================================================================= -->
+  <div class="modal-overlay" *ngIf="detailOrder as order" (click)="closeDetail()">
+    <div class="modal-dialog" (click)="$event.stopPropagation()">
+
+      <div class="modal-head" [style.--accent]="order.color">
+        <div class="modal-title">
+          <span class="modal-dot"></span>
+          <div class="modal-title-text">
+            <span class="modal-transit mono">#{{order.transitID || order.orderId || '—'}}</span>
+            <span class="modal-sub">{{order.itemName || '—'}}</span>
+          </div>
+          <span class="status-badge" [style.background]="order.color">{{order.currentName}}</span>
+        </div>
+        <button class="modal-close" (click)="closeDetail()" title="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- Summary -->
+        <div class="lc-summary-grid modal-summary">
+          <div class="lc-kv"><span>Company</span><b>{{order.companyName || '—'}}</b></div>
+          <div class="lc-kv"><span>Qty</span><b>{{order.qty}}</b></div>
+          <div class="lc-kv"><span>Route</span><b>{{order.source || '—'}} → {{order.destination || '—'}}</b></div>
+          <div class="lc-kv"><span>Manifest</span><b class="mono">{{order.manifestNo || '—'}}</b></div>
+          <div class="lc-kv"><span>Assigned</span><b>{{order.assignedUser || '—'}}</b></div>
+          <div class="lc-kv"><span>Total Duration</span><b>{{order.totalDuration}} min</b></div>
+        </div>
+
+        <div class="lc-progress modal-progress">
+          <div class="lc-progress-bar">
+            <div class="lc-progress-fill" [style.width.%]="progressOf(order)" [style.background]="order.color"></div>
+          </div>
+          <span class="lc-progress-pct">{{progressOf(order)}}%</span>
+        </div>
+
+        <!-- Horizontal stepper -->
+        <div class="lc-stepper-card modal-stepper">
+          <div class="lc-stepper">
+            <div class="lc-step" *ngFor="let step of lifecycleSteps(order)"
+                 [class.done]="step.state === 'done'"
+                 [class.current]="step.state === 'current'"
+                 [class.pending]="step.state === 'pending'"
+                 [style.--accent]="step.stage.color">
+              <div class="lc-node">
+                <i class="fa-solid fa-check" *ngIf="step.state === 'done'"></i>
+                <i class="fa-solid fa-location-dot" *ngIf="step.state === 'current'"></i>
+                <span *ngIf="step.state === 'pending'">{{step.stage.order + 1}}</span>
+              </div>
+              <div class="lc-step-name">{{step.stage.name}}</div>
+              <div class="lc-step-meta" *ngIf="step.at">{{step.at | date:'dd/MM HH:mm'}}</div>
+              <div class="lc-step-meta muted" *ngIf="!step.at && step.state === 'pending'">Pending</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status history -->
+        <div class="lc-history-title">Status History</div>
+        <div class="lc-timeline">
+          <div class="lc-tl-item" *ngFor="let step of lifecycleSteps(order)"
+               [class.pending]="step.state === 'pending'" [style.--accent]="step.stage.color">
+            <div class="lc-tl-marker"></div>
+            <div class="lc-tl-content">
+              <div class="lc-tl-head">
+                <span class="lc-tl-status">{{step.stage.name}}</span>
+                <span class="lc-tl-badge" *ngIf="step.state === 'current'">Current</span>
+              </div>
+              <div class="lc-tl-detail" *ngIf="step.at; else noDataModal">
+                <span><i class="fa-solid fa-play"></i> {{step.at | date:'dd/MM/yy HH:mm'}}</span>
+                <span *ngIf="step.end"><i class="fa-solid fa-flag-checkered"></i> {{step.end | date:'dd/MM/yy HH:mm'}}</span>
+                <span *ngIf="step.duration != null"><i class="fa-solid fa-stopwatch"></i> {{step.duration}} min</span>
+                <span *ngIf="step.by"><i class="fa-solid fa-user-pen"></i> {{step.by}}</span>
+              </div>
+              <ng-template #noDataModal>
+                <div class="lc-tl-detail muted">{{ step.state === 'pending' ? 'Not yet reached' : 'No timestamp recorded' }}</div>
+              </ng-template>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn-secondary" (click)="closeDetail()">Close</button>
+        <button class="btn-primary" (click)="openLifecycle(order)">
+          <i class="fa-solid fa-timeline"></i> Open full view
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+</div>

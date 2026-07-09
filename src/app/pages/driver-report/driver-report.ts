@@ -76,35 +76,42 @@ export class DriverReport implements OnInit {
     this.loadReport();
   }
 
-  loadReport(): void {
+loadReport(): void {
 
-    this.loading = true;
-    this.errorMessage = '';
+  this.loading = true;
+  this.errorMessage = '';
 
-    forkJoin({
-      manifests: this.logisticsService.getManifestOrders(),
-      lifecycles: this.logisticsService.getDeliveryLifecycles()
-    }).subscribe({
+  forkJoin({
+    manifests: this.logisticsService.getManifestOrders(),
+    lifecycles: this.logisticsService.getDeliveryLifecycles()
+  }).subscribe({
 
-      next: ({ manifests, lifecycles }) => {
+    next: ({ manifests, lifecycles }) => {
 
-        this.lifecycles = (lifecycles ?? []).sort((a, b) => a.sequenceNo - b.sequenceNo);
-        this.rows = [...manifests];
-        this.buildStatCards();
-        this.loading = false;
+      this.lifecycles = (lifecycles ?? []).sort(
+        (a, b) => a.sequenceNo - b.sequenceNo
+      );
 
-      },
+      // Show only the logged-in driver's assigned orders
+      this.rows = manifests.filter(
+        x => x.assignedUserId === this.driverId
+      );
 
-      error: (err: any) => {
-        console.error('Failed to load manifest order report:', err);
-        this.rows = [];
-        this.loading = false;
-        this.errorMessage = 'Failed to load report. Please try again.';
-      }
+      this.buildStatCards();
+      this.loading = false;
 
-    });
+    },
 
-  }
+    error: (err: any) => {
+      console.error(err);
+      this.rows = [];
+      this.loading = false;
+      this.errorMessage = 'Failed to load report. Please try again.';
+    }
+
+  });
+
+}
 
   // ===== Distinct filter option lists (built from the loaded data) =====
 

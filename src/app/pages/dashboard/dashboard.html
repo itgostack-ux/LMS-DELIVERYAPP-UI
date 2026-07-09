@@ -31,13 +31,40 @@
 
     <ng-container *ngIf="!loading && !errorMessage">
 
-        <!-- ===== KPI tiles (role based) ===== -->
+        <!-- ===== Filters: Company + Location Type ===== -->
+        <!-- ===== Filters: Company + Location + Location Type ===== -->
+        <div class="dash-filters" *ngIf="companies.length > 0 || locations.length > 0 || locationTypes.length > 0">
+
+            <div class="filter-field" *ngIf="companies.length > 0">
+                <label>Company</label>
+                <select [(ngModel)]="selectedCompanyId" (change)="applyFilters()">
+                    <option [ngValue]="0">All Companies</option>
+                    <option *ngFor="let c of companies" [ngValue]="c.id">{{ c.name }}</option>
+                </select>
+            </div>
+
+            <div class="filter-field" *ngIf="locations.length > 0">
+                <label>Location</label>
+                <select [(ngModel)]="selectedLocationId" (change)="applyFilters()">
+                    <option [ngValue]="0">All Locations</option>
+                    <option *ngFor="let l of locations" [ngValue]="l.id">{{ l.name }}</option>
+                </select>
+            </div>
+
+            <div class="filter-field" *ngIf="locationTypes.length > 0">
+                <label>Location Type</label>
+                <select [(ngModel)]="selectedLocationTypeId" (change)="applyFilters()">
+                    <option [ngValue]="0">All Types</option>
+                    <option *ngFor="let t of locationTypes" [ngValue]="t.id">{{ t.name }}</option>
+                </select>
+            </div>
+
+        </div>
+        <!-- ===== KPI tiles: one card per lifecycle status (all roles) ===== -->
         <div class="stat-grid">
 
-            <div class="stat-card" *ngFor="let card of statCards"
-                [class.clickable]="!!card.route"
-                [style.--accent]="card.color"
-                (click)="goTo(card.route)">
+            <div class="stat-card" *ngFor="let card of statCards" [class.clickable]="!!card.route"
+                [style.--accent]="card.color" (click)="goTo(card.route)">
 
                 <div class="stat-icon">
                     <i [class]="card.icon"></i>
@@ -53,28 +80,6 @@
             </div>
 
         </div>
-
-        <!-- ===== Lifecycle status breakdown ===== -->
-        <div class="panel" *ngIf="statusCounts.length > 0">
-
-            <div class="panel-title">
-                <i class="fa-solid fa-diagram-project"></i>
-                Order Status Overview
-            </div>
-
-            <div class="status-strip">
-
-                <div class="status-item" *ngFor="let s of statusCounts">
-                    <span class="dot" [style.background]="s.color"></span>
-                    <span class="name">{{s.name}}</span>
-                    <span class="count" [style.color]="s.color">{{s.count}}</span>
-                </div>
-
-            </div>
-
-        </div>
-
-   
 
     </ng-container>
 

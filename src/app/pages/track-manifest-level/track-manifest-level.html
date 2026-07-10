@@ -1,0 +1,185 @@
+<div class="page">
+
+  <!-- ===== Page Header ===== -->
+  <div class="page-header">
+    <div class="page-title">
+      <h2>Manifest Level Tracker</h2>
+      <span class="page-subtitle">Manifest-wise Delivery Progress Report</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn-export btn-excel" (click)="exportToExcel()" [disabled]="loading || manifestGroups.length === 0"
+        title="Download Excel (CSV)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="8" y1="13" x2="16" y2="13" />
+          <line x1="8" y1="17" x2="16" y2="17" />
+        </svg>
+        Excel
+      </button>
+      <button class="btn-export btn-pdf" (click)="exportToPdf()" [disabled]="loading || manifestGroups.length === 0"
+        title="Download PDF">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="9" y1="15" x2="15" y2="15" />
+        </svg>
+        PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== KPI Stat Cards ===== -->
+  <div class="stat-grid" *ngIf="!loading && statCards.length > 0">
+    <div class="stat-card" *ngFor="let card of statCards" [style.--accent]="card.color">
+      <div class="stat-icon"><i [class]="card.icon"></i></div>
+      <div class="stat-info">
+        <span class="stat-label">{{card.label}}</span>
+        <span class="stat-value">{{card.value}}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== View Switcher + Filters ===== -->
+  <div class="card toolbar-card">
+
+    <div class="view-switch">
+
+      <span class="switch-spacer"></span>
+
+      <button class="btn-primary compact" (click)="refresh()" [disabled]="loading" title="Reload">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="23 4 23 10 17 10" />
+          <polyline points="1 20 1 14 7 14" />
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+        </svg>
+        Refresh
+      </button>
+    </div>
+
+    <div class="toolbar">
+      <div class="field">
+        <label>Company</label>
+        <select [(ngModel)]="companyFilter">
+          <option value="ALL">All Companies</option>
+          <option *ngFor="let c of companyOptions" [value]="c">{{c}}</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Manifest Status</label>
+        <select [(ngModel)]="manifestStatusFilter">
+          <option value="ALL">All Statuses</option>
+          <option *ngFor="let s of manifestStatusOptions" [value]="s">{{s}}</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Source</label>
+        <select [(ngModel)]="sourceFilter">
+          <option value="ALL">All Sources</option>
+          <option *ngFor="let src of sourceOptions" [value]="src">{{src}}</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Destination</label>
+        <select [(ngModel)]="destinationFilter">
+          <option value="ALL">All Destinations</option>
+          <option *ngFor="let dest of destinationOptions" [value]="dest">{{dest}}</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Search</label>
+        <input type="text" placeholder="Manifest No / Transit ID / Item / User..." [(ngModel)]="searchText">
+      </div>
+      <button class="btn-secondary" (click)="clearFilters()" [disabled]="!hasActiveFilters">Clear</button>
+    </div>
+  </div>
+
+  <!-- ===== States ===== -->
+  <div *ngIf="loading" class="loading"><span class="spinner"></span> Loading tracker...</div>
+  <div *ngIf="errorMessage" class="hint text-danger">{{errorMessage}}</div>
+  <div *ngIf="!loading && rows.length === 0 && !errorMessage" class="empty-hint">No timeline data found.</div>
+
+  <div *ngIf="!loading && rows.length > 0">
+
+    <div *ngIf="manifestGroups.length === 0" class="empty-hint">
+      No manifests match your filters.
+    </div>
+
+    <!-- One row per manifest only — no order-level drill-down -->
+    <div class="card report-card" *ngIf="manifestGroups.length > 0">
+
+      <div class="report-meta">
+        <b>{{manifestGroups.length}}</b> Manifest(s)
+  
+      </div>
+
+      <div class="table-wrap">
+
+        <table class="mf-table">
+
+          <thead>
+            <tr>
+              <th>S.No</th>
+              <th>Manifest No</th>
+              <th>Manifest Date</th>
+              <th>Company</th>
+              <th>Assigned User</th>
+              <th>Receiver User</th>
+              <th>Source</th>
+              <th>Destination</th>
+              <th>Transfer Mode</th>
+              <th>Status</th>
+
+              <th>Open</th>
+              <th>Pickup Ready</th>
+              <th>Pickup Assigned</th>
+              <th>Picked Up</th>
+              <th>Delivered</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr *ngFor="let g of manifestGroups; let i=index; trackBy: trackByManifest">
+
+              <td>{{i+1}}</td>
+
+              <td class="mono">{{g.manifestNo}}</td>
+
+              <td>{{g.manifestDate | date:'dd/MM/yyyy HH:mm'}}</td>
+
+              <td>{{g.companyName}}</td>
+
+              <td>{{g.assignedUser || '-'}}</td>
+
+              <td>{{g.receiverUser || '-'}}</td>
+
+              <td>{{g.sources}}</td>
+
+              <td>{{g.destinations}}</td>
+
+              <td>{{g.transferModeName}}</td>
+
+              <td>{{ getCurrentStageName(g) }}</td>
+
+              <td>{{getManifestStageTime(g,'OPEN') | date:'dd/MM/yyyy HH:mm'}}</td>
+
+              <td>{{getManifestStageTime(g,'PICKUP_READY') | date:'dd/MM/yyyy HH:mm'}}</td>
+
+              <td>{{getManifestStageTime(g,'PICKUP_ASSIGNED') | date:'dd/MM/yyyy HH:mm'}}</td>
+
+              <td>{{getManifestStageTime(g,'PICKED_UP') | date:'dd/MM/yyyy HH:mm'}}</td>
+
+              <td>{{getManifestStageTime(g,'DELIVERED') | date:'dd/MM/yyyy HH:mm'}}</td>
+
+            </tr>
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>

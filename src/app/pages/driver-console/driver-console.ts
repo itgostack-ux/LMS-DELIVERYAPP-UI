@@ -754,40 +754,58 @@ export class DriverConsole implements OnInit {
   // `forOrder` pins WHICH manifestId row this save targets - a card can be
   // backed by several manifestId rows sharing one manifestNo, so the caller
   // passes the specific order whose manifestId should be updated.
-  private buildManifestRequest(
-    group: ManifestGroup,
-    forOrder: TransferManifestResponse,
-    nextLifecycle: DeliveryLifecycle
-  ): TransferManifest {
+private buildManifestRequest(
+  group: ManifestGroup,
+  forOrder: TransferManifestResponse,
+  nextLifecycle: DeliveryLifecycle
+): TransferManifest {
 
-    return {
+  return {
 
-      manifestId: forOrder.manifestId,
-      manifestNo: group.manifestNo,
-      transferOrderId: forOrder.transferOrderId,
+    manifestId: forOrder.manifestId,
+    manifestNo: group.manifestNo,
+    transferOrderId: forOrder.transferOrderId,
 
-      assignedUserId: forOrder.assignedUserId ?? this.driverId,
-      assignedUserName: forOrder.assignedUserName ?? this.driverName,
+    assignedUserId: forOrder.assignedUserId ?? this.driverId,
+    assignedUserName: forOrder.assignedUserName ?? this.driverName,
 
-      // Read receiver + OTP from the GROUP (set by sendOtp), not from the
-      // stale order row — otherwise the final Delivered save overwrites
-      // ReceiverUserId/ReceiverUserName/OTP with 0 / '' in the database.
-      receiverUserId: group.receiverUserId ?? forOrder.receiverUserId ?? 0,
-      receiverUserName: group.receiverUserName ?? forOrder.receiverUserName ?? '',
+    // Receiver
+    receiverUserId: group.receiverUserId ?? forOrder.receiverUserId ?? 0,
+    receiverUserName: group.receiverUserName ?? forOrder.receiverUserName ?? '',
 
-      otp: group.otp ?? forOrder.otp ?? '',
+    otp: group.otp ?? forOrder.otp ?? '',
 
-      lifecycleId: nextLifecycle.lifecycleId,
-      lifecycleSequenceNo: nextLifecycle.sequenceNo,
-      lifecycleCode: nextLifecycle.statusCode,
-      lifecycleName: nextLifecycle.statusName,
+    // Lifecycle
+    lifecycleId: nextLifecycle.lifecycleId,
+    lifecycleSequenceNo: nextLifecycle.sequenceNo,
+    lifecycleCode: nextLifecycle.statusCode,
+    lifecycleName: nextLifecycle.statusName,
 
-      manifestDate: forOrder.manifestDate ?? new Date(),
-      status: nextLifecycle.statusName
+    manifestDate: forOrder.manifestDate ?? new Date(),
+    status: nextLifecycle.statusName,
 
-    };
+    // ==========================
+    // Audit Fields
+    // ==========================
 
-  } loadUsers(): void {
+    createdBy: forOrder.createdBy ?? this.driverId,
+    createdByName: forOrder.createdByName ?? this.driverName,
+    createdDate: forOrder.createdDate ?? new Date(),
+
+    modifiedBy: this.driverId,
+    modifiedByName: this.driverName,
+    modifiedDate: new Date(),
+
+    assignedById: this.driverId,
+    assignedByName: this.driverName,
+    assignedDate: new Date()
+
+  };
+
+}
+  
+  
+  loadUsers(): void {
 
     this.logisticsService.getCompanyUserLifecycleAccess().subscribe({
 
@@ -910,7 +928,7 @@ sendOtp(): void {
 
   const pendingOrder = this.pendingOrders[0];
 
-  this.logisticsService.saveTransferManifest({
+this.logisticsService.saveTransferManifest({
 
     manifestId: pendingOrder.manifestId,
 
@@ -918,29 +936,37 @@ sendOtp(): void {
 
     transferOrderId: pendingOrder.transferOrderId,
 
-    assignedUserId: pendingOrder.assignedUserId,
-
-    assignedUserName: pendingOrder.assignedUserName,
+    assignedUserId: pendingOrder.assignedUserId ?? this.driverId,
+    assignedUserName: pendingOrder.assignedUserName ?? this.driverName,
 
     receiverUserId: receiver.userId,
-
     receiverUserName: receiver.fullName,
 
     otp: otp,
 
     lifecycleId: currentLifecycle.lifecycleId,
-
     lifecycleSequenceNo: currentLifecycle.sequenceNo,
-
     lifecycleCode: currentLifecycle.statusCode,
-
     lifecycleName: currentLifecycle.statusName,
 
     manifestDate: new Date(),
 
-    status: currentLifecycle.statusName
+    status: currentLifecycle.statusName,
 
-  }).subscribe({
+    // Audit
+    createdBy: this.driverId,
+    createdByName: this.driverName,
+    createdDate: new Date(),
+
+    modifiedBy: this.driverId,
+    modifiedByName: this.driverName,
+    modifiedDate: new Date(),
+
+    assignedById: this.driverId,
+    assignedByName: this.driverName,
+    assignedDate: new Date()
+
+}).subscribe({
 
     next: () => {
 

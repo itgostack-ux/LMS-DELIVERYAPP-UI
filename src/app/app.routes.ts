@@ -23,6 +23,8 @@ import { TranferOrderView } from './pages/tranfer-order-view/tranfer-order-view'
 import { ManifestPrintComponent } from '../app/pages/manifest-print/manifest-print'
 import { DriverReport } from './pages/driver-report/driver-report';
 import { ManagerReport } from './pages/manager-report/manager-report';
+import { TrackManifestLevel } from './pages/track-manifest-level/track-manifest-level';
+import { TrackOrderLevel } from './pages/track-order-level/track-order-level';
 export const routes: Routes = [
 
   {
@@ -177,6 +179,33 @@ export const routes: Routes = [
           { path: '', redirectTo: 'role', pathMatch: 'full' },
 
           { path: 'role', component: ManagerReport },
+
+
+        ]
+      },
+
+      
+        {
+        path: 'track-manifest-report',
+        component: TrackManifestLevel,
+        children: [
+
+          { path: '', redirectTo: 'role', pathMatch: 'full' },
+
+          { path: 'role', component: TrackManifestLevel },
+
+
+        ]
+      },
+
+         {
+        path: 'track-order-level-report',
+        component: TrackOrderLevel,
+        children: [
+
+          { path: '', redirectTo: 'role', pathMatch: 'full' },
+
+          { path: 'role', component: TrackOrderLevel },
 
 
         ]

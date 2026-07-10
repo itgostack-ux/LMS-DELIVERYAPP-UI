@@ -233,7 +233,10 @@ export interface TransferStockLogDetail {
   // Company (not always returned by the SP)
   companyId?: number;
   companyName?: string;
-  acceptedQty?: number;
+  transferQty: number;
+  acceptedQty: number;
+  pendingQty: number;
+
   // Transfer
   transferOrderId: number;
   transitID: number;
@@ -262,7 +265,6 @@ export interface TransferStockLogDetail {
   itemName: string;
   imei: string;
 
-  transferQty: number;
   transferStatus: string;
 
   // Transfer Out User
@@ -348,7 +350,6 @@ export interface DeliveryOrderTransaction {
   transferOrderId: number;
 
   transitID: number;
-
   deliveryNoteNo: string;
 
   transferOutDate: string;
@@ -377,8 +378,14 @@ export interface DeliveryOrderTransaction {
   transferOutById?: number;
   transferOutByName?: string;
 
+  // Assigned User
   assignedUserId?: number;
   assignedUserName?: string;
+
+  // NEW - Assigned By
+  assignedById?: number;
+  assignedByName?: string;
+  assignedDate?: string;
 
   courierId?: number;
   courierName?: string;
@@ -390,20 +397,21 @@ export interface DeliveryOrderTransaction {
   inwardDoneById?: number;
   inwardDoneByName?: string;
 
-
   otherPartyType?: string;
   otherPartyName?: string;
   vehicleNo?: string;
-  transferDuration?: string;
 
+  transferDuration?: string;
   remarks?: string;
 
   isActive: boolean;
 
+  // Created Audit
   createdBy: number;
   createdByName: string;
   createdDate: string;
 
+  // Modified Audit
   modifiedBy?: number;
   modifiedByName?: string;
   modifiedDate?: string;
@@ -413,8 +421,10 @@ export interface DeliveryOrderTransaction {
 
   locationTypeId?: number;
   locationTypeName?: string;
+
   sourceLocationTypeId?: number;
   sourceLocationTypeName?: string;
+
   destinationLocationTypeId?: number;
   destinationLocationTypeName?: string;
 }
@@ -442,6 +452,7 @@ export interface TransferMode {
 }
 
 export interface TransferManifest {
+
   manifestId: number;
   manifestNo: string;
   transferOrderId: number;
@@ -462,12 +473,27 @@ export interface TransferManifest {
   manifestDate: Date;
   status: string;
 
+  // ==========================
+  // Audit Fields
+  // ==========================
 
+  createdBy: number;
+  createdByName: string;
+  createdDate?: Date;
+
+  modifiedBy?: number;
+  modifiedByName?: string;
+  modifiedDate?: Date;
+
+  assignedById: number;
+  assignedByName: string;
+  assignedDate?: Date;
 }
 // Flattened row returned by GET /api/Logistics/transfer-manifest —
 // a join of TransferManifest + DeliveryOrderTransaction, one row per
 // transfer order under a manifest. This is the real backend DTO shape.
 export interface TransferManifestResponse {
+  createdByName: string;
 
   // TransferManifest
   manifestId: number;
@@ -544,15 +570,27 @@ export interface TransferManifestResponse {
   destinationLocationTypeId?: number;
   destinationLocationTypeName?: string;
 
-}
+  
+  createdBy: number;
+  createdDate?: Date;
 
+  modifiedBy?: number;
+  modifiedByName?: string;
+  modifiedDate?: Date;
+
+  assignedById: number;
+  assignedByName: string;
+  assignedDate?: Date;
+
+}
 
 
 export interface DeliveryOrderTimeline {
 
-  //==========================
+  //==================================================
   // Delivery Order
-  //==========================
+  //==================================================
+
   transferOrderId: number;
   transitID?: number;
 
@@ -566,36 +604,44 @@ export interface DeliveryOrderTimeline {
   imei?: string;
   transferQty?: number;
 
-  //==========================
+  //==================================================
   // Company
-  //==========================
+  //==================================================
+
   companyId?: number;
   companyName?: string;
 
-  //==========================
+  //==================================================
   // Source
-  //==========================
+  //==================================================
+
   sourceLocationId?: number;
   sourceLocationName?: string;
   sourceLocationTypeId?: number;
   sourceLocationTypeName?: string;
 
-  //==========================
+  //==================================================
   // Destination
-  //==========================
+  //==================================================
+
   destinationLocationId?: number;
   destinationLocationName?: string;
   destinationLocationTypeId?: number;
   destinationLocationTypeName?: string;
 
-  //==========================
+  //==================================================
   // Transfer Details
-  //==========================
+  //==================================================
+
   transferModeId?: number;
   transferModeName?: string;
 
   assignedUserId?: number;
   assignedUserName?: string;
+
+  assignedById?: number;
+  assignedByName?: string;
+  assignedDate?: Date;
 
   transferOutById?: number;
   transferOutByName?: string;
@@ -605,21 +651,38 @@ export interface DeliveryOrderTimeline {
 
   awbBillNo?: string;
 
+  vehicleNo?: string;
+
   transferInTime?: Date;
 
   inwardDoneById?: number;
   inwardDoneByName?: string;
 
+  transferDuration?: string;
+
   remarks?: string;
 
-  //==========================
+  createdBy?: number;
+  createdByName?: string;
+  createdDate?: Date;
+
+  modifiedBy?: number;
+  modifiedByName?: string;
+  modifiedDate?: Date;
+
+  //==================================================
   // Manifest
-  //==========================
+  //==================================================
+
   manifestId?: number;
   manifestNo?: string;
 
   manifestAssignedUserId?: number;
   manifestAssignedUserName?: string;
+
+  manifestAssignedById?: number;
+  manifestAssignedByName?: string;
+  manifestAssignedDate?: Date;
 
   receiverUserId?: number;
   receiverUserName?: string;
@@ -628,9 +691,18 @@ export interface DeliveryOrderTimeline {
 
   manifestDate?: Date;
 
-  //==========================
-  // Lifecycle
-  //==========================
+  manifestCreatedBy?: number;
+  manifestCreatedByName?: string;
+  manifestCreatedDate?: Date;
+
+  manifestModifiedBy?: number;
+  manifestModifiedByName?: string;
+  manifestModifiedDate?: Date;
+
+  //==================================================
+  // Lifecycle Master
+  //==================================================
+
   lifecycleId: number;
   sequenceNo: number;
 
@@ -640,27 +712,56 @@ export interface DeliveryOrderTimeline {
   colorCode?: string;
   description?: string;
 
-  //==========================
-  // Order Log
-  //==========================
+  //==================================================
+  // Delivery Order Lifecycle Log
+  //==================================================
+
+  orderLogId?: number;
+
   orderStatusStartTime?: Date;
   orderStatusEndTime?: Date;
   orderDurationMinutes?: number;
+
   orderChangedById?: number;
   orderChangedByName?: string;
 
-  //==========================
-  // Manifest Log
-  //==========================
+  orderCreatedBy?: number;
+  orderCreatedByName?: string;
+  orderCreatedDate?: Date;
+
+  orderModifiedBy?: number;
+  orderModifiedByName?: string;
+  orderModifiedDate?: Date;
+
+  //==================================================
+  // Manifest Lifecycle Log
+  //==================================================
+
+  manifestLogId?: number;
+
   manifestStatusStartTime?: Date;
   manifestStatusEndTime?: Date;
   manifestDurationMinutes?: number;
+
   manifestChangedById?: number;
   manifestChangedByName?: string;
 
-  //==========================
-  // Current Status
-  //==========================
+  manifestCreatedByLog?: number;
+  manifestCreatedByNameLog?: string;
+  manifestCreatedDateLog?: Date;
+
+  manifestAssignedByIdLog?: number;
+  manifestAssignedByNameLog?: string;
+  manifestAssignedDateLog?: Date;
+
+  manifestModifiedByLog?: number;
+  manifestModifiedByNameLog?: string;
+  manifestModifiedDateLog?: Date;
+
+  //==================================================
+  // Timeline Status
+  //==================================================
+
   orderStatus?: string;
   manifestStatus?: string;
 }

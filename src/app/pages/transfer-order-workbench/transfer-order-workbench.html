@@ -2,10 +2,10 @@
 
     <div class="page-header">
         <h2>Delivery Orders Management</h2>
-        <span class="record-count" *ngIf="!loading && transferLogs.length > 0">
+        <span class="record-count" *ngIf="!loading && groupedLogs.length > 0">
             {{ selectedLifecycleStatus
-            ? (filteredLogs.length + ' of ' + transferLogs.length + ' records')
-            : (transferLogs.length + ' records') }}
+            ? (filteredGroups.length + ' of ' + groupedLogs.length + ' orders')
+            : (groupedLogs.length + ' orders') }}
         </span>
     </div>
 
@@ -85,6 +85,7 @@
 
                 <div class="count">
                     <strong>{{selectedCount}}</strong> Order(s) Selected
+                    <span class="item-sub">({{selectedItemCount}} record(s) will be updated)</span>
                 </div>
 
                 <div *ngIf="isSameStatus" class="status-flow">
@@ -163,6 +164,8 @@
 
                 <thead>
                     <tr>
+                        <th class="expand-col"></th>
+
                         <th class="checkbox-col">
                             <input type="checkbox" [(ngModel)]="selectAll" (change)="toggleSelectAll()">
                         </th>
@@ -221,11 +224,6 @@
                                 sortIcon('itemCode') }}</span>
                         </th>
 
-                        <th class="sortable" (click)="sortBy('imei')">
-                            IMEI <span class="sort-icon" [class.active]="sortColumn === 'imei'">{{ sortIcon('imei')
-                                }}</span>
-                        </th>
-
                         <th class="num sortable" (click)="sortBy('transferQty')">
                             Transfer Qty
                             <span class="sort-icon" [class.active]="sortColumn === 'transferQty'">
@@ -239,6 +237,14 @@
                                 {{ sortIcon('acceptedQty') }}
                             </span>
                         </th>
+
+                        <th class="num sortable" (click)="sortBy('pendingQty')">
+                            Pending Qty
+                            <span class="sort-icon" [class.active]="sortColumn === 'pendingQty'">
+                                {{ sortIcon('pendingQty') }}
+                            </span>
+                        </th>
+
                         <th class="sortable" (click)="sortBy('transferOutByName')">
                             Transferred By <span class="sort-icon"
                                 [class.active]="sortColumn === 'transferOutByName'">{{ sortIcon('transferOutByName')
@@ -264,85 +270,153 @@
 
                 <tbody>
 
-                    <tr *ngFor="let item of pagedLogs; let i = index; trackBy: trackByTransitId">
+                    <ng-container *ngFor="let group of pagedLogs; let i = index; trackBy: trackByTransitId">
 
-                        <td>
-                            <!-- Received rows have blank logisticsStatus and are not
-                                 part of the delivery workflow, so they can't be selected -->
-                            <input type="checkbox" [(ngModel)]="item.selected" [disabled]="!item.logisticsStatus">
-                        </td>
+                        <!-- ===== Grouped row: one per TransitID ===== -->
+                        <tr class="group-row" [class.expanded]="isGroupExpanded(group.transitID)">
 
-                        <td>{{startIndex + i + 1}}</td>
+                            <td class="expand-col">
+                                <button type="button" class="chevron-btn" (click)="toggleGroupExpand(group.transitID)"
+                                    [title]="isGroupExpanded(group.transitID) ? 'Hide IMEI records' : 'Show IMEI records'">
+                                    <span class="chevron" [class.rot]="isGroupExpanded(group.transitID)">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2.5">
+                                            <polyline points="9 18 15 12 9 6" />
+                                        </svg>
+                                    </span>
+                                </button>
+                            </td>
 
-                        <td class="mono">{{item.transitID}}</td>
+                            <td>
+                                <!-- Received-only groups have blank logisticsStatus and are not
+                                     part of the delivery workflow, so they can't be selected -->
+                                <input type="checkbox" [(ngModel)]="group.selected"
+                                    [disabled]="!group.logisticsStatus">
+                            </td>
 
-                        <td>{{item.transferOutDate | date:'dd-MM-yyyy'}}</td>
+                            <td>{{startIndex + i + 1}}</td>
 
-                        <td>{{item.transferOutTime | date:'dd-MM-yyyy HH:mm:ss'}}</td>
+                            <td class="mono">{{group.transitID}}</td>
 
-                        <td>
-                            <span class="status" [ngClass]="{
-                received: item.transferStatus.trim() === 'Received',
-                pending: item.transferStatus.trim() !== 'Received'
-              }">
-                                {{item.transferStatus}}
-                            </span>
-                        </td>
+                            <td>{{group.transferOutDate | date:'dd-MM-yyyy'}}</td>
 
-                        <td>
+                            <td>{{group.transferOutTime | date:'dd-MM-yyyy HH:mm:ss'}}</td>
 
-                            <span class="status-badge" [style.background]="getLifecycleColor(item.logisticsStatus)"
-                                style="
-            color:#fff;
-            padding:5px 12px;
-            border-radius:20px;
-            font-size:12px;
-            font-weight:600;
-            display:inline-block;
-            min-width:120px;
-            text-align:center;">
+                            <td>
+                                <span class="status" [ngClass]="{
+                    received: group.transferStatus === 'Received',
+                    partial: group.transferStatus.indexOf('Partial') === 0,
+                    pending: group.transferStatus === 'In Transit'
+                  }">
+                                    {{group.transferStatus}}
+                                </span>
+                            </td>
 
-                                {{ item.logisticsStatus || '-' }}
+                            <td>
 
-                            </span>
+                                <span class="status-badge" [style.background]="getLifecycleColor(group.logisticsStatus)"
+                                    style="
+                color:#fff;
+                padding:5px 12px;
+                border-radius:20px;
+                font-size:12px;
+                font-weight:600;
+                display:inline-block;
+                min-width:120px;
+                text-align:center;">
 
-                        </td>
-                        <td>{{item.sourceBranch}}</td>
+                                    {{ group.logisticsStatus || '-' }}
 
-                        <td>{{item.destinationBranch}}</td>
+                                </span>
 
-                        <td>{{item.deliveryNoteNo}}</td>
+                            </td>
+                            <td>{{group.sourceBranch}}</td>
 
-                        <td class="item-name">{{item.itemName}}</td>
+                            <td>{{group.destinationBranch}}</td>
 
-                        <td class="mono">{{item.itemCode}}</td>
+                            <td>{{group.deliveryNoteNo}}</td>
 
-                        <td class="mono">{{item.imei}}</td>
+                            <td class="item-name">{{group.itemName}}</td>
 
-                        <td class="num">
-                            {{ item.transferQty }}
-                        </td>
+                            <td class="mono">{{group.itemCode}}</td>
 
-                        <td class="num">
-                            {{ item.acceptedQty ?? 0 }}
-                        </td>
+                            <td class="num">
+                                {{ group.transferQty }}
+                            </td>
 
-                        <td>{{item.transferOutByName}}</td>
+                            <td class="num">
+                                {{ group.acceptedQty }}
+                            </td>
 
-                        <td>
-                            {{item.transferInTime ? (item.transferInTime | date:'dd-MM-yyyy HH:mm:ss') : '-'}}
-                        </td>
+                            <td class="num">
+                                {{ group.pendingQty }}
+                            </td>
 
-                        <td>{{item.inwardDoneByName}}</td>
+                            <td>{{group.transferOutByName}}</td>
 
-                        <td>{{item.transferDuration}}</td>
+                            <td>
+                                {{group.transferInTime ? (group.transferInTime | date:'dd-MM-yyyy HH:mm:ss') : '-'}}
+                            </td>
 
-                    </tr>
-                    <tr *ngIf="filteredLogs.length == 0">
-                        <td colspan="18" class="empty">
+                            <td>{{group.inwardDoneByName}}</td>
+
+                            <td>{{group.transferDuration}}</td>
+
+                        </tr>
+
+                        <!-- ===== Expanded detail: the raw, per-IMEI backend records ===== -->
+                        <tr class="detail-row" *ngIf="isGroupExpanded(group.transitID)">
+                            <td class="expand-col"></td>
+                            <td colspan="18" class="detail-cell">
+                                <table class="imei-subtable">
+                                    <thead>
+                                        <tr>
+                                            <th>IMEI</th>
+                                            <th>Item Code</th>
+                                            <th>Item Name</th>
+                                            <th>Transfer Status</th>
+                                            <th>Delivery Note</th>
+                                            <th>Source</th>
+                                            <th>Destination</th>
+                                            <th>Transferred By</th>
+                                            <th>Received By</th>
+                                            <th>Transfer In Time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr *ngFor="let raw of group.items; trackBy: trackByRawRow">
+                                            <td class="mono">{{raw.imei || '—'}}</td>
+                                            <td class="mono">{{raw.itemCode || '—'}}</td>
+                                            <td>{{raw.itemName || '—'}}</td>
+                                            <td>
+                                                <span class="status" [ngClass]="{
+                          received: raw.transferStatus.trim() === 'Received',
+                          pending: raw.transferStatus.trim() !== 'Received'
+                        }">
+                                                    {{raw.transferStatus}}
+                                                </span>
+                                            </td>
+                                            <td>{{raw.deliveryNoteNo || '—'}}</td>
+                                            <td>{{raw.sourceBranch || raw.sourceLocationName || '—'}}</td>
+                                            <td>{{raw.destinationBranch || raw.destinationLocationName || '—'}}</td>
+                                            <td>{{raw.transferOutByName || '—'}}</td>
+                                            <td>{{raw.inwardDoneByName || '—'}}</td>
+                                            <td class="mono">
+                                                {{raw.transferInTime ? (raw.transferInTime | date:'dd-MM-yyyy HH:mm:ss') : '—'}}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </td>
+                        </tr>
+
+                    </ng-container>
+
+                    <tr *ngIf="filteredGroups.length == 0">
+                        <td colspan="19" class="empty">
                             {{ selectedCompanyId == 0
                             ? 'Select a company and click Search to view transfer logs'
-                            : (transferLogs.length > 0
+                            : (groupedLogs.length > 0
                             ? 'No records match the selected Logistics Status filter'
                             : 'No records found for the selected filters') }}
                         </td>
@@ -355,7 +429,7 @@
 
 
         <!-- Pagination -->
-        <div class="pagination" *ngIf="filteredLogs.length > 0">
+        <div class="pagination" *ngIf="filteredGroups.length > 0">
 
             <div class="page-size">
                 <label>Rows per page</label>
@@ -368,7 +442,7 @@
             </div>
 
             <div class="page-info">
-                Showing {{startIndex + 1}}–{{endIndex}} of {{filteredLogs.length}}
+                Showing {{startIndex + 1}}–{{endIndex}} of {{filteredGroups.length}} orders
             </div>
 
             <div class="page-controls">
@@ -423,7 +497,7 @@
                 </div>
 
                 <div style="color:#64748b;font-size:14px;">
-                    {{selectedCount}} Order(s) Selected
+                    {{selectedCount}} Order(s) / {{selectedItemCount}} Record(s) Selected
                 </div>
             </div>
 

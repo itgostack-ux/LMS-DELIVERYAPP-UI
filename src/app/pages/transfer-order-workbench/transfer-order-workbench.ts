@@ -19,6 +19,79 @@ import {
 } from '../../services/models/common-master-model';
 import { UserDataService } from '../../service/user-data-service';
 
+/**
+ * One display row = one TransitID, built purely on the frontend by grouping
+ * the raw per-IMEI records the backend returns. The backend never sees this
+ * shape — it always gets/returns raw records, one per IMEI.
+ *
+ *   TransferQty = items.length                       (1 IMEI = 1 Qty)
+ *   AcceptedQty = items where transferStatus='Received'
+ *   PendingQty  = items where transferStatus='In Transit'
+ */
+interface GroupedTransferLog {
+
+  transitID: number;
+  transferOrderId: number;
+  deliveryNoteNo: string;
+
+  transferOutDate: any;
+  transferOutTime: any;
+
+  sourceLocationId: number;
+  sourceBranch: string;
+  sourceLocationName: string;
+
+  destinationLocationId: number;
+  destinationBranch: string;
+  destinationLocationName: string;
+
+  itemCode: string;
+  itemName: string;
+
+  companyId: number;
+  companyName: string;
+
+  // ===== Aggregated quantities (frontend-only) =====
+  transferQty: number;   // total IMEI records in the group
+  acceptedQty: number;   // count with transferStatus === 'Received'
+  pendingQty: number;    // count with transferStatus === 'In Transit'
+
+  // Overall status pill for the group
+  transferStatus: string;
+
+  // Representative logistics (lifecycle) status for the whole group.
+  // Blank => not part of the workflow / not selectable, same rule as before.
+  logisticsStatus: string;
+
+  transferModeId: number;
+  transferModeName: string;
+
+  assignedUserId: number;
+  assignedUserName: string;
+
+  courierId: number;
+  courierName: string;
+  awbBillNo: string;
+  vehicleNo: string;
+
+  transferOutById: number;
+  transferOutByName: string;
+
+  transferInTime: any;
+  inwardDoneById: number;
+  inwardDoneByName: string;
+
+  transferDuration: string;
+
+  pickupManifestNo: string;
+
+  selected: boolean;
+
+  // The raw, per-IMEI backend records that make up this TransitID.
+  // This is what gets expanded back out and sent to the backend on save.
+  items: TransferStockLogDetail[];
+}
+
 @Component({
   selector: 'app-transfer-order-workbench',
   standalone: true,
@@ -49,7 +122,18 @@ export class TransferOrderWorkbench implements OnInit {
   selectedLifecycleStatus = '';
 
   transferModes: TransferMode[] = [];
+
+
+  loggedInUserId = 0;
+  loggedInUserName = '';
+
+  // Raw, per-IMEI backend records — exactly what the API returns.
+  // Never grouped, never mutated with computed quantities.
   transferLogs: TransferStockLogDetail[] = [];
+
+  // Frontend-only grouping of transferLogs, one row per TransitID.
+  // This is what the grid, sorting, pagination and selection operate on.
+  groupedLogs: GroupedTransferLog[] = [];
 
   loading = false;
   saving = false;
@@ -65,10 +149,10 @@ export class TransferOrderWorkbench implements OnInit {
   currentPage = 1;
   pageSize = 10;
 
-  // ===== Sorting state =====
+  // ===== Sorting state (operates on the GROUPED rows) =====
   // '' = no column sort -> keep the default load order
   // (workflow rows first, then by transitID)
-  sortColumn: keyof TransferStockLogDetail | '' = '';
+  sortColumn: keyof GroupedTransferLog | '' = '';
   sortDirection: 'asc' | 'desc' = 'asc';
 
   // Columns that must be compared as dates / numbers instead of strings
@@ -80,10 +164,24 @@ export class TransferOrderWorkbench implements OnInit {
 
   private readonly NUMBER_COLUMNS = new Set<string>([
     'transitID',
-    'transferQty'
+    'transferQty',
+    'acceptedQty',
+    'pendingQty'
   ]);
 
   deliveryLifecycles: DeliveryLifecycle[] = [];
+
+  // ===== Row expansion: shows the raw per-IMEI records under a group =====
+  private expandedGroups = new Set<number>();
+
+  toggleGroupExpand(transitID: number): void {
+    if (this.expandedGroups.has(transitID)) this.expandedGroups.delete(transitID);
+    else this.expandedGroups.add(transitID);
+  }
+
+  isGroupExpanded(transitID: number): boolean {
+    return this.expandedGroups.has(transitID);
+  }
 
   // ===== Pickup Assignment modal state =====
   showPickupModal = false;
@@ -126,7 +224,8 @@ export class TransferOrderWorkbench implements OnInit {
   ) { }
 
   ngOnInit(): void {
-
+    this.loggedInUserId = this.userDataService.getUserId();
+    this.loggedInUserName = this.userDataService.getUserName(); // if available
     this.loadCompanies();
     this.loadDeliveryLifecycles();
     this.loadTransferModes();
@@ -397,6 +496,7 @@ export class TransferOrderWorkbench implements OnInit {
 
   // Only rows with a logistics status (In Transit) are selectable;
   // Received rows have blank status and are excluded from the workflow.
+  // Operates on the GROUPED rows currently on the page.
   toggleSelectAll(): void {
     this.pagedLogs
       .filter(x => !!x.logisticsStatus)
@@ -429,24 +529,16 @@ export class TransferOrderWorkbench implements OnInit {
 
           if (Array.isArray(response)) {
             data = response;
-            console.log('API Data', data);
-            console.log('First Qty', data[0]?.transferQty);
-            console.table(
-              this.transferLogs.map(x => ({
-                Note: x.deliveryNoteNo,
-                Qty: x.transferQty
-              }))
-            );
           }
           else if (response?.data) {
             data = response.data;
           }
 
+          // Raw, per-IMEI records — exactly as the backend returns them.
+          // No grouping, no computed quantities happen here.
           this.transferLogs = data
             .map((item: any): TransferStockLogDetail => ({
-
               transferOrderId: item.transferOrderId ?? 0,
-              
 
               transitID: item.transitID,
               deliveryNoteNo: item.deliveryNoteNo ?? '',
@@ -470,7 +562,7 @@ export class TransferOrderWorkbench implements OnInit {
               itemName: item.itemName ?? '',
               imei: item.imei ?? '',
 
-              transferQty: item.transferQty ?? 0,
+              transferQty: item.transferQty ?? 1,
 
               transferStatus: item.transferStatus ?? '',
 
@@ -512,19 +604,16 @@ export class TransferOrderWorkbench implements OnInit {
 
               isActive: item.isActive ?? true,
 
-              createdBy: item.createdBy ?? 1,
-              createdByName: item.createdByName ?? '',
+              createdBy: item.createdBy || this.loggedInUserId,
+              createdByName: item.createdByName || this.loggedInUserName,
+
               createdDate: item.createdDate || new Date().toISOString(),
 
-              modifiedBy: item.modifiedBy ?? 0,
-              modifiedByName: item.modifiedByName ?? '',
+              modifiedBy: this.loggedInUserId ?? 0,
+              modifiedByName: this.loggedInUserName ?? '',
               modifiedDate: item.modifiedDate ?? undefined,
 
-              // ===== UI =====
-              // Straight from the API — the SP decides:
-              //   Received                        -> ''   (blank, not selectable)
-              //   In Transit + lifecycle row      -> stage name
-              //   In Transit + no lifecycle row   -> 'Open'
+
               logisticsStatus: item.logisticsStatus ?? '',
 
               companyId: item.companyId ?? 0,
@@ -539,21 +628,13 @@ export class TransferOrderWorkbench implements OnInit {
               selected: false,
 
               deliveryLifecycles: [],
-              currentLifecycle: undefined
+              currentLifecycle: undefined,
+              acceptedQty: 0,
+              pendingQty: 0
+            }));
 
-            }))
-            .sort((a, b) => {
-
-              // Workflow rows (with a logistics status) first
-              const aActive = !!a.logisticsStatus;
-              const bActive = !!b.logisticsStatus;
-
-              if (aActive && !bActive) return -1;
-              if (!aActive && bActive) return 1;
-
-              return a.transitID - b.transitID;
-
-            });
+          // Frontend-only grouping by TransitID, purely for display.
+          this.groupedLogs = this.buildGroupedLogs(this.transferLogs);
 
           this.currentPage = 1;
           this.loading = false;
@@ -565,6 +646,7 @@ export class TransferOrderWorkbench implements OnInit {
           console.error(error);
 
           this.transferLogs = [];
+          this.groupedLogs = [];
           this.currentPage = 1;
           this.loading = false;
 
@@ -572,6 +654,117 @@ export class TransferOrderWorkbench implements OnInit {
 
       });
 
+  }
+
+  // ============================================================
+  //  Grouping: raw per-IMEI records -> one row per TransitID
+  // ============================================================
+
+  private buildGroupedLogs(rows: TransferStockLogDetail[]): GroupedTransferLog[] {
+
+    const map = new Map<number, TransferStockLogDetail[]>();
+
+    for (const r of rows) {
+      const list = map.get(r.transitID) ?? [];
+      list.push(r);
+      map.set(r.transitID, list);
+    }
+
+    const groups: GroupedTransferLog[] = [];
+
+    for (const [transitID, items] of map) {
+
+      const first = items[0];
+
+      const acceptedQty = items.filter(
+        x => (x.transferStatus ?? '').trim() === 'Received'
+      ).length;
+
+      const pendingQty = items.filter(
+        x => (x.transferStatus ?? '').trim() === 'In Transit'
+      ).length;
+
+      const transferQty = items.length; // 1 IMEI = 1 Qty
+
+      // Representative logistics status for the whole TransitID group.
+      // Rows in the same workflow group share the same lifecycle status;
+      // fall back to the first row that actually has one.
+      const withStatus = items.find(x => !!x.logisticsStatus);
+      const logisticsStatus = withStatus?.logisticsStatus ?? '';
+
+      let transferStatus: string;
+      if (acceptedQty === transferQty) transferStatus = 'Received';
+      else if (acceptedQty === 0) transferStatus = 'In Transit';
+      else transferStatus = `Partial (${acceptedQty}/${transferQty})`;
+
+      groups.push({
+        transitID,
+        transferOrderId: first.transferOrderId ?? 0,
+        deliveryNoteNo: first.deliveryNoteNo ?? '',
+
+        transferOutDate: first.transferOutDate,
+        transferOutTime: first.transferOutTime,
+
+        sourceLocationId: first.sourceLocationId ?? 0,
+        sourceBranch: first.sourceBranch || first.sourceLocationName || '',
+        sourceLocationName: first.sourceLocationName ?? '',
+
+        destinationLocationId: first.destinationLocationId ?? 0,
+        destinationBranch: first.destinationBranch || first.destinationLocationName || '',
+        destinationLocationName: first.destinationLocationName ?? '',
+
+        itemCode: first.itemCode ?? '',
+        itemName: first.itemName ?? '',
+
+        companyId: first.companyId ?? 0,
+        companyName: first.companyName ?? '',
+
+        transferQty,
+        acceptedQty,
+        pendingQty,
+        transferStatus,
+        logisticsStatus,
+
+        transferModeId: first.transferModeId ?? 0,
+        transferModeName: first.transferModeName ?? '',
+
+        assignedUserId: first.assignedUserId ?? 0,
+        assignedUserName: first.assignedUserName ?? '',
+
+        courierId: first.courierId ?? 0,
+        courierName: first.courierName ?? '',
+        awbBillNo: first.awbBillNo ?? '',
+        vehicleNo: first.vehicleNo ?? '',
+
+        transferOutById: first.transferOutById ?? 0,
+        transferOutByName: first.transferOutByName ?? '',
+
+        transferInTime: first.transferInTime,
+        inwardDoneById: first.inwardDoneById ?? 0,
+        inwardDoneByName: first.inwardDoneByName ?? '',
+
+        transferDuration: first.transferDuration ?? '',
+
+        pickupManifestNo: first.pickupManifestNo ?? '',
+
+        selected: false,
+        items
+      });
+    }
+
+    // Workflow groups (with a logistics status) first, then by transitID —
+    // same default ordering as before, just applied at the group level.
+    return groups.sort((a, b) => {
+
+      const aActive = !!a.logisticsStatus;
+      const bActive = !!b.logisticsStatus;
+
+      if (aActive && !bActive) return -1;
+      if (!aActive && bActive) return 1;
+
+      return a.transitID - b.transitID;
+
+    });
   }
 
   // ===== Logistics Status filter =====
@@ -582,7 +775,7 @@ export class TransferOrderWorkbench implements OnInit {
 
     const distinct = new Set<string>();
 
-    for (const item of this.transferLogs) {
+    for (const item of this.groupedLogs) {
       if (item.logisticsStatus) {
         distinct.add(item.logisticsStatus);
       }
@@ -609,22 +802,22 @@ export class TransferOrderWorkbench implements OnInit {
 
   }
 
-  // Rows after the client-side Logistics Status filter is applied
-  get filteredLogs(): TransferStockLogDetail[] {
+  // Grouped rows after the client-side Logistics Status filter is applied
+  get filteredGroups(): GroupedTransferLog[] {
 
     if (!this.selectedLifecycleStatus) {
-      return this.transferLogs;
+      return this.groupedLogs;
     }
 
-    return this.transferLogs.filter(
+    return this.groupedLogs.filter(
       x => x.logisticsStatus === this.selectedLifecycleStatus
     );
 
   }
 
-  // ===== Column sorting =====
+  // ===== Column sorting (operates on grouped rows) =====
 
-  sortBy(column: keyof TransferStockLogDetail): void {
+  sortBy(column: keyof GroupedTransferLog): void {
 
     if (this.sortColumn === column) {
       // Same column: toggle asc -> desc -> off (back to default order)
@@ -643,7 +836,7 @@ export class TransferOrderWorkbench implements OnInit {
 
   }
 
-  sortIcon(column: keyof TransferStockLogDetail): string {
+  sortIcon(column: keyof GroupedTransferLog): string {
 
     if (this.sortColumn !== column) {
       return '⇅';
@@ -654,9 +847,9 @@ export class TransferOrderWorkbench implements OnInit {
   }
 
   private compareValues(
-    a: TransferStockLogDetail,
-    b: TransferStockLogDetail,
-    column: keyof TransferStockLogDetail
+    a: GroupedTransferLog,
+    b: GroupedTransferLog,
+    column: keyof GroupedTransferLog
   ): number {
 
     const rawA = a[column];
@@ -696,12 +889,12 @@ export class TransferOrderWorkbench implements OnInit {
 
   }
 
-  // Filtered rows with the active column sort applied.
+  // Filtered groups with the active column sort applied.
   // With no sort column, the default load order is kept
   // (workflow rows first, then by transitID).
-  get sortedLogs(): TransferStockLogDetail[] {
+  get sortedGroups(): GroupedTransferLog[] {
 
-    const rows = this.filteredLogs;
+    const rows = this.filteredGroups;
 
     if (!this.sortColumn) {
       return rows;
@@ -716,10 +909,10 @@ export class TransferOrderWorkbench implements OnInit {
 
   }
 
-  // ===== Pagination: computed getters =====
+  // ===== Pagination: computed getters (operate on grouped rows) =====
 
   get totalPages(): number {
-    return Math.max(1, Math.ceil(this.filteredLogs.length / this.pageSize));
+    return Math.max(1, Math.ceil(this.filteredGroups.length / this.pageSize));
   }
 
   get startIndex(): number {
@@ -727,11 +920,11 @@ export class TransferOrderWorkbench implements OnInit {
   }
 
   get endIndex(): number {
-    return Math.min(this.startIndex + Number(this.pageSize), this.filteredLogs.length);
+    return Math.min(this.startIndex + Number(this.pageSize), this.filteredGroups.length);
   }
 
-  get pagedLogs(): TransferStockLogDetail[] {
-    return this.sortedLogs.slice(this.startIndex, this.endIndex);
+  get pagedLogs(): GroupedTransferLog[] {
+    return this.sortedGroups.slice(this.startIndex, this.endIndex);
   }
 
   get visiblePages(): number[] {
@@ -763,39 +956,58 @@ export class TransferOrderWorkbench implements OnInit {
     this.currentPage = 1;
   }
 
-  trackByTransitId(index: number, item: TransferStockLogDetail): number {
+  trackByTransitId(index: number, item: GroupedTransferLog): number {
     return item.transitID;
+  }
+
+  trackByRawRow(index: number, item: TransferStockLogDetail): string {
+    return `${item.transitID}-${item.imei || index}`;
   }
 
   // ===== Selection getters =====
 
+  // Grouped rows the user has checked.
+  get selectedGroups(): GroupedTransferLog[] {
+    return this.groupedLogs.filter(x => x.selected);
+  }
+
+  // The RAW per-IMEI records underneath every checked group, flattened.
+  // This — not the grouped rows — is what gets sent to the backend,
+  // record by record, exactly as the requirement specifies.
   get selectedOrders(): TransferStockLogDetail[] {
-    return this.transferLogs.filter(x => x.selected);
+    return this.selectedGroups.flatMap(g => g.items);
   }
 
   get selectedCount(): number {
+    return this.selectedGroups.length;
+  }
+
+  // Total raw/IMEI-level records underneath the selected groups —
+  // shown alongside selectedCount so the user knows how many individual
+  // backend records will actually be updated.
+  get selectedItemCount(): number {
     return this.selectedOrders.length;
   }
 
   get selectedStatus(): string {
 
-    if (this.selectedOrders.length === 0) {
+    if (this.selectedGroups.length === 0) {
       return '';
     }
 
-    return this.selectedOrders[0].logisticsStatus;
+    return this.selectedGroups[0].logisticsStatus;
 
   }
 
   get isSameStatus(): boolean {
 
-    if (this.selectedOrders.length <= 1) {
+    if (this.selectedGroups.length <= 1) {
       return true;
     }
 
-    const status = this.selectedOrders[0].logisticsStatus;
+    const status = this.selectedGroups[0].logisticsStatus;
 
-    return this.selectedOrders.every(x => x.logisticsStatus === status);
+    return this.selectedGroups.every(x => x.logisticsStatus === status);
 
   }
 
@@ -823,7 +1035,8 @@ export class TransferOrderWorkbench implements OnInit {
 
   // ===== Manifest grouping info (for the action toolbar hint) =====
 
-  // Number of distinct source locations among the selected orders.
+  // Number of distinct source locations among the selected orders
+  // (based on the underlying raw records, since that's what gets saved).
   // Moving to Pickup Assigned creates one manifest per source location.
   get selectedSourceLocationCount(): number {
 
@@ -855,101 +1068,113 @@ export class TransferOrderWorkbench implements OnInit {
 
   }
 
-  private buildRequest(
-    order: TransferStockLogDetail,
-    nextLifecycle: DeliveryLifecycle,
-    extra: Partial<DeliveryOrderTransaction> = {}
-  ): DeliveryOrderTransaction {
+ private buildRequest(
+  order: TransferStockLogDetail,
+  nextLifecycle: DeliveryLifecycle,
+  extra: Partial<DeliveryOrderTransaction> = {}
+): DeliveryOrderTransaction {
 
-    const selectedCompany = this.companies.find(c => c.compId === this.selectedCompanyId);
+  const selectedCompany = this.companies.find(c => c.compId === this.selectedCompanyId);
 
-    return {
+  return {
 
-      companyId: order.companyId ?? this.selectedCompanyId,
-      companyName: order.companyName || selectedCompany?.compName || '',
+    companyId: order.companyId ?? this.selectedCompanyId,
+    companyName: order.companyName || selectedCompany?.compName || '',
 
-      transferOrderId: order.transferOrderId ?? 0,
+    transferOrderId: order.transferOrderId ?? 0,
 
-      transitID: order.transitID,
-      deliveryNoteNo: order.deliveryNoteNo ?? '',
+    transitID: order.transitID,
+    deliveryNoteNo: order.deliveryNoteNo ?? '',
 
-      transferOutDate: order.transferOutDate,
-      transferOutTime: order.transferOutTime,
+    transferOutDate: order.transferOutDate,
+    transferOutTime: order.transferOutTime,
 
-      sourceLocationId: order.sourceLocationId,
-      sourceLocationName: order.sourceLocationName ?? '',
-      sourceLocationTypeId: order.sourceLocationTypeId || order.locationTypeId || this.selectedLocationTypeId || 0,
-      sourceLocationTypeName: order.sourceLocationTypeName || order.locationTypeName || '',
+    sourceLocationId: order.sourceLocationId,
+    sourceLocationName: order.sourceLocationName ?? '',
+    sourceLocationTypeId: order.sourceLocationTypeId || order.locationTypeId || this.selectedLocationTypeId || 0,
+    sourceLocationTypeName: order.sourceLocationTypeName || order.locationTypeName || '',
 
-      destinationLocationId: order.destinationLocationId,
-      destinationLocationName: order.destinationLocationName ?? '',
-      destinationLocationTypeId: order.destinationLocationTypeId || order.locationTypeId || this.selectedLocationTypeId || 0,
-      destinationLocationTypeName: order.destinationLocationTypeName || order.locationTypeName || '',
+    destinationLocationId: order.destinationLocationId,
+    destinationLocationName: order.destinationLocationName ?? '',
+    destinationLocationTypeId: order.destinationLocationTypeId || order.locationTypeId || this.selectedLocationTypeId || 0,
+    destinationLocationTypeName: order.destinationLocationTypeName || order.locationTypeName || '',
 
-      itemCode: order.itemCode ?? '',
-      itemName: order.itemName ?? '',
-      imei: order.imei ?? '',
+    itemCode: order.itemCode ?? '',
+    itemName: order.itemName ?? '',
+    imei: order.imei ?? '',
 
-      transferQty: order.transferQty ?? 0,
+    transferQty: order.transferQty ?? 0,
 
-      // Lifecycle
-      lifecycleId: nextLifecycle.lifecycleId,
-      lifecycleSequenceNo: nextLifecycle.sequenceNo,
-      lifecycleCode: nextLifecycle.statusCode,
-      lifecycleName: nextLifecycle.statusName,
+    // Lifecycle
+    lifecycleId: nextLifecycle.lifecycleId,
+    lifecycleSequenceNo: nextLifecycle.sequenceNo,
+    lifecycleCode: nextLifecycle.statusCode,
+    lifecycleName: nextLifecycle.statusName,
 
-      // Transfer Mode
-      transferModeId: extra.transferModeId ?? order.transferModeId ?? 0,
-      transferModeName: extra.transferModeName ?? order.transferModeName ?? '',
+    // Transfer Mode
+    transferModeId: extra.transferModeId ?? order.transferModeId ?? 0,
+    transferModeName: extra.transferModeName ?? order.transferModeName ?? '',
 
-      // Original Transfer Out Details (Never Change)
-      transferOutById: order.transferOutById,
-      transferOutByName: order.transferOutByName,
+    // Transfer Out
+    transferOutById: order.transferOutById,
+    transferOutByName: order.transferOutByName,
 
-      // Driver Assignment (DIRECT)
-      assignedUserId: extra.assignedUserId ?? order.assignedUserId ?? 0,
-      assignedUserName: extra.assignedUserName ?? order.assignedUserName ?? '',
+    // Assigned User
+    assignedUserId: extra.assignedUserId ?? order.assignedUserId ?? 0,
+    assignedUserName: extra.assignedUserName ?? order.assignedUserName ?? '',
 
-      // Courier Assignment (COURIER)
-      courierId: extra.courierId ?? order.courierId ?? 0,
-      courierName: extra.courierName ?? order.courierName ?? '',
+    // NEW - Assigned By
+    assignedById: this.loggedInUserId,
+    assignedByName: this.loggedInUserName,
+    assignedDate: new Date().toISOString(),
 
-      awbBillNo: extra.awbBillNo ?? order.awbBillNo ?? '',
+    // Courier
+    courierId: extra.courierId ?? order.courierId ?? 0,
+    courierName: extra.courierName ?? order.courierName ?? '',
 
-      // Vehicle No — common parameter, used by both DIRECT and OTHERS
-      vehicleNo: extra.vehicleNo ?? order.vehicleNo ?? '',
+    awbBillNo: extra.awbBillNo ?? order.awbBillNo ?? '',
 
-      // Other Party (OTHERS)
-      otherPartyName: extra.otherPartyName ?? order.otherPartyName ?? '',
-      otherPartyType: extra.otherPartyType ?? order.otherPartyType ?? '',
+    // Vehicle
+    vehicleNo: extra.vehicleNo ?? order.vehicleNo ?? '',
 
-      transferInTime: order.transferInTime,
+    // Others
+    otherPartyName: extra.otherPartyName ?? order.otherPartyName ?? '',
+    otherPartyType: extra.otherPartyType ?? order.otherPartyType ?? '',
 
-      inwardDoneById: order.inwardDoneById ?? 0,
-      inwardDoneByName: order.inwardDoneByName ?? '',
+    transferInTime: order.transferInTime,
 
-      transferDuration: order.transferDuration ?? '',
+    inwardDoneById: order.inwardDoneById ?? 0,
+    inwardDoneByName: order.inwardDoneByName ?? '',
 
-      remarks: extra.remarks ?? order.remarks ?? '',
+    transferDuration: order.transferDuration ?? '',
 
-      isActive: true,
+    remarks: extra.remarks ?? order.remarks ?? '',
 
-      createdBy: order.createdBy,
-      createdByName: order.createdByName,
-      createdDate: order.createdDate,
+    isActive: true,
 
-      modifiedBy: 1,
-      modifiedByName: 'Admin',
-      modifiedDate: new Date().toISOString()
-    };
-  }
+    // Audit
+    createdBy: order.createdBy || this.loggedInUserId,
+    createdByName: order.createdByName || this.loggedInUserName,
+    createdDate: order.createdDate,
+
+    modifiedBy: this.loggedInUserId,
+    modifiedByName: this.loggedInUserName,
+    modifiedDate: new Date().toISOString(),
+
+    pickupManifestId: order.pickupManifestId,
+    pickupManifestNo: order.pickupManifestNo,
+
+    locationTypeId: order.locationTypeId,
+    locationTypeName: order.locationTypeName
+  };
+}
 
   processSelectedOrders(): void {
 
     // ==========================================
     // Step 1 : Check Selection
     // ==========================================
-    if (this.selectedOrders.length === 0) {
+    if (this.selectedGroups.length === 0) {
 
       alert('Please select at least one order.');
 
@@ -1038,45 +1263,51 @@ export class TransferOrderWorkbench implements OnInit {
 
   // ===== Manifest creation (grouped by source location) =====
 
-  private buildManifest(
-    order: TransferStockLogDetail,
-    nextLifecycle: DeliveryLifecycle,
-    manifestNo: string,
-    extra: Partial<DeliveryOrderTransaction> = {}
-  ): TransferManifest {
+private buildManifest(
+  order: TransferStockLogDetail,
+  nextLifecycle: DeliveryLifecycle,
+  manifestNo: string,
+  extra: Partial<DeliveryOrderTransaction> = {}
+): TransferManifest {
 
-    return {
+  return {
 
-      manifestId: 0,
+    manifestId: 0,
 
-      // '' = backend generates a new manifest number for this group;
-      // non-empty = reuse the number already generated for this group
-      manifestNo: manifestNo,
+    manifestNo: manifestNo,
 
-      transferOrderId: order.transferOrderId ?? 0,
+    transferOrderId: order.transferOrderId ?? 0,
 
-      // Driver/Courier assignment from the Pickup Assignment modal,
-      // falling back to whatever is already on the order
-      assignedUserId: extra.assignedUserId ?? order.assignedUserId ?? 0,
-      assignedUserName: extra.assignedUserName ?? order.assignedUserName ?? '',
+    assignedUserId: extra.assignedUserId ?? order.assignedUserId ?? 0,
+    assignedUserName: extra.assignedUserName ?? order.assignedUserName ?? '',
 
-      receiverUserId: 0,
-      receiverUserName: '',
+    receiverUserId: 0,
+    receiverUserName: '',
 
-      otp: '',
+    otp: '',
 
-      // Lifecycle -> Pickup Assigned
-      lifecycleId: nextLifecycle.lifecycleId,
-      lifecycleSequenceNo: nextLifecycle.sequenceNo,
-      lifecycleCode: nextLifecycle.statusCode,
-      lifecycleName: nextLifecycle.statusName,
+    lifecycleId: nextLifecycle.lifecycleId,
+    lifecycleSequenceNo: nextLifecycle.sequenceNo,
+    lifecycleCode: nextLifecycle.statusCode,
+    lifecycleName: nextLifecycle.statusName,
 
-      manifestDate: new Date(),
-      status: nextLifecycle.statusName
+    manifestDate: new Date(),
+    status: nextLifecycle.statusName,
 
-    };
-  }
+    // Audit
+    createdBy: this.loggedInUserId,
+    createdByName: this.loggedInUserName,
+    createdDate: new Date(),
 
+    modifiedBy: this.loggedInUserId,
+    modifiedByName: this.loggedInUserName,
+    modifiedDate: new Date(),
+
+    assignedById: this.loggedInUserId,
+    assignedByName: this.loggedInUserName,
+    assignedDate: new Date()
+  };
+}
   // Saves ONE source-location group:
   //   - first order goes with blank ManifestNo -> backend generates a new number
   //   - remaining orders in the same group reuse that generated number
@@ -1117,9 +1348,9 @@ export class TransferOrderWorkbench implements OnInit {
 
   }
 
-  // Groups the selected orders by sourceLocationId and creates ONE manifest
-  // per group, sequentially (concatMap) so every group gets its own
-  // manifest number from the backend without numbers mixing between
+  // Groups the selected RAW records by sourceLocationId and creates ONE
+  // manifest per group, sequentially (concatMap) so every group gets its
+  // own manifest number from the backend without numbers mixing between
   // locations.
   private createManifestsBySourceLocation(
     orders: TransferStockLogDetail[],
@@ -1148,10 +1379,14 @@ export class TransferOrderWorkbench implements OnInit {
 
   }
 
-  // ===== Combined save: updates each order's own status/assignment
+  // ===== Combined save: updates each RAW order's own status/assignment
   // (DeliveryOrderTransaction table) AND creates the manifest(s), one per
   // source location (TransferManifest table). Used for the Pickup Assigned
-  // step, where both things need to happen together. =====
+  // step, where both things need to happen together.
+  //
+  // this.selectedOrders is already the flattened, raw per-IMEI record list
+  // (expanded from whichever grouped rows the user checked) — every one of
+  // those raw records is sent to the backend individually. =====
   private saveWithLifecycleAndManifest(
     nextLifecycle: DeliveryLifecycle,
     extra: Partial<DeliveryOrderTransaction> = {}
@@ -1161,7 +1396,7 @@ export class TransferOrderWorkbench implements OnInit {
 
     this.saving = true;
 
-    // Step 1: update each order's own status + assignment
+    // Step 1: update each raw order's own status + assignment
     const dotRequests = ordersToSave.map(order =>
       this.logisticsService.saveDeliveryOrderTransaction(
         this.buildRequest(order, nextLifecycle, extra)
@@ -1181,7 +1416,7 @@ export class TransferOrderWorkbench implements OnInit {
         this.saving = false;
 
         alert(
-          `Status updated to ${nextLifecycle.statusName}. ` +
+          `Status updated to ${nextLifecycle.statusName} for ${ordersToSave.length} record(s). ` +
           `${groups.length} manifest(s) created for ${groups.length} source location(s).`
         );
 
@@ -1206,12 +1441,16 @@ export class TransferOrderWorkbench implements OnInit {
 
   }
 
+  // Sends each RAW record under the selected TransitID group(s) individually
+  // to the backend — the grouped row itself is never sent.
   private saveWithLifecycle(
     nextLifecycle: DeliveryLifecycle,
     extra: Partial<DeliveryOrderTransaction> = {}
   ): void {
 
-    const requests = this.selectedOrders.map(order => {
+    const ordersToSave = [...this.selectedOrders];
+
+    const requests = ordersToSave.map(order => {
       const payload = this.buildRequest(order, nextLifecycle, extra);
       console.log('Sending payload:', payload);
       return this.logisticsService.saveDeliveryOrderTransaction(payload);
@@ -1227,7 +1466,7 @@ export class TransferOrderWorkbench implements OnInit {
         console.log('All saved:', results);
         this.saving = false;
 
-        alert(`Status updated to ${nextLifecycle.statusName}`);
+        alert(`Status updated to ${nextLifecycle.statusName} for ${ordersToSave.length} record(s)`);
 
         this.clearSelection();
         this.loadTransferLogs();
@@ -1254,7 +1493,7 @@ export class TransferOrderWorkbench implements OnInit {
 
     this.selectAll = false;
 
-    this.transferLogs.forEach(x => x.selected = false);
+    this.groupedLogs.forEach(x => x.selected = false);
 
   }
 
@@ -1381,8 +1620,8 @@ export class TransferOrderWorkbench implements OnInit {
     this.showPickupModal = false;
     this.pendingNextLifecycle = undefined;
 
-    // Updates order status/assignment AND creates the per-source-location
-    // manifest(s) in one combined save.
+    // Updates every raw order's status/assignment AND creates the
+    // per-source-location manifest(s) in one combined save.
     this.saveWithLifecycleAndManifest(nextLifecycle, extra);
 
   }

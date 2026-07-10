@@ -1,0 +1,232 @@
+<div class="page">
+
+  <!-- ===== Page Header ===== -->
+  <div class="page-header">
+    <div class="page-title">
+      <h2>Order Level Tracker</h2>
+      <span class="page-subtitle">Delivery Order Pipeline &amp; Lifecycle</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn-export btn-excel" (click)="exportToExcel()"
+        [disabled]="loading || filteredGroups.length === 0" title="Download Excel (CSV)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="8" y1="13" x2="16" y2="13" />
+          <line x1="8" y1="17" x2="16" y2="17" />
+        </svg>
+        Excel
+      </button>
+      <button class="btn-export btn-pdf" (click)="exportToPdf()" [disabled]="loading || filteredGroups.length === 0"
+        title="Download PDF">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="9" y1="15" x2="15" y2="15" />
+        </svg>
+        PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== KPI Stat Cards ===== -->
+  <div class="stat-grid" *ngIf="!loading && statCards.length > 0">
+    <div class="stat-card" *ngFor="let card of statCards" [style.--accent]="card.color">
+      <div class="stat-icon"><i [class]="card.icon"></i></div>
+      <div class="stat-info">
+        <span class="stat-label">{{card.label}}</span>
+        <span class="stat-value">{{card.value}}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Filters ===== -->
+  <div class="card toolbar-card">
+    <div class="toolbar">
+      <div class="field">
+        <label>Company</label>
+        <select [(ngModel)]="companyFilter">
+          <option value="ALL">All Companies</option>
+          <option *ngFor="let c of companyOptions" [value]="c">{{c}}</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select [(ngModel)]="statusFilter">
+          <option value="ALL">All Statuses</option>
+          <option *ngFor="let s of statusOptions" [value]="s.code">{{s.name}}</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Source</label>
+        <select [(ngModel)]="sourceFilter">
+          <option value="ALL">All Sources</option>
+          <option *ngFor="let src of sourceOptions" [value]="src">{{src}}</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Destination</label>
+        <select [(ngModel)]="destinationFilter">
+          <option value="ALL">All Destinations</option>
+          <option *ngFor="let dest of destinationOptions" [value]="dest">{{dest}}</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Search</label>
+        <input type="text" placeholder="Transit ID / Item / IMEI / User..." [(ngModel)]="searchText">
+      </div>
+      <button class="btn-secondary" (click)="clearFilters()" [disabled]="!hasActiveFilters">Clear</button>
+    </div>
+  </div>
+
+  <!-- ===== States ===== -->
+  <div *ngIf="loading" class="loading"><span class="spinner"></span> Loading tracker...</div>
+  <div *ngIf="errorMessage" class="hint text-danger">{{errorMessage}}</div>
+  <div *ngIf="!loading && rows.length === 0 && !errorMessage" class="empty-hint">No timeline data found.</div>
+
+  <!-- ===== Order-Level (Transit) Table ===== -->
+  <div class="table-responsive" *ngIf="!loading && filteredGroups.length > 0">
+    <table class="table table-bordered table-hover table-striped">
+      <thead>
+        <tr>
+          <th>S.No</th>
+          <th>Transit ID</th>
+          <th>Transfer Order</th>
+          <th>Delivery Note</th>
+          <th>Company</th>
+          <th>Source</th>
+          <th>Destination</th>
+          <th>Transfer Mode</th>
+          <th>Assigned User</th>
+          <th>Courier</th>
+          <th>Vehicle</th>
+          <th>Lifecycle</th>
+          <th>Status</th>
+          <th>Total Items</th>
+          <th>Total Qty</th>
+          <th>Accepted Qty</th>
+          <th>Pending Qty</th>
+          <th>Transfer Out</th>
+          <th>Transfer In</th>
+          <th>Duration</th>
+          <th *ngFor="let col of statusColumns" class="st-col">{{col.name}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let group of filteredGroups; let i = index">
+          <td>{{i + 1}}</td>
+          <td>
+            <a href="javascript:void(0)" class="transit-link" (click)="openTransit(group)">
+              {{group.transitID}}
+            </a>
+          </td>
+          <td>{{group.transferOrderId}}</td>
+          <td>{{group.deliveryNoteNo}}</td>
+          <td>{{group.companyName}}</td>
+          <td>{{group.sourceLocationName}}</td>
+          <td>{{group.destinationLocationName}}</td>
+          <td>{{group.transferModeName}}</td>
+          <td>{{group.assignedUserName}}</td>
+          <td>{{group.courierName || '-'}}</td>
+          <td>{{group.vehicleNo || '-'}}</td>
+          <td>{{group.lifecycleName}}</td>
+          <td><span class="status-badge">{{group.transferStatus}}</span></td>
+          <td class="qty-cell">{{group.totalItems}}</td>
+          <td class="qty-cell">{{group.totalQty}}</td>
+          <td class="qty-cell accepted">{{group.acceptedQty}}</td>
+          <td class="qty-cell pending">{{group.pendingQty}}</td>
+          <td>{{group.transferOutTime | date:'dd/MM/yyyy HH:mm'}}</td>
+          <td>{{group.transferInTime | date:'dd/MM/yyyy HH:mm'}}</td>
+          <td>{{group.transferDuration}}</td>
+
+          <td *ngFor="let p of group.timeline"
+              [ngClass]="{ 'st-done': p.state === 'done', 'st-current': p.state === 'current' }">
+            <ng-container *ngIf="p.reached; else mdash">
+              <div class="cell-person"><i class="fa-regular fa-user"></i> {{p.personName || '—'}}</div>
+              <div class="cell-time">
+                <i class="fa-regular fa-clock"></i> {{p.startTime | date:'dd/MM/yy HH:mm'}}
+                <span *ngIf="p.endTime">&rarr; {{p.endTime | date:'HH:mm'}}</span>
+              </div>
+              <div class="cell-dur" *ngIf="p.durationMinutes != null">{{p.durationMinutes}} min</div>
+            </ng-container>
+            <ng-template #mdash><span class="cell-empty">—</span></ng-template>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div *ngIf="!loading && filteredGroups.length === 0 && rows.length > 0" class="alert alert-info">
+    No Transit Records Found
+  </div>
+
+</div>
+
+
+<!-- ========================================================= -->
+<!-- Transit Details Popup (IMEI-based status matrix)          -->
+<!-- ========================================================= -->
+<div class="modal-backdrop" *ngIf="selectedTransit" (click)="closeTransit()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <h3>Transit Details - {{selectedTransit.transitID}}</h3>
+      <button class="close-btn" (click)="closeTransit()">✕</button>
+    </div>
+
+    <!-- ===== Transit Summary ===== -->
+    <div class="summary-grid">
+      <div><b>Transfer Id</b><br>{{selectedTransit.transitID}}</div>
+      <div><b>Transfer Order</b><br>{{selectedTransit.transferOrderId}}</div>
+      <div><b>Delivery Note</b><br>{{selectedTransit.deliveryNoteNo}}</div>
+      <div><b>Company</b><br>{{selectedTransit.companyName}}</div>
+      <div><b>Assigned User</b><br>{{selectedTransit.assignedUserName}}</div>
+      <div><b>Source</b><br>{{selectedTransit.sourceLocationName}}</div>
+      <div><b>Destination</b><br>{{selectedTransit.destinationLocationName}}</div>
+      <div><b>Transfer Mode</b><br>{{selectedTransit.transferModeName}}</div>
+      <div><b>Courier</b><br>{{selectedTransit.courierName || '-'}}</div>
+      <div><b>Vehicle</b><br>{{selectedTransit.vehicleNo || '-'}}</div>
+      <div><b>Lifecycle</b><br>{{selectedTransit.lifecycleName}}</div>
+      <div><b>Status</b><br>{{selectedTransit.transferStatus}}</div>
+      <div><b>Transfer Out</b><br>{{selectedTransit.transferOutTime | date:'dd/MM/yyyy HH:mm'}}</div>
+      <div><b>Transfer In</b><br>{{selectedTransit.transferInTime | date:'dd/MM/yyyy HH:mm'}}</div>
+      <div><b>Duration</b><br>{{selectedTransit.transferDuration}}</div>
+      <div><b>Total Items</b><br>{{selectedTransit.totalItems}}</div>
+      <div><b>Total Qty</b><br>{{selectedTransit.totalQty}}</div>
+      <div><b>Accepted Qty</b><br>{{selectedTransit.acceptedQty}}</div>
+      <div><b>Pending Qty</b><br>{{selectedTransit.pendingQty}}</div>
+    </div>
+
+    <hr>
+
+    <!-- ===== IMEI Details: item-specific info (status timing is transit-level, shown above) ===== -->
+    <div class="detail-subtitle">Items in this Transit</div>
+    <div class="table-responsive">
+      <table class="table table-bordered table-sm detail-table">
+        <thead>
+          <tr>
+            <th>S.No</th>
+            <th>Item Code</th>
+            <th>Item Name</th>
+            <th>IMEI</th>
+            <th>Qty</th>
+            <th>Current Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of selectedTransit.details; let i = index">
+            <td>{{i + 1}}</td>
+            <td>{{item.itemCode}}</td>
+            <td>{{item.itemName}}</td>
+            <td>{{item.imei || '-'}}</td>
+            <td class="qty-cell">{{item.qty}}</td>
+            <td>
+              <span class="status-pill" [style.background]="item.currentColor">{{item.currentName}}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>

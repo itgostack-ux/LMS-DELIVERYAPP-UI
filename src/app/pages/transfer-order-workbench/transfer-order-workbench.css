@@ -219,6 +219,11 @@ th.checkbox-col{
     width: 36px;
 }
 
+th.expand-col, td.expand-col{
+    width: 32px;
+    text-align: center;
+}
+
 td{
     padding: 11px 14px;
     border-bottom: 1px solid var(--border);
@@ -240,12 +245,89 @@ td{
     color: var(--text);
 }
 
-tbody tr:nth-child(even){
+tbody tr.group-row:nth-of-type(4n+1){
     background: var(--bg);
 }
 
-tbody tr:hover{
+tbody tr.group-row:hover{
     background: rgba(37, 99, 235, 0.06);
+}
+
+tbody tr.group-row.expanded{
+    background: rgba(37, 99, 235, 0.08);
+}
+
+/* ===== Expand chevron ===== */
+.chevron-btn{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: none;
+    color: var(--text-light);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+.chevron-btn:hover{
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--primary);
+}
+
+.chevron{
+    display: inline-flex;
+    transition: transform 0.18s ease;
+}
+
+.chevron.rot{
+    transform: rotate(90deg);
+}
+
+/* ===== Expanded IMEI detail row ===== */
+tr.detail-row td{
+    padding: 0;
+    background: #fbfcfe;
+    border-bottom: 1px solid var(--border);
+}
+
+.detail-cell{
+    padding: 8px 14px 16px 40px !important;
+}
+
+.imei-subtable{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.imei-subtable thead th{
+    position: static;
+    background: #f1f5f9;
+    color: var(--text-light);
+    font-weight: 600;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 8px 12px;
+    border: none;
+}
+
+.imei-subtable tbody td{
+    padding: 8px 12px;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+    white-space: nowrap;
+}
+
+.imei-subtable tbody tr:hover{
+    background: rgba(37, 99, 235, 0.05);
 }
 
 /* ===== Status badges ===== */
@@ -265,6 +347,11 @@ tbody tr:hover{
 .pending{
     background: rgba(245, 158, 11, 0.14);
     color: var(--warning);
+}
+
+.partial{
+    background: rgba(124, 58, 237, 0.12);
+    color: #7c3aed;
 }
 
 /* ===== Empty state ===== */
@@ -433,6 +520,13 @@ tbody tr:hover{
     font-size:28px;
     font-weight:600;
 
+}
+
+.item-sub{
+    font-size: 13px;
+    font-weight: 500;
+    color: #6b7280;
+    margin-left: 8px;
 }
 
 .status-flow{

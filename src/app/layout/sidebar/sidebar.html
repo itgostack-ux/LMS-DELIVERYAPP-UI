@@ -7,49 +7,91 @@
     <ul class="menu">
 
         <!-- Dashboard -->
-        <li routerLink="/dashboard" routerLinkActive="active">
-            <i class="fa-solid fa-chart-line"></i>
-            <span>Dashboard</span>
+        <li routerLinkActive="active">
+            <a routerLink="/dashboard">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>Dashboard</span>
+            </a>
         </li>
 
-        <!-- Logistics Admin -->
+        <!-- ================= Logistics Admin ================= -->
         <ng-container *ngIf="roleName === 'Logistics Admin'">
 
-            <li routerLink="/master-management" routerLinkActive="active">
-                <i class="fa-solid fa-building"></i>
-                <span>Organization</span>
+            <li routerLinkActive="active">
+                <a routerLink="/master-management">
+                    <i class="fa-solid fa-building"></i>
+                    <span>Organization</span>
+                </a>
             </li>
 
-            <li routerLink="/administration" routerLinkActive="active">
-                <i class="fa-solid fa-user-shield"></i>
-                <span>Administration</span>
+            <li routerLinkActive="active">
+                <a routerLink="/administration">
+                    <i class="fa-solid fa-user-shield"></i>
+                    <span>Administration</span>
+                </a>
             </li>
 
-            <li routerLink="/operations" routerLinkActive="active">
-                <i class="fa-solid fa-truck-fast"></i>
-                <span>Operations</span>
+            <li routerLinkActive="active">
+                <a routerLink="/operations">
+                    <i class="fa-solid fa-truck-fast"></i>
+                    <span>Operations</span>
+                </a>
             </li>
 
-            <li routerLink="/track-orders" routerLinkActive="active">
-                <i class="fa-solid fa-location-dot"></i>
-                <span>Track Orders</span>
+            <!-- Logistics Tracking -->
+            <li class="has-submenu" [class.open]="trackingMenuOpen">
+
+                <a href="javascript:void(0)"
+                   (click)="trackingMenuOpen=!trackingMenuOpen">
+
+                    <div class="menu-left">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <span>Logistics Tracking</span>
+                    </div>
+
+                    <i class="fa-solid"
+                       [ngClass]="trackingMenuOpen ? 'fa-chevron-up':'fa-chevron-down'">
+                    </i>
+
+                </a>
+
+                <ul class="submenu">
+
+                    <li routerLinkActive="active">
+                        <a routerLink="/track-manifest-report"
+                           (click)="trackingMenuOpen=false">
+                            <i class="fa-solid fa-file-lines"></i>
+                            <span>Manifest Tracking</span>
+                        </a>
+                    </li>
+
+                    <li routerLinkActive="active">
+                        <a routerLink="/track-order-level-report"
+                           (click)="trackingMenuOpen=false">
+                            <i class="fa-solid fa-box"></i>
+                            <span>Order Tracking</span>
+                        </a>
+                    </li>
+
+                </ul>
+
             </li>
 
-            <li>
+            <li routerLinkActive="active">
                 <a routerLink="/driver-console">
                     <i class="fa-solid fa-truck"></i>
                     <span>Driver Console</span>
                 </a>
             </li>
 
-            <li>
+            <li routerLinkActive="active">
                 <a routerLink="/d-report">
                     <i class="fa-solid fa-location-dot"></i>
                     <span>Driver Report</span>
                 </a>
             </li>
 
-            <li>
+            <li routerLinkActive="active">
                 <a routerLink="/m-report">
                     <i class="fa-solid fa-location-dot"></i>
                     <span>Manager Report</span>
@@ -58,49 +100,97 @@
 
         </ng-container>
 
-        <!-- Logistics Manager -->
+        <!-- ================= Logistics Manager ================= -->
+
         <ng-container *ngIf="roleName === 'Logistics Manager'">
 
-            <li routerLink="/operations" routerLinkActive="active">
-                <i class="fa-solid fa-truck-fast"></i>
-                <span>Operations</span>
+            <li routerLinkActive="active">
+                <a routerLink="/operations">
+                    <i class="fa-solid fa-truck-fast"></i>
+                    <span>Operations</span>
+                </a>
             </li>
 
-            <li routerLink="/track-orders" routerLinkActive="active">
-                <i class="fa-solid fa-location-dot"></i>
-                <span>Track Orders</span>
+            <li class="has-submenu" [class.open]="trackingMenuOpen">
+
+                <a href="javascript:void(0)"
+                   (click)="trackingMenuOpen=!trackingMenuOpen">
+
+                    <div class="menu-left">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <span>Logistics Tracking</span>
+                    </div>
+
+                    <i class="fa-solid"
+                       [ngClass]="trackingMenuOpen ? 'fa-chevron-up':'fa-chevron-down'">
+                    </i>
+
+                </a>
+
+                <ul class="submenu">
+
+                    <li routerLinkActive="active">
+                        <a routerLink="/track-manifest-report"
+                           (click)="trackingMenuOpen=false">
+                            <i class="fa-solid fa-file-lines"></i>
+                            <span>Manifest Tracking</span>
+                        </a>
+                    </li>
+
+                    <li routerLinkActive="active">
+                        <a routerLink="/track-order-level-report"
+                           (click)="trackingMenuOpen=false">
+                            <i class="fa-solid fa-box"></i>
+                            <span>Order Tracking</span>
+                        </a>
+                    </li>
+
+                </ul>
+
             </li>
 
-
-            <li>
+            <li routerLinkActive="active">
                 <a routerLink="/m-report">
                     <i class="fa-solid fa-location-dot"></i>
                     <span>Manager Report</span>
                 </a>
             </li>
 
-
-
-
-
-
-
-
-
-
         </ng-container>
 
-        <!-- Delivery Executive -->
+        <!-- ================= Delivery Executive ================= -->
+
         <ng-container *ngIf="roleName === 'Delivery Executive'">
 
-            <li>
+            <li routerLinkActive="active">
+                <a routerLink="/master-management">
+                    <i class="fa-solid fa-building"></i>
+                    <span>Organization</span>
+                </a>
+            </li>
+
+            <li routerLinkActive="active">
+                <a routerLink="/administration">
+                    <i class="fa-solid fa-user-shield"></i>
+                    <span>Administration</span>
+                </a>
+            </li>
+
+            <li routerLinkActive="active">
+                <a routerLink="/operations">
+                    <i class="fa-solid fa-truck-fast"></i>
+                    <span>Operations</span>
+                </a>
+            </li>
+
+            <li routerLinkActive="active">
                 <a routerLink="/driver-console">
                     <i class="fa-solid fa-truck"></i>
                     <span>Driver Console</span>
                 </a>
             </li>
 
-            <li>
+            <li routerLinkActive="active">
                 <a routerLink="/d-report">
                     <i class="fa-solid fa-location-dot"></i>
                     <span>Driver Report</span>

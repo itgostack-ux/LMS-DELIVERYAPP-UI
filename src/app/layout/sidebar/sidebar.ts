@@ -19,6 +19,7 @@ export class Sidebar implements OnInit {
 
   roleId = 0;
   roleName = '';
+  trackingMenuOpen = false;
 
   constructor(
     private logisticsService: LogisticsService,

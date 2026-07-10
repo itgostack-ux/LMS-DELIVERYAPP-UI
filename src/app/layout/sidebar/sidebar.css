@@ -1,195 +1,307 @@
-.sidebar {
+/* ==========================================
+   GLOBAL
+========================================== */
 
-    width: 260px;
-    position: fixed;
-    left: 0;
-    top: 0;
-    bottom: 0;
+*,
+*::before,
+*::after{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+}
 
-    background: #1E3A8A;
-    color: white;
+html,
+body{
+    height:100%;
+    font-family:'Poppins',sans-serif;
+}
 
-    display: flex;
-    flex-direction: column;
+/* ==========================================
+   SIDEBAR
+========================================== */
 
-    box-shadow: 3px 0 10px rgba(0, 0, 0, .08);
+.sidebar{
+    width:270px;
+    height:100vh;
+    position:fixed;
+    top:0;
+    left:0;
+    background:#1E3A8A;
+    color:#fff;
+    display:flex;
+    flex-direction:column;
+    box-shadow:3px 0 12px rgba(0,0,0,.15);
+    z-index:1000;
+}
 
-    z-index: 100;
+/* ==========================================
+   LOGO
+========================================== */
 
-    transition: width .25s ease;
+.logo{
+    height:72px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    border-bottom:1px solid rgba(255,255,255,.12);
+}
+
+.logo h2{
+    font-size:24px;
+    font-weight:700;
+    color:#fff;
+}
+
+/* ==========================================
+   MENU
+========================================== */
+
+.menu{
+    list-style:none;
+    flex:1;
+    overflow-y:auto;
+    padding:18px 12px;
+}
+
+.menu::-webkit-scrollbar{
+    width:5px;
+}
+
+.menu::-webkit-scrollbar-thumb{
+    background:rgba(255,255,255,.25);
+    border-radius:10px;
+}
+
+.menu>li{
+    margin-bottom:8px;
+}
+
+/* ==========================================
+   LINKS
+========================================== */
+
+.menu li>a{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    width:100%;
+    padding:15px 18px;
+    color:#fff;
+    text-decoration:none;
+    border-radius:12px;
+    transition:.25s;
+}
+
+.menu li>a:hover{
+    background:rgba(255,255,255,.08);
+}
+
+.menu li.active>a{
+    background:#FF7A18;
+    color:#fff;
+}
+
+.menu li i{
+    width:22px;
+    text-align:center;
+    font-size:18px;
+}
+
+.menu li span{
+    flex:1;
+    font-size:16px;
+    white-space:nowrap;
+}
+
+/* ==========================================
+   SUBMENU
+========================================== */
+
+.has-submenu>a{
+    justify-content:space-between;
+}
+
+.menu-left{
+    display:flex;
+    align-items:center;
+    gap:16px;
+}
+
+.has-submenu>a i:last-child{
+    width:auto;
+    transition:.3s;
+}
+
+.has-submenu.open>a i:last-child{
+    transform:rotate(180deg);
+}
+
+/* ==========================================
+   SUBMENU LIST
+========================================== */
+
+.submenu{
+    list-style:none;
+    max-height:0;
+    overflow:hidden;
+    transition:max-height .35s ease;
+}
+
+.has-submenu.open .submenu{
+    max-height:250px;
+}
+
+.submenu li{
+    margin:4px 0;
+}
+
+.submenu li>a{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:12px 18px 12px 56px;
+    border-radius:10px;
+    color:#fff;
+    text-decoration:none;
+    transition:.25s;
+}
+
+.submenu li>a:hover{
+    background:rgba(255,255,255,.08);
+}
+
+.submenu li.active>a{
+    background:#FF7A18;
+}
+
+/* ==========================================
+   TABLET
+========================================== */
+
+@media (max-width:992px){
+
+.sidebar{
+    width:80px;
+}
+
+.logo h2{
+    font-size:18px;
+}
+
+.menu li span{
+    display:none;
+}
+
+.menu-left span{
+    display:none;
+}
+
+.menu li>a{
+    justify-content:center;
+    padding:18px 0;
+}
+
+.menu-left{
+    justify-content:center;
+}
+
+.has-submenu>a{
+    justify-content:center;
+}
+
+.has-submenu>a i:last-child{
+    display:none;
+}
+
+.submenu{
+    display:none;
+}
 
 }
 
-.logo {
+/* ==========================================
+   MOBILE
+========================================== */
 
-    display: flex;
-    align-items: center;
-    gap: 15px;
+@media(max-width:768px){
 
-    padding: 24px;
+.sidebar{
 
-    border-bottom: 1px solid rgba(255, 255, 255, .15);
+    width:100%;
+    height:70px;
 
-    white-space: nowrap;
-    overflow: hidden;
+    top:auto;
+    bottom:0;
+
+    flex-direction:row;
+
+    overflow:hidden;
+}
+
+.logo{
+    display:none;
+}
+
+.menu{
+
+    display:flex;
+
+    width:100%;
+
+    justify-content:space-around;
+    align-items:center;
+
+    padding:0;
+
+    overflow:hidden;
+}
+
+.menu>li{
+
+    flex:1;
+
+    margin:0;
+}
+
+.menu li>a{
+
+    justify-content:center;
+    padding:18px 0;
+
+    border-radius:0;
+}
+
+.menu li span{
+
+    display:none;
+}
+
+.submenu{
+
+    display:none !important;
+}
 
 }
 
-.logo h2 {
+/* ==========================================
+   LARGE DESKTOP
+========================================== */
 
-    margin: 0;
-    font-size: 20px;
-    letter-spacing: .3px;
+@media(min-width:1400px){
 
+.sidebar{
+
+    width:290px;
 }
 
-.menu {
+.logo h2{
 
-    list-style: none;
-    padding: 15px;
-    margin: 0;
-    flex: 1;
-
-    overflow-y: auto;
-    overflow-x: hidden;
-
+    font-size:28px;
 }
 
-.menu li {
+.menu li>a{
 
-    display: flex;
-    gap: 14px;
-    align-items: center;
-
-    padding: 14px 18px;
-
-    border-radius: 8px;
-
-    cursor: pointer;
-
-    margin-bottom: 8px;
-
-    white-space: nowrap;
-
-    transition: background .3s ease;
-
+    padding:16px 22px;
 }
 
-.menu li i {
-
-    width: 20px;
-    flex-shrink: 0;
-    text-align: center;
-    font-size: 16px;
-
-}
-
-.menu li:hover {
-
-    background: rgba(255, 255, 255, .12);
-
-}
-
-.menu li.active {
-
-    background: #F97316;
-
-}
-
-/* ================= Responsive ================= */
-
-/* Tablet / small laptop: collapse to icon-only rail */
-@media (max-width: 992px) {
-
-    .sidebar {
-        width: 78px;
-    }
-
-    .logo {
-        padding: 20px 0;
-        justify-content: center;
-    }
-
-    .logo h2 {
-        display: none;
-    }
-
-    .menu li {
-        justify-content: center;
-        padding: 14px 0;
-    }
-
-    .menu li span {
-        display: none;
-    }
-
-}
-
-/* Mobile: sidebar becomes a fixed bottom nav bar */
-@media (max-width: 640px) {
-
-    .sidebar {
-        width: 100%;
-        height: 68px;
-        left: 0;
-        right: 0;
-        top: auto;
-        bottom: 0;
-
-        flex-direction: row;
-        align-items: center;
-
-        box-shadow: 0 -3px 10px rgba(0, 0, 0, .1);
-    }
-
-    .logo {
-        display: none;
-    }
-
-    .menu {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-around;
-
-        width: 100%;
-        padding: 0 6px;
-
-        overflow-x: auto;
-    }
-
-    .menu li {
-        flex-direction: column;
-        gap: 4px;
-
-        padding: 8px 10px;
-        margin-bottom: 0;
-
-        font-size: 11px;
-    }
-
-    .menu li i {
-        width: auto;
-        font-size: 18px;
-    }
-
-    .menu li span {
-        display: block;
-        font-size: 10.5px;
-    }
-
-}
-
-.menu li a {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    height: 100%;
-    color: inherit;
-    text-decoration: none;
-}
-
-.menu li a:hover {
-    color: inherit;
 }

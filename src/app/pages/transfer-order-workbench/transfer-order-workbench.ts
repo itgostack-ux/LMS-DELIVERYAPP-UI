@@ -1071,18 +1071,41 @@ export class TransferOrderWorkbench implements OnInit {
 
   }
 
- private buildRequest(
+private buildRequest(
   order: TransferStockLogDetail,
   nextLifecycle: DeliveryLifecycle,
   extra: Partial<DeliveryOrderTransaction> = {}
 ): DeliveryOrderTransaction {
 
-  const selectedCompany = this.companies.find(c => c.compId === this.selectedCompanyId);
+  const selectedCompany = this.companies.find(
+    c => c.compId === this.selectedCompanyId
+  );
+
+  const companyId =
+    order.companyId && order.companyId > 0
+      ? order.companyId
+      : this.selectedCompanyId;
+
+  const companyName =
+    order.companyName && order.companyName.trim() !== ''
+      ? order.companyName
+      : (selectedCompany?.compName ?? '');
+
+  console.log('==============================');
+  console.log('BUILD REQUEST');
+  console.log('Selected CompanyId :', this.selectedCompanyId);
+  console.log('Order CompanyId    :', order.companyId);
+  console.log('Final CompanyId    :', companyId);
+  console.log('Selected Company   :', selectedCompany?.compName);
+  console.log('Order CompanyName  :', order.companyName);
+  console.log('Final CompanyName  :', companyName);
+  console.log('==============================');
 
   return {
 
-    companyId: order.companyId ?? this.selectedCompanyId,
-    companyName: order.companyName || selectedCompany?.compName || '',
+    // Company
+    companyId: companyId,
+    companyName: companyName,
 
     transferOrderId: order.transferOrderId ?? 0,
 
@@ -1094,13 +1117,27 @@ export class TransferOrderWorkbench implements OnInit {
 
     sourceLocationId: order.sourceLocationId,
     sourceLocationName: order.sourceLocationName ?? '',
-    sourceLocationTypeId: order.sourceLocationTypeId || order.locationTypeId || this.selectedLocationTypeId || 0,
-    sourceLocationTypeName: order.sourceLocationTypeName || order.locationTypeName || '',
+    sourceLocationTypeId:
+      order.sourceLocationTypeId ||
+      order.locationTypeId ||
+      this.selectedLocationTypeId ||
+      0,
+    sourceLocationTypeName:
+      order.sourceLocationTypeName ||
+      order.locationTypeName ||
+      '',
 
     destinationLocationId: order.destinationLocationId,
     destinationLocationName: order.destinationLocationName ?? '',
-    destinationLocationTypeId: order.destinationLocationTypeId || order.locationTypeId || this.selectedLocationTypeId || 0,
-    destinationLocationTypeName: order.destinationLocationTypeName || order.locationTypeName || '',
+    destinationLocationTypeId:
+      order.destinationLocationTypeId ||
+      order.locationTypeId ||
+      this.selectedLocationTypeId ||
+      0,
+    destinationLocationTypeName:
+      order.destinationLocationTypeName ||
+      order.locationTypeName ||
+      '',
 
     itemCode: order.itemCode ?? '',
     itemName: order.itemName ?? '',
@@ -1126,7 +1163,7 @@ export class TransferOrderWorkbench implements OnInit {
     assignedUserId: extra.assignedUserId ?? order.assignedUserId ?? 0,
     assignedUserName: extra.assignedUserName ?? order.assignedUserName ?? '',
 
-    // NEW - Assigned By
+    // Assigned By
     assignedById: this.loggedInUserId,
     assignedByName: this.loggedInUserName,
     assignedDate: new Date().toISOString(),
@@ -1134,7 +1171,6 @@ export class TransferOrderWorkbench implements OnInit {
     // Courier
     courierId: extra.courierId ?? order.courierId ?? 0,
     courierName: extra.courierName ?? order.courierName ?? '',
-
     awbBillNo: extra.awbBillNo ?? order.awbBillNo ?? '',
 
     // Vehicle
@@ -1150,7 +1186,6 @@ export class TransferOrderWorkbench implements OnInit {
     inwardDoneByName: order.inwardDoneByName ?? '',
 
     transferDuration: order.transferDuration ?? '',
-
     remarks: extra.remarks ?? order.remarks ?? '',
 
     isActive: true,

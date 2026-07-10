@@ -17,7 +17,7 @@ import {
 export class LogisticsService {
 
   private readonly apiUrl = 'http://localhost:5089/api/Logistics';
-//private readonly apiUrl = 'https://n8n.gogizmo.co/api/Logistics';
+  //private readonly apiUrl = 'https://n8n.gogizmo.co/api/Logistics';
 
   constructor(private http: HttpClient) { }
 
@@ -294,9 +294,19 @@ export class LogisticsService {
 
   }
 
-    getDeliveryOrderTimeline(): Observable<DeliveryOrderTimeline[]> {
+  getDeliveryOrderTimeline(): Observable<DeliveryOrderTimeline[]> {
     return this.http.get<DeliveryOrderTimeline[]>(
       `${this.apiUrl}/delivery-order-timeline`
     );
+  }
+
+  getReceiverUsers(companyId: number, locationId: number) {
+
+    const url =
+      `${this.apiUrl}/receiver-users?companyId=${companyId}&locationId=${locationId}`;
+
+    console.log('Receiver Users URL:', url);
+
+    return this.http.get<any[]>(url);
   }
 }

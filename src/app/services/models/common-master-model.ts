@@ -493,6 +493,7 @@ export interface TransferManifest {
 // a join of TransferManifest + DeliveryOrderTransaction, one row per
 // transfer order under a manifest. This is the real backend DTO shape.
 export interface TransferManifestResponse {
+  otherPartyType: string;
   createdByName: string;
 
   // TransferManifest

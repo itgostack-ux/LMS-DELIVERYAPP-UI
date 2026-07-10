@@ -213,7 +213,7 @@
                             Delivery Note <span class="sort-icon" [class.active]="sortColumn === 'deliveryNoteNo'">{{
                                 sortIcon('deliveryNoteNo') }}</span>
                         </th>
-
+                        <!--
                         <th class="sortable" (click)="sortBy('itemName')">
                             Item <span class="sort-icon" [class.active]="sortColumn === 'itemName'">{{
                                 sortIcon('itemName') }}</span>
@@ -222,7 +222,7 @@
                         <th class="sortable" (click)="sortBy('itemCode')">
                             Item Code <span class="sort-icon" [class.active]="sortColumn === 'itemCode'">{{
                                 sortIcon('itemCode') }}</span>
-                        </th>
+                        </th>-->
 
                         <th class="num sortable" (click)="sortBy('transferQty')">
                             Transfer Qty
@@ -290,8 +290,7 @@
                             <td>
                                 <!-- Received-only groups have blank logisticsStatus and are not
                                      part of the delivery workflow, so they can't be selected -->
-                                <input type="checkbox" [(ngModel)]="group.selected"
-                                    [disabled]="!group.logisticsStatus">
+                                <input type="checkbox" [(ngModel)]="group.selected" [disabled]="!group.logisticsStatus">
                             </td>
 
                             <td>{{startIndex + i + 1}}</td>
@@ -336,9 +335,9 @@
 
                             <td>{{group.deliveryNoteNo}}</td>
 
-                            <td class="item-name">{{group.itemName}}</td>
-
-                            <td class="mono">{{group.itemCode}}</td>
+                <!--             <td class="item-name">{{group.itemName}}</td>
+                 <td class="mono">{{group.itemCode}}</td>-->
+          
 
                             <td class="num">
                                 {{ group.transferQty }}
@@ -402,7 +401,8 @@
                                             <td>{{raw.transferOutByName || '—'}}</td>
                                             <td>{{raw.inwardDoneByName || '—'}}</td>
                                             <td class="mono">
-                                                {{raw.transferInTime ? (raw.transferInTime | date:'dd-MM-yyyy HH:mm:ss') : '—'}}
+                                                {{raw.transferInTime ? (raw.transferInTime | date:'dd-MM-yyyy HH:mm:ss')
+                                                : '—'}}
                                             </td>
                                         </tr>
                                     </tbody>

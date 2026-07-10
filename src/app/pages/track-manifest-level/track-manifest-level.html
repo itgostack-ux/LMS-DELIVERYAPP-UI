@@ -29,7 +29,7 @@
     </div>
   </div>
 
-  <!-- ===== KPI Stat Cards ===== -->
+  <!-- ===== KPI Stat Cards (Manifests / Open / Pickup Ready / Pickup Assigned / Picked Up / Delivered) ===== -->
   <div class="stat-grid" *ngIf="!loading && statCards.length > 0">
     <div class="stat-card" *ngFor="let card of statCards" [style.--accent]="card.color">
       <div class="stat-icon"><i [class]="card.icon"></i></div>
@@ -110,7 +110,9 @@
 
       <div class="report-meta">
         <b>{{manifestGroups.length}}</b> Manifest(s)
-  
+
+
+
       </div>
 
       <div class="table-wrap">
@@ -161,18 +163,53 @@
 
               <td>{{ getCurrentStageName(g) }}</td>
 
-              <td>{{getManifestStageTime(g,'OPEN') | date:'dd/MM/yyyy HH:mm'}}</td>
+              <!-- Each stage cell shows the time on top and who performed it underneath -->
+              <td class="stage-cell">
+                <div class="stage-cell-inner">
+                  <span class="stage-time">{{getManifestStageTime(g,'OPEN') | date:'dd/MM/yyyy HH:mm'}}</span>
+                  <span class="stage-user" *ngIf="getManifestStageUser(g,'OPEN') as u">by {{u}}</span>
+                </div>
+              </td>
 
-              <td>{{getManifestStageTime(g,'PICKUP_READY') | date:'dd/MM/yyyy HH:mm'}}</td>
+              <td class="stage-cell">
+                <div class="stage-cell-inner">
+                  <span class="stage-time">{{getManifestStageTime(g,'PICKUP_READY') | date:'dd/MM/yyyy HH:mm'}}</span>
+                  <span class="stage-user" *ngIf="getManifestStageUser(g,'PICKUP_READY') as u">by {{u}}</span>
+                </div>
+              </td>
 
-              <td>{{getManifestStageTime(g,'PICKUP_ASSIGNED') | date:'dd/MM/yyyy HH:mm'}}</td>
+              <td class="stage-cell">
+                <div class="stage-cell-inner">
+                  <span class="stage-time">{{getManifestStageTime(g,'PICKUP_ASSIGNED') | date:'dd/MM/yyyy
+                    HH:mm'}}</span>
+                  <span class="stage-user" *ngIf="getManifestStageUser(g,'PICKUP_ASSIGNED') as u">by {{u}}</span>
+                </div>
+              </td>
 
-              <td>{{getManifestStageTime(g,'PICKED_UP') | date:'dd/MM/yyyy HH:mm'}}</td>
+              <td class="stage-cell">
+                <div class="stage-cell-inner">
+                  <span class="stage-time">{{getManifestStageTime(g,'PICKED_UP') | date:'dd/MM/yyyy HH:mm'}}</span>
+                  <span class="stage-user" *ngIf="getManifestStageUser(g,'PICKED_UP') as u">by {{u}}</span>
+                </div>
+              </td>
 
-              <td>{{getManifestStageTime(g,'DELIVERED') | date:'dd/MM/yyyy HH:mm'}}</td>
+              <td class="stage-cell">
+                <div class="stage-cell-inner">
+                  <span class="stage-time">{{getManifestStageTime(g,'DELIVERED') | date:'dd/MM/yyyy HH:mm'}}</span>
+                  <span class="stage-user" *ngIf="getManifestStageUser(g,'DELIVERED') as u">by {{u}}</span>
+                </div>
+              </td>
 
             </tr>
           </tbody>
+
+          <tfoot>
+            <tr class="total-row">
+              <td colspan="9" class="total-label">Total</td>
+              <td class="num"><b>{{manifestTotalOrders}}</b></td>
+              <td colspan="5"></td>
+            </tr>
+          </tfoot>
 
         </table>
 

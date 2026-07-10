@@ -491,21 +491,97 @@ export class TrackOrderLevel implements OnInit {
   //  Stat cards
   // ============================================================
 
-  get statCards(): StatCard[] {
-    const list = this.filteredGroups;
-    const totalTransit = list.length;
-    const totalQty = list.reduce((s, g) => s + g.totalQty, 0);
-    const acceptedQty = list.reduce((s, g) => s + g.acceptedQty, 0);
-    const pendingQty = list.reduce((s, g) => s + g.pendingQty, 0);
+get statCards(): StatCard[] {
 
-    return [
-      { label: 'Total Transit', value: totalTransit, color: '#2563eb', icon: 'fa-solid fa-truck' },
-      { label: 'Total Qty', value: totalQty, color: '#64748b', icon: 'fa-solid fa-cubes' },
-      { label: 'Accepted Qty', value: acceptedQty, color: '#16a34a', icon: 'fa-solid fa-circle-check' },
-      { label: 'Pending Qty', value: pendingQty, color: '#f59e0b', icon: 'fa-solid fa-clock' },
-    ];
-  }
+  const groups = this.filteredGroups;
 
+  const totalTransit = groups.length;
+
+  let openCount = 0;
+  let pickupReady = 0;
+  let pickupAssigned = 0;
+  let pickedUp = 0;
+  let delivered = 0;
+
+  groups.forEach(group => {
+
+    group.details.forEach(item => {
+
+      switch (item.currentCode) {
+
+        case 'OPEN':
+          openCount++;
+          break;
+
+        case 'PICKUP_READY':
+          pickupReady++;
+          break;
+
+        case 'PICKUP_ASSIGNED':
+          pickupAssigned++;
+          break;
+
+        case 'PICKED_UP':
+          pickedUp++;
+          break;
+
+        case 'DELIVERED':
+          delivered++;
+          break;
+
+      }
+
+    });
+
+  });
+
+  return [
+
+    {
+      label: 'Transit',
+      value: totalTransit,
+      color: '#2563eb',
+      icon: 'fa-solid fa-truck'
+    },
+
+    {
+      label: 'Open',
+      value: openCount,
+      color: '#6B7280',
+      icon: 'fa-solid fa-folder-open'
+    },
+
+    {
+      label: 'Pickup Ready',
+      value: pickupReady,
+      color: '#F59E0B',
+      icon: 'fa-solid fa-box'
+    },
+
+    {
+      label: 'Pickup Assigned',
+      value: pickupAssigned,
+      color: '#2563EB',
+      icon: 'fa-solid fa-user-check'
+    },
+
+    {
+      label: 'Picked Up',
+      value: pickedUp,
+      color: '#7C3AED',
+      icon: 'fa-solid fa-truck-fast'
+    },
+
+    {
+      label: 'Delivered',
+      value: delivered,
+      color: '#16A34A',
+      icon: 'fa-solid fa-circle-check'
+    }
+
+  ];
+
+}
   get totalQty(): number {
     return this.filteredGroups.reduce((s, g) => s + g.totalQty, 0);
   }

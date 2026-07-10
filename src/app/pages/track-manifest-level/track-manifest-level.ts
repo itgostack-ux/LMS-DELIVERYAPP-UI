@@ -50,6 +50,7 @@ interface StageCellData {
   name: string;
   color: string;
   time: Date | null;
+  user: string | null;
   status: 'completed' | 'current' | 'pending';
 }
 
@@ -273,7 +274,10 @@ export class TrackManifestLevel implements OnInit {
       });
     }
 
-    return cards.sort((a, b) => b.stageIndex - a.stageIndex);
+    // Only manifests with a real manifest number are shown — drop "Unassigned" orders.
+    return cards
+      .filter(c => (c.manifestNo ?? '').trim() !== '')
+      .sort((a, b) => b.stageIndex - a.stageIndex);
   }
 
   /** A status row counts as "reached" if it has actually started or is marked done/current. */
@@ -366,13 +370,15 @@ export class TrackManifestLevel implements OnInit {
 
     for (const c of this.filteredOrderCards) {
 
-      const key = c.manifestNo || 'Unassigned';
+      // Only real manifest numbers reach this point (Unassigned already dropped).
+      const key = c.manifestNo;
+      if (!key) continue;
 
       let g = map.get(key);
 
       if (!g) {
 
-        const mRow = this.rows.find(r => (r.manifestNo || 'Unassigned') === key);
+        const mRow = this.rows.find(r => r.manifestNo === key);
 
         g = {
           manifestNo: key,
@@ -449,26 +455,29 @@ export class TrackManifestLevel implements OnInit {
   }
 
   getManifestStageTime(group: ManifestGroup, statusCode: string): Date | null {
-
     const stage = group.stageData.find(s => s.code === statusCode);
-
     return stage?.time ?? null;
+  }
 
+  /** The user who performed a given lifecycle stage for this manifest (rolled up across its orders). */
+  getManifestStageUser(group: ManifestGroup, statusCode: string): string | null {
+    const stage = group.stageData.find(s => s.code === statusCode);
+    return stage?.user ?? null;
   }
 
   /**
-   * Builds the per-stage status/time for a manifest, rolled up across ALL orders
+   * Builds the per-stage status/time/user for a manifest, rolled up across ALL orders
    * belonging to that manifest (not just the manifest-level log, which is often
    * empty until the manifest itself gets its own lifecycle events).
    */
   private buildManifestStageData(manifestNo: string): StageCellData[] {
-    const manifestRows = this.rows.filter(r => (r.manifestNo || 'Unassigned') === manifestNo);
+    const manifestRows = this.rows.filter(r => r.manifestNo === manifestNo);
 
     return this.lifecycleStages.map(stage => {
       const stageRows = manifestRows.filter(r => r.statusCode === stage.code);
 
       if (!stageRows.length) {
-        return { code: stage.code, name: stage.name, color: stage.color, time: null, status: 'pending' as const };
+        return { code: stage.code, name: stage.name, color: stage.color, time: null, user: null, status: 'pending' as const };
       }
 
       const anyManifestCurrent = stageRows.some(r => (r.manifestStatus ?? '').trim().toLowerCase() === 'current');
@@ -515,7 +524,19 @@ export class TrackManifestLevel implements OnInit {
         }
       }
 
-      return { code: stage.code, name: stage.name, color: stage.color, time, status };
+      // User: who actually performed this stage. Prefer manifest-level actor,
+      // then order-level actor (changed-by, else created-by, else modified-by).
+      // OPEN never gets a log entry, so fall back to the order's overall creator.
+      const user =
+        stageRows.find(r => r.manifestChangedByName)?.manifestChangedByName ??
+        stageRows.find(r => r.manifestCreatedByNameLog)?.manifestCreatedByNameLog ??
+        stageRows.find(r => r.orderChangedByName)?.orderChangedByName ??
+        stageRows.find(r => r.orderCreatedByName)?.orderCreatedByName ??
+        stageRows.find(r => r.orderModifiedByName)?.orderModifiedByName ??
+        (isOpenStage ? stageRows.find(r => r.createdByName)?.createdByName : undefined) ??
+        null;
+
+      return { code: stage.code, name: stage.name, color: stage.color, time, user, status };
     });
   }
 
@@ -534,34 +555,62 @@ export class TrackManifestLevel implements OnInit {
   }
 
   // ============================================================
-  //  Stat cards (manifest level)
+  //  Stage helpers
+  // ============================================================
+
+  /**
+   * The stage a manifest is currently sitting on:
+   *  - the stage explicitly flagged 'current', else
+   *  - the furthest 'completed' stage (e.g. fully delivered manifests), else
+   *  - the very first stage (still 'Open', nothing started yet).
+   */
+  private currentStage(stageData: StageCellData[]): StageCellData | null {
+    const current = stageData.find(s => s.status === 'current');
+    if (current) return current;
+
+    let last: StageCellData | null = null;
+    for (const s of stageData) {
+      if (s.status === 'completed') last = s;
+    }
+    if (last) return last;
+
+    return stageData[0] ?? null;
+  }
+
+  // ============================================================
+  //  Stat cards (manifest level) — per-stage counts
   // ============================================================
 
   private buildStatCards(): void {
-    const lastIndex = this.lifecycleStages.length - 1;
+    // Distinct real manifests (orderCards already exclude Unassigned).
+    const manifestNos = [...new Set(this.orderCards.map(c => c.manifestNo).filter(Boolean))];
+    const totalManifests = manifestNos.length;
 
-    // Build unfiltered groups for global KPIs.
-    const map = new Map<string, { orders: OrderCard[]; qty: number; delivered: number }>();
-    for (const c of this.orderCards) {
-      const key = c.manifestNo || 'Unassigned';
-      let g = map.get(key);
-      if (!g) { g = { orders: [], qty: 0, delivered: 0 }; map.set(key, g); }
-      g.orders.push(c);
-      g.qty += c.qty;
-      if (lastIndex >= 0 && c.stageIndex >= lastIndex) g.delivered++;
+    const stageCount: Record<string, number> = {
+      OPEN: 0,
+      PICKUP_READY: 0,
+      PICKUP_ASSIGNED: 0,
+      PICKED_UP: 0,
+      DELIVERED: 0,
+    };
+
+    // Count each manifest once, by the stage it is currently sitting on.
+    for (const mNo of manifestNos) {
+      const stageData = this.buildManifestStageData(mNo);
+      const stage = this.currentStage(stageData);
+      const code = stage?.code;
+      if (code && code in stageCount) {
+        stageCount[code]++;
+      }
     }
-
-    const totalManifests = map.size;
-    const completed = [...map.values()].filter(g => g.orders.length > 0 && g.delivered === g.orders.length).length;
-    const inProgress = totalManifests - completed;
-    const totalOrders = this.orderCards.length;
-    const totalQty = this.orderCards.reduce((s, c) => s + c.qty, 0);
-    const deliveredOrders = [...map.values()].reduce((s, g) => s + g.delivered, 0);
 
     this.statCards = [
       { label: 'Manifests', value: totalManifests, color: '#7c3aed', icon: 'fa-solid fa-clipboard-list' },
-      { label: 'In Progress', value: inProgress, color: '#f59e0b', icon: 'fa-solid fa-truck-fast' },
-      { label: 'Completed', value: completed, color: '#16a34a', icon: 'fa-solid fa-circle-check' },
+      { label: 'Open', value: stageCount['OPEN'], color: '#2563eb', icon: 'fa-solid fa-folder-open' },
+      { label: 'Pickup Ready', value: stageCount['PICKUP_READY'], color: '#0891b2', icon: 'fa-solid fa-box-open' },
+      { label: 'Pickup Assigned', value: stageCount['PICKUP_ASSIGNED'], color: '#f59e0b', icon: 'fa-solid fa-user-check' },
+      { label: 'Picked Up', value: stageCount['PICKED_UP'], color: '#4f46e5', icon: 'fa-solid fa-truck-fast' },
+      { label: 'Delivered', value: stageCount['DELIVERED'], color: '#16a34a', icon: 'fa-solid fa-circle-check' },
     ];
   }
 
@@ -584,10 +633,15 @@ export class TrackManifestLevel implements OnInit {
       'Total Orders',
       'Status',
       'Open Time',
+      'Open By',
       'Pickup Ready Time',
+      'Pickup Ready By',
       'Pickup Assigned Time',
+      'Pickup Assigned By',
       'Picked Up Time',
-      'Delivered Time'
+      'Picked Up By',
+      'Delivered Time',
+      'Delivered By'
     ];
 
     const rows = this.manifestGroups.map((g, index) => [
@@ -619,22 +673,27 @@ export class TrackManifestLevel implements OnInit {
       this.getManifestStageTime(g, 'OPEN')
         ? new Date(this.getManifestStageTime(g, 'OPEN')!).toLocaleString()
         : '',
+      this.getManifestStageUser(g, 'OPEN') || '',
 
       this.getManifestStageTime(g, 'PICKUP_READY')
         ? new Date(this.getManifestStageTime(g, 'PICKUP_READY')!).toLocaleString()
         : '',
+      this.getManifestStageUser(g, 'PICKUP_READY') || '',
 
       this.getManifestStageTime(g, 'PICKUP_ASSIGNED')
         ? new Date(this.getManifestStageTime(g, 'PICKUP_ASSIGNED')!).toLocaleString()
         : '',
+      this.getManifestStageUser(g, 'PICKUP_ASSIGNED') || '',
 
       this.getManifestStageTime(g, 'PICKED_UP')
         ? new Date(this.getManifestStageTime(g, 'PICKED_UP')!).toLocaleString()
         : '',
+      this.getManifestStageUser(g, 'PICKED_UP') || '',
 
       this.getManifestStageTime(g, 'DELIVERED')
         ? new Date(this.getManifestStageTime(g, 'DELIVERED')!).toLocaleString()
-        : ''
+        : '',
+      this.getManifestStageUser(g, 'DELIVERED') || ''
 
     ]);
 
@@ -763,10 +822,7 @@ export class TrackManifestLevel implements OnInit {
   }
 
   getCurrentStageName(group: ManifestGroup): string {
-
-    const current = group.stageData.find(x => x.status === 'current');
-
-    return current ? current.name : '-';
-
+    const stage = this.currentStage(group.stageData);
+    return stage ? stage.name : '-';
   }
 }

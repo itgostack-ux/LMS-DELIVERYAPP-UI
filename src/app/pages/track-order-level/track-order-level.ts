@@ -108,6 +108,9 @@ export class TrackOrderLevel implements OnInit {
   userId = 0;
   userName = '';
 
+  fromDate = '';
+toDate = '';
+
   rows: DeliveryOrderTimeline[] = [];
 
   // Derived
@@ -253,7 +256,7 @@ export class TrackOrderLevel implements OnInit {
             reached: state !== 'pending',
             orderStatus:
               state === 'current' ? 'Current' :
-              state === 'done' ? 'Completed' : 'Pending',
+                state === 'done' ? 'Completed' : 'Pending',
             startTime:
               s.orderStatusStartTime ??
               (s.statusCode === 'OPEN' ? s.createdDate : undefined),
@@ -442,146 +445,193 @@ export class TrackOrderLevel implements OnInit {
     return [...set].sort((a, b) => a.localeCompare(b));
   }
 
-  clearFilters(): void {
-    this.searchText = '';
-    this.statusFilter = 'ALL';
-    this.companyFilter = 'ALL';
-    this.sourceFilter = 'ALL';
-    this.destinationFilter = 'ALL';
-  }
-
-  get hasActiveFilters(): boolean {
-    return this.searchText.trim() !== '' ||
-      this.statusFilter !== 'ALL' ||
-      this.companyFilter !== 'ALL' ||
-      this.sourceFilter !== 'ALL' ||
-      this.destinationFilter !== 'ALL';
-  }
-
+clearFilters(): void {
+  this.searchText = '';
+  this.statusFilter = 'ALL';
+  this.companyFilter = 'ALL';
+  this.sourceFilter = 'ALL';
+  this.destinationFilter = 'ALL';
+  this.fromDate = '';
+  this.toDate = '';
+}
+get hasActiveFilters(): boolean {
+  return this.searchText.trim() !== '' ||
+    this.statusFilter !== 'ALL' ||
+    this.companyFilter !== 'ALL' ||
+    this.sourceFilter !== 'ALL' ||
+    this.destinationFilter !== 'ALL' ||
+    this.fromDate !== '' ||
+    this.toDate !== '';
+}
   /** Single source of truth for the table, stat cards and exports. */
-  get filteredGroups(): TransitGroup[] {
-    const search = this.searchText.trim().toLowerCase();
+get filteredGroups(): TransitGroup[] {
 
-    return this.groupedLogs.filter(g => {
-      if (this.companyFilter !== 'ALL' && g.companyName !== this.companyFilter) return false;
-      if (this.sourceFilter !== 'ALL' && g.sourceLocationName !== this.sourceFilter) return false;
-      if (this.destinationFilter !== 'ALL' && g.destinationLocationName !== this.destinationFilter) return false;
+  const search = this.searchText.trim().toLowerCase();
 
-      // Status filter matches if ANY IMEI currently sits at that status.
-      if (this.statusFilter !== 'ALL') {
-        const match = g.details.some(d => d.currentCode === this.statusFilter);
-        if (!match) return false;
+  return this.groupedLogs.filter(g => {
+
+    // Company
+    if (this.companyFilter !== 'ALL' && g.companyName !== this.companyFilter) {
+      return false;
+    }
+
+    // Source
+    if (this.sourceFilter !== 'ALL' && g.sourceLocationName !== this.sourceFilter) {
+      return false;
+    }
+
+    // Destination
+    if (this.destinationFilter !== 'ALL' && g.destinationLocationName !== this.destinationFilter) {
+      return false;
+    }
+
+    // Transfer Out Date Filter
+    if (this.fromDate || this.toDate) {
+
+      if (!g.transferOutTime) {
+        return false;
       }
 
-      if (search) {
-        const hay = [
-          g.transitID, g.transferOrderId, g.deliveryNoteNo, g.companyName,
-          g.sourceLocationName, g.destinationLocationName, g.assignedUserName,
-          g.courierName, g.vehicleNo, g.lifecycleName,
-          ...g.details.map(d => `${d.itemCode} ${d.itemName} ${d.imei}`),
-        ].map(v => String(v ?? '').toLowerCase()).join(' ');
-        if (!hay.includes(search)) return false;
+      const transferDate = new Date(g.transferOutTime);
+
+      if (this.fromDate) {
+        const from = new Date(this.fromDate);
+        from.setHours(0, 0, 0, 0);
+
+        if (transferDate < from) {
+          return false;
+        }
       }
 
-      return true;
-    });
-  }
+      if (this.toDate) {
+        const to = new Date(this.toDate);
+        to.setHours(23, 59, 59, 999);
+
+        if (transferDate > to) {
+          return false;
+        }
+      }
+    }
+
+    // Current Status
+    if (this.statusFilter !== 'ALL') {
+
+      const match = g.details.some(d => d.currentCode === this.statusFilter);
+
+      if (!match) {
+        return false;
+      }
+    }
+
+    // Search
+    if (search) {
+
+      const haystack = [
+        g.transitID,
+        g.transferOrderId,
+        g.deliveryNoteNo,
+        g.companyName,
+        g.sourceLocationName,
+        g.destinationLocationName,
+        g.assignedUserName,
+        g.courierName,
+        g.vehicleNo,
+        g.lifecycleName,
+        ...g.details.map(d => `${d.itemCode} ${d.itemName} ${d.imei}`)
+      ]
+      .map(v => String(v ?? '').toLowerCase())
+      .join(' ');
+
+      if (!haystack.includes(search)) {
+        return false;
+      }
+    }
+
+    return true;
+
+  });
+
+}
 
   // ============================================================
   //  Stat cards
   // ============================================================
 
-get statCards(): StatCard[] {
+  get statCards(): StatCard[] {
 
-  const groups = this.filteredGroups;
+    const groups = this.filteredGroups;
 
-  const totalTransit = groups.length;
+    const totalTransit = groups.length;
 
-  let openCount = 0;
-  let pickupReady = 0;
-  let pickupAssigned = 0;
-  let pickedUp = 0;
-  let delivered = 0;
+    const totalOrders = groups.reduce((sum, g) => sum + g.details.length, 0);
 
-  groups.forEach(group => {
+    let open = 0;
+    let pickupReady = 0;
+    let pickupAssigned = 0;
+    let pickedUp = 0;
+    let delivered = 0;
 
-    group.details.forEach(item => {
-
-      switch (item.currentCode) {
-
-        case 'OPEN':
-          openCount++;
-          break;
-
-        case 'PICKUP_READY':
-          pickupReady++;
-          break;
-
-        case 'PICKUP_ASSIGNED':
-          pickupAssigned++;
-          break;
-
-        case 'PICKED_UP':
-          pickedUp++;
-          break;
-
-        case 'DELIVERED':
-          delivered++;
-          break;
-
-      }
-
+    groups.forEach(group => {
+      group.details.forEach(item => {
+        switch (item.currentCode) {
+          case 'OPEN':
+            open++;
+            break;
+          case 'PICKUP_READY':
+            pickupReady++;
+            break;
+          case 'PICKUP_ASSIGNED':
+            pickupAssigned++;
+            break;
+          case 'PICKED_UP':
+            pickedUp++;
+            break;
+          case 'DELIVERED':
+            delivered++;
+            break;
+        }
+      });
     });
 
-  });
-
-  return [
-
-    {
-      label: 'Transit',
-      value: totalTransit,
-      color: '#2563eb',
-      icon: 'fa-solid fa-truck'
-    },
-
-    {
-      label: 'Open',
-      value: openCount,
-      color: '#6B7280',
-      icon: 'fa-solid fa-folder-open'
-    },
-
-    {
-      label: 'Pickup Ready',
-      value: pickupReady,
-      color: '#F59E0B',
-      icon: 'fa-solid fa-box'
-    },
-
-    {
-      label: 'Pickup Assigned',
-      value: pickupAssigned,
-      color: '#2563EB',
-      icon: 'fa-solid fa-user-check'
-    },
-
-    {
-      label: 'Picked Up',
-      value: pickedUp,
-      color: '#7C3AED',
-      icon: 'fa-solid fa-truck-fast'
-    },
-
-    {
-      label: 'Delivered',
-      value: delivered,
-      color: '#16A34A',
-      icon: 'fa-solid fa-circle-check'
-    }
-
-  ];
-
-}
+    return [
+      {
+        label: 'Total Orders',
+        value: totalOrders,
+        color: '#0F766E',
+        icon: 'fa-solid fa-boxes-stacked'
+      },
+      {
+        label: 'Open',
+        value: open,
+        color: '#6B7280',
+        icon: 'fa-solid fa-folder-open'
+      },
+      {
+        label: 'Pickup Ready',
+        value: pickupReady,
+        color: '#F59E0B',
+        icon: 'fa-solid fa-box'
+      },
+      {
+        label: 'Pickup Assigned',
+        value: pickupAssigned,
+        color: '#2563EB',
+        icon: 'fa-solid fa-user-check'
+      },
+      {
+        label: 'Picked Up',
+        value: pickedUp,
+        color: '#7C3AED',
+        icon: 'fa-solid fa-truck-fast'
+      },
+      {
+        label: 'Delivered',
+        value: delivered,
+        color: '#16A34A',
+        icon: 'fa-solid fa-circle-check'
+      }
+    ];
+  }
   get totalQty(): number {
     return this.filteredGroups.reduce((s, g) => s + g.totalQty, 0);
   }
@@ -603,63 +653,135 @@ get statCards(): StatCard[] {
   // ============================================================
 
   exportToExcel(): void {
-    const stages = this.statusColumns;
-    const fmt = (d?: Date) => d ? new Date(d).toLocaleString() : '';
 
-    // "Abiraj | 09/07/26 17:53 -> 17:54 | 1 min"
-    const statusText = (p?: TransitStatusPoint): string => {
-      if (!p || !p.reached) return '';
-      const who = p.personName || '';
-      const start = fmt(p.startTime);
-      const end = p.endTime ? fmt(p.endTime) : '';
-      const dur = p.durationMinutes != null ? `${p.durationMinutes} min` : '';
-      const time = start ? (end ? `${start} -> ${end}` : start) : '';
-      return [who, time, dur].filter(Boolean).join(' | ');
+    const stages = this.statusColumns;
+
+    const formatDate = (d?: Date): string => {
+      if (!d) return '';
+
+      const date = new Date(d);
+
+      return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+    };
+
+    const formatTime = (d?: Date): string => {
+      if (!d) return '';
+
+      const date = new Date(d);
+
+      let hours = date.getHours();
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+
+      hours = hours % 12;
+      hours = hours ? hours : 12; // 0 becomes 12
+
+      return `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
     };
 
     const headers = [
-      'S.No', 'Transit ID', 'Transfer Order', 'Delivery Note', 'Company',
-      'Source', 'Destination', 'Transfer Mode', 'Assigned User', 'Courier', 'Vehicle',
-      'Lifecycle', 'Status', 'Total Items', 'Total Qty', 'Accepted Qty', 'Pending Qty',
-      'Transfer Out', 'Transfer In', 'Duration',
-      ...stages.map(s => s.name),
+      'S.No',
+      'Transit ID',
+      'Transfer Order',
+      'Delivery Note',
+      'Company',
+      'Source',
+      'Destination',
+      'Transfer Mode',
+      'Assigned User',
+      'Courier',
+      'Vehicle',
+      'Lifecycle',
+      'Status',
+      'Total Items',
+      'Total Qty',
+      'Accepted Qty',
+      'Pending Qty',
+      'Transfer Out Date',
+      'Transfer Out Time',
+      'Transfer In Date',
+      'Transfer In Time',
+      'Duration',
+
+      ...stages.flatMap(s => [
+        `${s.name} User`,
+        `${s.name} Start Date`,
+        `${s.name} Start Time`,
+        `${s.name} End Date`,
+        `${s.name} End Time`
+      ])
     ];
 
     const dataRows: any[][] = this.filteredGroups.map((g, i) => {
+
       const base = [
-        i + 1, g.transitID, g.transferOrderId, g.deliveryNoteNo, g.companyName,
-        g.sourceLocationName, g.destinationLocationName, g.transferModeName,
-        g.assignedUserName, g.courierName, g.vehicleNo,
-        g.lifecycleName, g.transferStatus,
-        g.totalItems, g.totalQty, g.acceptedQty, g.pendingQty,
-        fmt(g.transferOutTime), fmt(g.transferInTime), g.transferDuration,
+        i + 1,
+        g.transitID,
+        g.transferOrderId,
+        g.deliveryNoteNo,
+        g.companyName,
+        g.sourceLocationName,
+        g.destinationLocationName,
+        g.transferModeName,
+        g.assignedUserName,
+        g.courierName,
+        g.vehicleNo,
+        g.lifecycleName,
+        g.transferStatus,
+        g.totalItems,
+        g.totalQty,
+        g.acceptedQty,
+        g.pendingQty,
+        formatDate(g.transferOutTime),
+        formatTime(g.transferOutTime),
+        formatDate(g.transferInTime),
+        formatTime(g.transferInTime),
+        g.transferDuration
       ];
-      const statusCells = stages.map(s =>
-        statusText(g.timeline.find(p => p.code === s.code))
-      );
+
+      const statusCells = stages.flatMap(stage => {
+
+        const p = g.timeline.find(x => x.code === stage.code);
+
+        return [
+          p?.personName ?? '',
+          formatDate(p?.startTime),
+          formatTime(p?.startTime),
+          formatDate(p?.endTime),
+          formatTime(p?.endTime)
+        ];
+
+      });
+
       return [...base, ...statusCells];
+
     });
 
-    const totalRow = new Array(headers.length).fill('');
-    totalRow[0] = 'Total';
-    totalRow[13] = this.filteredGroups.reduce((s, g) => s + g.totalItems, 0);
-    totalRow[14] = this.totalQty;
-    totalRow[15] = this.filteredGroups.reduce((s, g) => s + g.acceptedQty, 0);
-    totalRow[16] = this.filteredGroups.reduce((s, g) => s + g.pendingQty, 0);
 
-    const csv = [headers, ...dataRows, totalRow]
-      .map(row => row.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
+    const csv = [headers, ...dataRows]
+      .map(row =>
+        row
+          .map(value => `"${String(value ?? '').replace(/"/g, '""')}"`)
+          .join(',')
+      )
       .join('\n');
 
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(
+      ['\uFEFF' + csv],
+      { type: 'text/csv;charset=utf-8;' }
+    );
+
     const url = URL.createObjectURL(blob);
+
     const a = document.createElement('a');
     a.href = url;
     a.download = `order-level-report-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
+
     URL.revokeObjectURL(url);
   }
-
   // ============================================================
   //  Export – PDF (transit-level summary)
   // ============================================================

@@ -7,8 +7,8 @@
       <span class="page-subtitle">Delivery Order Pipeline &amp; Lifecycle</span>
     </div>
     <div class="header-actions">
-      <button class="btn-export btn-excel" (click)="exportToExcel()"
-        [disabled]="loading || filteredGroups.length === 0" title="Download Excel (CSV)">
+      <button class="btn-export btn-excel" (click)="exportToExcel()" [disabled]="loading || filteredGroups.length === 0"
+        title="Download Excel (CSV)">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
           <polyline points="14 2 14 8 20 8" />
@@ -71,14 +71,26 @@
           <option *ngFor="let dest of destinationOptions" [value]="dest">{{dest}}</option>
         </select>
       </div>
+
       <div class="field">
-        <label>Search</label>
-        <input type="text" placeholder="Transit ID / Item / IMEI / User..." [(ngModel)]="searchText">
+        <label>From Date</label>
+        <input type="date" [(ngModel)]="fromDate">
       </div>
+
+      <div class="field">
+        <label>To Date</label>
+        <input type="date" [(ngModel)]="toDate">
+      </div>
+
       <button class="btn-secondary" (click)="clearFilters()" [disabled]="!hasActiveFilters">Clear</button>
     </div>
   </div>
-
+  <div class="search-container">
+    <div class="search-box">
+      <label>Search</label>
+      <input type="text" class="form-control" placeholder="Transit ID / Item / IMEI / User..." [(ngModel)]="searchText">
+    </div>
+  </div>
   <!-- ===== States ===== -->
   <div *ngIf="loading" class="loading"><span class="spinner"></span> Loading tracker...</div>
   <div *ngIf="errorMessage" class="hint text-danger">{{errorMessage}}</div>
@@ -86,6 +98,8 @@
 
   <!-- ===== Order-Level (Transit) Table ===== -->
   <div class="table-responsive" *ngIf="!loading && filteredGroups.length > 0">
+
+
     <table class="table table-bordered table-hover table-striped">
       <thead>
         <tr>
@@ -140,7 +154,7 @@
           <td>{{group.transferDuration}}</td>
 
           <td *ngFor="let p of group.timeline"
-              [ngClass]="{ 'st-done': p.state === 'done', 'st-current': p.state === 'current' }">
+            [ngClass]="{ 'st-done': p.state === 'done', 'st-current': p.state === 'current' }">
             <ng-container *ngIf="p.reached; else mdash">
               <div class="cell-person"><i class="fa-regular fa-user"></i> {{p.personName || '—'}}</div>
               <div class="cell-time">

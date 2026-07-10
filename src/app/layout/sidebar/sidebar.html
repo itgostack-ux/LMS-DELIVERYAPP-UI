@@ -172,6 +172,90 @@
 
         </ng-container>
 
+        <ng-container *ngIf="roleName === 'Store Executive'">
+
+  
+
+            <!-- Logistics Tracking -->
+            <li class="has-submenu" [class.open]="trackingMenuOpen">
+
+                <a href="javascript:void(0)" (click)="trackingMenuOpen=!trackingMenuOpen">
+
+                    <div class="menu-left">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <span>Logistics Tracking</span>
+                    </div>
+
+                    <i class="fa-solid" [ngClass]="trackingMenuOpen ? 'fa-chevron-up':'fa-chevron-down'">
+                    </i>
+
+                </a>
+
+                <ul class="submenu">
+
+                    <li routerLinkActive="active">
+                        <a routerLink="/track-manifest-report" (click)="trackingMenuOpen=false">
+                            <i class="fa-solid fa-file-lines"></i>
+                            <span>Manifest Tracking</span>
+                        </a>
+                    </li>
+
+                    <li routerLinkActive="active">
+                        <a routerLink="/track-order-level-report" (click)="trackingMenuOpen=false">
+                            <i class="fa-solid fa-box"></i>
+                            <span>Order Tracking</span>
+                        </a>
+                    </li>
+
+                </ul>
+
+            </li>
+        </ng-container>
+        <ng-container *ngIf="roleName === 'Store Manager'">
+
+            <li routerLinkActive="active">
+                <a routerLink="/operations">
+                    <i class="fa-solid fa-truck-fast"></i>
+                    <span>Operations</span>
+                </a>
+            </li>
+
+            <!-- Logistics Tracking -->
+            <li class="has-submenu" [class.open]="trackingMenuOpen">
+
+                <a href="javascript:void(0)" (click)="trackingMenuOpen=!trackingMenuOpen">
+
+                    <div class="menu-left">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <span>Logistics Tracking</span>
+                    </div>
+
+                    <i class="fa-solid" [ngClass]="trackingMenuOpen ? 'fa-chevron-up':'fa-chevron-down'">
+                    </i>
+
+                </a>
+
+                <ul class="submenu">
+
+                    <li routerLinkActive="active">
+                        <a routerLink="/track-manifest-report" (click)="trackingMenuOpen=false">
+                            <i class="fa-solid fa-file-lines"></i>
+                            <span>Manifest Tracking</span>
+                        </a>
+                    </li>
+
+                    <li routerLinkActive="active">
+                        <a routerLink="/track-order-level-report" (click)="trackingMenuOpen=false">
+                            <i class="fa-solid fa-box"></i>
+                            <span>Order Tracking</span>
+                        </a>
+                    </li>
+
+                </ul>
+
+            </li>
+        </ng-container>
+
     </ul>
 
 </div>

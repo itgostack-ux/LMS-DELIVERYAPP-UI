@@ -538,6 +538,9 @@ export class TransferOrderWorkbench implements OnInit {
           // No grouping, no computed quantities happen here.
           this.transferLogs = data
             .map((item: any): TransferStockLogDetail => ({
+
+
+              
               transferOrderId: item.transferOrderId ?? 0,
 
               transitID: item.transitID,

@@ -429,3 +429,96 @@
     }
 
 }
+/*==============================
+  Dashboard Summary
+===============================*/
+.dashboard-summary{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:18px;
+    margin:18px 0;
+}
+
+.summary-card{
+    background:#fff;
+    border:1px solid #e2e8f0;
+    border-radius:12px;
+    padding:20px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    box-shadow:0 1px 3px rgba(15,23,42,.06);
+    transition:.2s ease;
+}
+
+.summary-card:hover{
+    transform:translateY(-2px);
+    box-shadow:0 6px 18px rgba(15,23,42,.10);
+}
+
+.summary-left{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+}
+
+.summary-title{
+    font-size:12px;
+    font-weight:700;
+    text-transform:uppercase;
+    color:#64748b;
+    letter-spacing:.05em;
+}
+
+.summary-value{
+    font-size:34px;
+    font-weight:800;
+    color:#0f172a;
+    line-height:1;
+}
+
+.summary-icon{
+    width:56px;
+    height:56px;
+    border-radius:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+}
+
+/* Created */
+.created{
+    border-left:5px solid #2563eb;
+}
+
+.created .summary-icon{
+    background:#dbeafe;
+    color:#2563eb;
+}
+
+/* In Progress */
+.progress{
+    border-left:5px solid #f59e0b;
+}
+
+.progress .summary-icon{
+    background:#fef3c7;
+    color:#d97706;
+}
+
+/* Completed */
+.completed{
+    border-left:5px solid #16a34a;
+}
+
+.completed .summary-icon{
+    background:#dcfce7;
+    color:#16a34a;
+}
+
+@media(max-width:992px){
+    .dashboard-summary{
+        grid-template-columns:1fr;
+    }
+}

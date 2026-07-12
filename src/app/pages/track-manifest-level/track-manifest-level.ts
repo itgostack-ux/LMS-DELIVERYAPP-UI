@@ -825,4 +825,37 @@ export class TrackManifestLevel implements OnInit {
     const stage = this.currentStage(group.stageData);
     return stage ? stage.name : '-';
   }
+
+  getManifestCount(status: string): number {
+  return this.manifestGroups.filter(
+    x => this.getCurrentStageName(x).toUpperCase().replace(/ /g, '_') === status
+  ).length;
+}
+
+getManifestInProgressCount(): number {
+
+  return this.manifestGroups.filter(g => {
+
+    const s = this.getCurrentStageName(g).toUpperCase();
+
+    return s !== 'OPEN' &&
+           s !== 'DELIVERED';
+
+  }).length;
+
+}
+
+get createdManifestCount(): number {
+  return this.manifestGroups.length;
+}
+
+get completedManifestCount(): number {
+  return this.manifestGroups.filter(g => {
+    return this.getCurrentStageName(g).toUpperCase() === 'DELIVERED';
+  }).length;
+}
+
+get inProgressManifestCount(): number {
+  return this.createdManifestCount - this.completedManifestCount;
+}
 }

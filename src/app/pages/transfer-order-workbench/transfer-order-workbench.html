@@ -290,7 +290,7 @@
                             <td>
                                 <!-- Received-only groups have blank logisticsStatus and are not
                                      part of the delivery workflow, so they can't be selected -->
-                                <input type="checkbox" [(ngModel)]="group.selected" [disabled]="!group.logisticsStatus">
+                                <input type="checkbox" [(ngModel)]="group.selected" [disabled]="!canSelect(group)">
                             </td>
 
                             <td>{{startIndex + i + 1}}</td>
@@ -335,9 +335,9 @@
 
                             <td>{{group.deliveryNoteNo}}</td>
 
-                <!--             <td class="item-name">{{group.itemName}}</td>
+                            <!--             <td class="item-name">{{group.itemName}}</td>
                  <td class="mono">{{group.itemCode}}</td>-->
-          
+
 
                             <td class="num">
                                 {{ group.transferQty }}

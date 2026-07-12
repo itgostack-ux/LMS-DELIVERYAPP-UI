@@ -106,7 +106,39 @@
                     <span>Operations</span>
                 </a>
             </li>
+            <li class="has-submenu" [class.open]="trackingMenuOpen">
 
+                <a href="javascript:void(0)" (click)="trackingMenuOpen=!trackingMenuOpen">
+
+                    <div class="menu-left">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <span>Operations Tracking</span>
+                    </div>
+
+                    <i class="fa-solid" [ngClass]="trackingMenuOpen ? 'fa-chevron-up':'fa-chevron-down'">
+                    </i>
+
+                </a>
+
+                <ul class="submenu">
+
+                    <li routerLinkActive="active">
+                        <a routerLink="/track-manifest-report" (click)="trackingMenuOpen=false">
+                            <i class="fa-solid fa-file-lines"></i>
+                            <span>Order Update</span>
+                        </a>
+                    </li>
+
+                    <li routerLinkActive="active">
+                        <a routerLink="/track-order-level-report" (click)="trackingMenuOpen=false">
+                            <i class="fa-solid fa-box"></i>
+                            <span>Logistics Update</span>
+                        </a>
+                    </li>
+
+                </ul>
+
+            </li>
             <li class="has-submenu" [class.open]="trackingMenuOpen">
 
                 <a href="javascript:void(0)" (click)="trackingMenuOpen=!trackingMenuOpen">
@@ -223,6 +255,40 @@
 
             </li>
 
+            <!-- Logistics Tracking -->
+            <li class="has-submenu" [class.open]="trackingMenuOpen">
+
+                <a href="javascript:void(0)" (click)="trackingMenuOpen=!trackingMenuOpen">
+
+                    <div class="menu-left">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <span>Operations Tracking</span>
+                    </div>
+
+                    <i class="fa-solid" [ngClass]="trackingMenuOpen ? 'fa-chevron-up':'fa-chevron-down'">
+                    </i>
+
+                </a>
+
+                <ul class="submenu">
+                    
+                    <li routerLinkActive="active">
+                        <a routerLink="/operations" (click)="trackingMenuOpen=false">
+                            <i class="fa-solid fa-file-lines"></i>
+                            <span>Order  Update</span>
+                        </a>
+                    </li>
+
+                    <li routerLinkActive="active">
+                        <a routerLink="/driver-console" (click)="trackingMenuOpen=false">
+                            <i class="fa-solid fa-box"></i>
+                            <span>Logistics Update</span>
+                        </a>
+                    </li>
+
+                </ul>
+
+            </li>
 
         </ng-container>
 

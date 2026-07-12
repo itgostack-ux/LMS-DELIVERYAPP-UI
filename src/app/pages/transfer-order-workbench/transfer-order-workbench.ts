@@ -19,15 +19,6 @@ import {
 } from '../../services/models/common-master-model';
 import { UserDataService } from '../../service/user-data-service';
 
-/**
- * One display row = one TransitID, built purely on the frontend by grouping
- * the raw per-IMEI records the backend returns. The backend never sees this
- * shape — it always gets/returns raw records, one per IMEI.
- *
- *   TransferQty = items.length                       (1 IMEI = 1 Qty)
- *   AcceptedQty = items where transferStatus='Received'
- *   PendingQty  = items where transferStatus='In Transit'
- */
 interface GroupedTransferLog {
 
   transitID: number;
@@ -1206,99 +1197,115 @@ private buildRequest(
     locationTypeName: order.locationTypeName
   };
 }
+canSelect(group: GroupedTransferLog): boolean {
 
-  processSelectedOrders(): void {
+  const allowedStatuses = [
+    'Open',
+    'Pickup Ready',
+    'Pickup Assigned'
+  ];
 
-    // ==========================================
-    // Step 1 : Check Selection
-    // ==========================================
-    if (this.selectedGroups.length === 0) {
+  return allowedStatuses.includes(
+    (group.logisticsStatus ?? '').trim()
+  );
+}
+processSelectedOrders(): void {
 
-      alert('Please select at least one order.');
+  // ==========================================
+  // Step 1 : Check Selection
+  // ==========================================
+  if (this.selectedGroups.length === 0) {
 
-      return;
-
-    }
-
-    // ==========================================
-    // Step 2 : Check Same Logistics Status
-    // ==========================================
-    if (!this.isSameStatus) {
-
-      alert('Please select orders with the same Logistics Status.');
-
-      return;
-
-    }
-
-    // ==========================================
-    // Step 3 : Find Current Lifecycle
-    // ==========================================
-    const currentLifecycle = this.deliveryLifecycles.find(
-      x => x.statusName === this.selectedStatus
-    );
-
-    if (!currentLifecycle) {
-
-      alert('Current lifecycle not found.');
-
-      return;
-
-    }
-
-    // ==========================================
-    // Step 4 : Check Next Status Configured
-    // ==========================================
-    if (
-      !currentLifecycle.nextStatusCode ||
-      currentLifecycle.nextStatusCode.trim() === ''
-    ) {
-
-      alert(
-        `No next status is configured for '${currentLifecycle.statusName}'.`
-      );
-
-      return;
-
-    }
-
-    // ==========================================
-    // Step 5 : Find Next Lifecycle
-    // ==========================================
-    const nextLifecycle = this.deliveryLifecycles.find(
-      x => x.statusCode === currentLifecycle.nextStatusCode
-    );
-
-    if (!nextLifecycle) {
-
-      alert(
-        `Next lifecycle '${currentLifecycle.nextStatusCode}' is not available for your role.`
-      );
-
-      return;
-
-    }
-
-    // ==========================================
-    // Step 6 : Pickup Assignment Required
-    // ==========================================
-    if (nextLifecycle.sequenceNo === this.PICKUP_ASSIGNED_SEQUENCE_NO) {
-
-      this.pendingNextLifecycle = nextLifecycle;
-
-      this.openPickupAssignModal();
-
-      return;
-
-    }
-
-    // ==========================================
-    // Step 7 : Normal Status Update
-    // ==========================================
-    this.saveWithLifecycle(nextLifecycle);
+    alert('Please select at least one order.');
+    return;
 
   }
 
+  // Allow only these statuses on this page
+  const allowedStatuses = [
+    'Open',
+    'Pickup Ready',
+  ];
+
+  const invalidSelection = this.selectedGroups.some(
+    x => !allowedStatuses.includes((x.logisticsStatus ?? '').trim())
+  );
+
+  if (invalidSelection) {
+
+    alert('Only Open, Pickup Ready and Pickup Assigned orders can be processed from this page.');
+    return;
+
+  }
+
+  // ==========================================
+  // Step 2 : Check Same Logistics Status
+  // ==========================================
+  if (!this.isSameStatus) {
+
+    alert('Please select orders with the same Logistics Status.');
+    return;
+
+  }
+
+  // ==========================================
+  // Step 3 : Find Current Lifecycle
+  // ==========================================
+  const currentLifecycle = this.deliveryLifecycles.find(
+    x => x.statusName === this.selectedStatus
+  );
+
+  if (!currentLifecycle) {
+
+    alert('Current lifecycle not found.');
+    return;
+
+  }
+
+  // ==========================================
+  // Step 4 : Check Next Status Configured
+  // ==========================================
+  if (
+    !currentLifecycle.nextStatusCode ||
+    currentLifecycle.nextStatusCode.trim() === ''
+  ) {
+
+    alert(`No next status is configured for '${currentLifecycle.statusName}'.`);
+    return;
+
+  }
+
+  // ==========================================
+  // Step 5 : Find Next Lifecycle
+  // ==========================================
+  const nextLifecycle = this.deliveryLifecycles.find(
+    x => x.statusCode === currentLifecycle.nextStatusCode
+  );
+
+  if (!nextLifecycle) {
+
+    alert(`Next lifecycle '${currentLifecycle.nextStatusCode}' is not available for your role.`);
+    return;
+
+  }
+
+  // ==========================================
+  // Step 6 : Pickup Assignment Required
+  // ==========================================
+  if (nextLifecycle.sequenceNo === this.PICKUP_ASSIGNED_SEQUENCE_NO) {
+
+    this.pendingNextLifecycle = nextLifecycle;
+    this.openPickupAssignModal();
+    return;
+
+  }
+
+  // ==========================================
+  // Step 7 : Normal Status Update
+  // ==========================================
+  this.saveWithLifecycle(nextLifecycle);
+
+}
   // ===== Manifest creation (grouped by source location) =====
 
 private buildManifest(

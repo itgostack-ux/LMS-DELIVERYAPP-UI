@@ -30,15 +30,39 @@
   </div>
 
   <!-- ===== KPI Stat Cards (Manifests / Open / Pickup Ready / Pickup Assigned / Picked Up / Delivered) ===== -->
-  <div class="stat-grid" *ngIf="!loading && statCards.length > 0">
-    <div class="stat-card" *ngFor="let card of statCards" [style.--accent]="card.color">
-      <div class="stat-icon"><i [class]="card.icon"></i></div>
-      <div class="stat-info">
-        <span class="stat-label">{{card.label}}</span>
-        <span class="stat-value">{{card.value}}</span>
-      </div>
+<div class="dashboard-summary" *ngIf="!loading">
+
+    <div class="summary-card created">
+        <div class="summary-left">
+            <div class="summary-title">Created</div>
+            <div class="summary-value">{{createdManifestCount}}</div>
+        </div>
+        <div class="summary-icon">
+            <i class="fa-solid fa-box"></i>
+        </div>
     </div>
-  </div>
+
+    <div class="summary-card progress">
+        <div class="summary-left">
+            <div class="summary-title">In Progress</div>
+            <div class="summary-value">{{inProgressManifestCount}}</div>
+        </div>
+        <div class="summary-icon">
+            <i class="fa-solid fa-truck-fast"></i>
+        </div>
+    </div>
+
+    <div class="summary-card completed">
+        <div class="summary-left">
+            <div class="summary-title">Completed</div>
+            <div class="summary-value">{{completedManifestCount}}</div>
+        </div>
+        <div class="summary-icon">
+            <i class="fa-solid fa-circle-check"></i>
+        </div>
+    </div>
+
+</div>
 
   <!-- ===== View Switcher + Filters ===== -->
   <div class="card toolbar-card">

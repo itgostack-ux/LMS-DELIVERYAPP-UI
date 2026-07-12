@@ -205,40 +205,41 @@ export class DriverConsole implements OnInit {
   // buttons only appear where a next step exists for THAT order.
   loadAssignedManifests(): void {
 
-    this.loading = true;
-    this.errorMessage = '';
+  this.loading = true;
+  this.errorMessage = '';
 
-    this.logisticsService.getManifestOrders().subscribe({
-      next: (rows: TransferManifestResponse[]) => {
+  this.logisticsService.getManifestOrders().subscribe({
+    next: (rows: TransferManifestResponse[]) => {
 
-        this.selectedOrderIds.clear();
+      this.selectedOrderIds.clear();
 
-        this.deliveryOrders = rows.filter(
-          x => x.assignedUserId === this.driverId
-        );
+      // Load all manifests (no driver filter)
+      this.deliveryOrders = rows;
 
-        this.locationList = [
-          ...new Set(
-            this.deliveryOrders.map(x => x.sourceLocationName).filter(x => x)
-          )
-        ].sort();
+      this.locationList = [
+        ...new Set(
+          this.deliveryOrders
+            .map(x => x.sourceLocationName)
+            .filter(x => x)
+        )
+      ].sort();
 
-        this.manifestGroups = this.groupByManifest(this.deliveryOrders);
-        this.applyGroupFilters();
+      this.manifestGroups = this.groupByManifest(this.deliveryOrders);
+      this.applyGroupFilters();
 
-        this.loading = false;
-      },
-      error: (err) => {
-        console.error(err);
-        this.deliveryOrders = [];
-        this.manifestGroups = [];
-        this.filteredManifestGroups = [];
-        this.loading = false;
-        this.errorMessage = 'Failed to load assigned orders.';
-      }
-    });
+      this.loading = false;
+    },
+    error: (err) => {
+      console.error(err);
+      this.deliveryOrders = [];
+      this.manifestGroups = [];
+      this.filteredManifestGroups = [];
+      this.loading = false;
+      this.errorMessage = 'Failed to load assigned orders.';
+    }
+  });
 
-  }
+}
 
   // Group by manifestNo -> then bucket each manifest's orders by destination.
   private groupByManifest(rows: TransferManifestResponse[]): ManifestGroup[] {

@@ -25,6 +25,7 @@ import { DriverReport } from './pages/driver-report/driver-report';
 import { ManagerReport } from './pages/manager-report/manager-report';
 import { TrackManifestLevel } from './pages/track-manifest-level/track-manifest-level';
 import { TrackOrderLevel } from './pages/track-order-level/track-order-level';
+import { LogiticsUpdate } from './pages/logitics-update/logitics-update';
 export const routes: Routes = [
 
   {
@@ -145,7 +146,7 @@ export const routes: Routes = [
         ]
       },
 
-         {
+      {
         path: 'track-orders',
         component: TranferOrderView,
         children: [
@@ -158,7 +159,7 @@ export const routes: Routes = [
         ]
       },
 
-        {
+      {
         path: 'd-report',
         component: DriverReport,
         children: [
@@ -171,7 +172,7 @@ export const routes: Routes = [
         ]
       },
 
-        {
+      {
         path: 'm-report',
         component: ManagerReport,
         children: [
@@ -184,8 +185,8 @@ export const routes: Routes = [
         ]
       },
 
-      
-        {
+
+      {
         path: 'track-manifest-report',
         component: TrackManifestLevel,
         children: [
@@ -198,7 +199,7 @@ export const routes: Routes = [
         ]
       },
 
-         {
+      {
         path: 'track-order-level-report',
         component: TrackOrderLevel,
         children: [
@@ -209,21 +210,20 @@ export const routes: Routes = [
 
 
         ]
+      },
+            {
+        path: 'logictics-update',
+        component: LogiticsUpdate,
+        children: [
+
+          { path: '', redirectTo: 'role', pathMatch: 'full' },
+
+          { path: 'role', component: LogiticsUpdate },
+
+
+        ]
       }
     ]
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
   },

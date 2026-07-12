@@ -20,7 +20,8 @@ export class Sidebar implements OnInit {
   roleId = 0;
   roleName = '';
   trackingMenuOpen = false;
-
+  operationsMenuOpen = false;
+  logisticsMenuOpen = false;
   constructor(
     private logisticsService: LogisticsService,
     private userDataService: UserDataService
@@ -83,5 +84,18 @@ export class Sidebar implements OnInit {
     return this.roleName === 'Delivery Executive';
 
   }
+
+  toggleOperationsMenu(): void {
+  this.operationsMenuOpen = !this.operationsMenuOpen;
+}
+
+toggleLogisticsMenu(): void {
+  this.logisticsMenuOpen = !this.logisticsMenuOpen;
+}
+
+closeMenus(): void {
+  this.operationsMenuOpen = false;
+  this.logisticsMenuOpen = false;
+}
 
 }

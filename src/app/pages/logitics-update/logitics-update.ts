@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Observable, forkJoin } from 'rxjs';
@@ -13,6 +13,8 @@ import {
   User
 } from '../../services/models/common-master-model';
 import { AuthService } from '../../service/auth';
+
+
 
 interface DestinationGroup {
   destinationLocationId: number;
@@ -57,17 +59,27 @@ interface StatusBreakdown {
   count: number;
 }
 
+
+
+
+
+
+
+
+
+
+
+
 @Component({
-  selector: 'app-driver-console',
-  standalone: true,
-  imports: [
+  selector: 'app-logitics-update',
+   imports: [
     CommonModule,
     FormsModule
   ],
-  templateUrl: './driver-console.html',
-  styleUrl: './driver-console.css',
+  templateUrl: './logitics-update.html',
+  styleUrl: './logitics-update.css',
 })
-export class DriverConsole implements OnInit {
+export class LogiticsUpdate {
 
   // ===== Logged-in driver =====
   driverId = 0;
@@ -1020,5 +1032,4 @@ loadAssignedManifests(): void {
       (x.fullName || '').toLowerCase().includes(search)
     );
   }
-
 }

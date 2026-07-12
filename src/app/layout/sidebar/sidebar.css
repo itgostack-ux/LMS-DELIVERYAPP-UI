@@ -305,3 +305,66 @@ body{
 }
 
 }
+
+/* ==========================================
+   SUBMENU
+========================================== */
+
+.submenu{
+    list-style:none;
+    max-height:0;
+    overflow:hidden;
+    transition:max-height .35s ease;
+    margin-left:20px;          /* Indent submenu */
+    padding-left:18px;
+    border-left:2px solid rgba(255,255,255,.18);
+}
+
+.has-submenu.open .submenu{
+    max-height:300px;
+    margin-top:8px;
+    margin-bottom:8px;
+}
+
+.submenu li{
+    position:relative;
+    margin:8px 0;
+}
+
+/* Tree connector */
+.submenu li::before{
+    content:"";
+    position:absolute;
+    left:-19px;
+    top:24px;
+    width:14px;
+    height:2px;
+    background:rgba(255,255,255,.20);
+}
+
+.submenu li>a{
+    display:flex;
+    align-items:center;
+    gap:14px;
+
+    padding:12px 18px;
+
+    margin-right:18px;      /* Right side distance */
+    border-radius:10px;
+
+    color:#fff;
+    text-decoration:none;
+    transition:.25s;
+
+    background:rgba(255,255,255,.05);
+}
+
+.submenu li>a:hover{
+    background:rgba(255,255,255,.10);
+    transform:translateX(4px);
+}
+
+.submenu li.active>a{
+    background:#FF7A18;
+    box-shadow:0 4px 12px rgba(255,122,24,.35);
+}

@@ -1,20 +1,21 @@
 <div class="page">
 
     <div class="page-header">
-        <h2>Driver  Console</h2>
+        <h2>Courier & Other Party Logistics Console</h2>
     </div>
 
     <!-- ===== Toolbar ===== -->
     <div class="card toolbar-card">
         <div class="toolbar">
 
-        
+
+            <!--
             <div class="field">
                 <label>Driver Name</label>
                 <div class="driver-readonly">
                     {{driverName || '—'}}
                 </div>
-            </div>
+            </div>-->
 
             <!-- Location Filter -->
             <div class="field">
@@ -127,12 +128,11 @@
                         <!-- Single button: acts on the ticked transits in this
                              destination (same location) only. -->
                         <div class="dest-actions" *ngIf="destHasActionable(dest)">
-                            <button class="btn-action"
-                                [disabled]="saving || checkedCountInDest(dest) === 0"
+                            <button class="btn-action" [disabled]="saving || checkedCountInDest(dest) === 0"
                                 (click)="processCheckedOrders(group, dest)">
                                 {{ saving
-                                    ? 'Saving...'
-                                    : 'Mark ' + destActionLabel(dest) + ' (' + checkedCountInDest(dest) + ')' }}
+                                ? 'Saving...'
+                                : 'Mark ' + destActionLabel(dest) + ' (' + checkedCountInDest(dest) + ')' }}
                             </button>
                         </div>
 
@@ -160,15 +160,12 @@
                             </thead>
 
                             <tbody>
-                                <tr *ngFor="let order of dest.orders"
-                                    [class.row-selected]="isChecked(order)">
+                                <tr *ngFor="let order of dest.orders" [class.row-selected]="isChecked(order)">
 
                                     <td class="col-check">
                                         <input type="checkbox" *ngIf="isOrderCheckable(order)"
-                                            [checked]="isChecked(order)"
-                                            (change)="toggleOrder(order)">
-                                        <span class="done-tick"
-                                            *ngIf="!isOrderCheckable(order)">✓</span>
+                                            [checked]="isChecked(order)" (change)="toggleOrder(order)">
+                                        <span class="done-tick" *ngIf="!isOrderCheckable(order)">✓</span>
                                     </td>
 
                                     <td>{{order.transitID}}</td>

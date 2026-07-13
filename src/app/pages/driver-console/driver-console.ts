@@ -504,35 +504,54 @@ loadAssignedManifests(): void {
   // ONE button per destination: advance the ticked transits in THIS
   // destination (same location). All ticked rows must share the same
   // current status so a single next step applies to them together.
-  processCheckedOrders(group: ManifestGroup, dest: DestinationGroup): void {
+ processCheckedOrders(group: ManifestGroup, dest: DestinationGroup): void {
 
-    const checked = this.checkedOrdersInDest(dest);
-    if (checked.length === 0) {
-      alert('Please select at least one transit.');
-      return;
-    }
+  // Selected orders in this destination
+  const checkedOrders = this.checkedOrdersInDest(dest);
 
-    const statuses = new Set(checked.map(o => o.lifecycleCode));
-    if (statuses.size > 1) {
-      alert('Please select transits that are at the same status.');
-      return;
-    }
-
-    const statusCode = [...statuses][0];
-    const nextLifecycle = this.nextLifecycleOf(statusCode);
-    if (!nextLifecycle) {
-      alert('Next lifecycle step not found.');
-      return;
-    }
-
-    if (this.isFinalStep(nextLifecycle)) {
-      this.openDeliveryOtpModal(group, checked, nextLifecycle);
-      return;
-    }
-
-    this.updateOrders(group, checked, nextLifecycle);
+  if (checkedOrders.length === 0) {
+    alert('Please select at least one order.');
+    return;
   }
 
+  // All selected orders must have same current status
+  const currentStatus = checkedOrders[0].lifecycleCode;
+
+  const invalidStatus = checkedOrders.some(x => x.lifecycleCode !== currentStatus);
+
+  if (invalidStatus) {
+    alert('Please select orders having the same status.');
+    return;
+  }
+
+  // Find next lifecycle
+  const nextLifecycle = this.nextLifecycleOf(currentStatus);
+
+  if (!nextLifecycle) {
+    alert('No next lifecycle configured.');
+    return;
+  }
+
+  // Final status requires OTP
+  if (this.isFinalStep(nextLifecycle)) {
+
+    this.openDeliveryOtpModal(
+      group,
+      checkedOrders,
+      nextLifecycle
+    );
+
+    return;
+  }
+
+  // Update only selected orders
+  this.updateOrders(
+    group,
+    checkedOrders,
+    nextLifecycle
+  );
+
+}
   // Shared OTP modal setup for the final (Delivered) step.
   private openDeliveryOtpModal(
     group: ManifestGroup,

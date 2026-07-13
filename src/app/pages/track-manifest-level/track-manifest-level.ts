@@ -56,13 +56,12 @@ interface StageCellData {
 
 interface ManifestGroup {
   manifestNo: string;
-
   manifestDate: Date | null;
 
   manifestStatus: string;
+  orderStatus: string;
 
   companyName: string;
-
   assignedUser: string;
   receiverUser: string;
 
@@ -363,97 +362,102 @@ export class TrackManifestLevel implements OnInit {
   // ============================================================
   //  Manifest grouping (the heart of this report)
   // ============================================================
-  get manifestGroups(): ManifestGroup[] {
+get manifestGroups(): ManifestGroup[] {
 
-    const map = new Map<string, ManifestGroup>();
-    const lastIndex = this.lifecycleStages.length - 1;
+  const map = new Map<string, ManifestGroup>();
+  const lastIndex = this.lifecycleStages.length - 1;
 
-    for (const c of this.filteredOrderCards) {
+  for (const c of this.filteredOrderCards) {
 
-      // Only real manifest numbers reach this point (Unassigned already dropped).
-      const key = c.manifestNo;
-      if (!key) continue;
+    const key = c.manifestNo;
+    if (!key) continue;
 
-      let g = map.get(key);
+    let g = map.get(key);
 
-      if (!g) {
+    if (!g) {
 
-        const mRow = this.rows.find(r => r.manifestNo === key);
+      const mRow = this.rows.find(r => r.manifestNo === key);
 
-        g = {
-          manifestNo: key,
+      g = {
 
-          manifestDate: (mRow as any)?.manifestDate
-            ? new Date((mRow as any).manifestDate)
-            : null,
+        manifestNo: key,
 
-          manifestStatus: '',
+        manifestDate: mRow?.manifestDate
+          ? new Date(mRow.manifestDate)
+          : null,
 
-          companyName: c.companyName,
+        // API values
+        manifestStatus: mRow?.manifestStatus ?? '-',
+        orderStatus: mRow?.orderStatus ?? '-',
 
-          assignedUser: (mRow as any)?.manifestAssignedUserName ?? c.assignedUser,
+        companyName: c.companyName,
 
-          receiverUser: (mRow as any)?.receiverUserName ?? '-',
+        assignedUser: mRow?.manifestAssignedUserName ?? c.assignedUser,
 
-          sources: '',
-          destinations: '',
+        receiverUser: mRow?.receiverUserName ?? '-',
 
-          transferModeName: (mRow as any)?.transferModeName ?? '-',
+        sources: '',
+        destinations: '',
 
-          orders: [],
+        transferModeName: mRow?.transferModeName ?? '-',
 
-          totalQty: 0,
-          delivered: 0,
-          progress: 0,
+        orders: [],
 
-          stageData: []
-        };
+        totalQty: 0,
+        delivered: 0,
+        progress: 0,
 
-        map.set(key, g);
-      }
+        stageData: []
+      };
 
-      g.orders.push(c);
-
-      g.totalQty += c.qty;
-
-      const status = c.history.find(x => x.manifestStatus)?.manifestStatus;
-
-      if (status) {
-        g.manifestStatus = status;
-      }
-
-      if (lastIndex >= 0 && c.stageIndex >= lastIndex) {
-        g.delivered++;
-      }
+      map.set(key, g);
     }
 
-    let groups = [...map.values()];
+    g.orders.push(c);
+    g.totalQty += c.qty;
 
-    if (this.manifestStatusFilter !== 'ALL') {
-      groups = groups.filter(g => g.manifestStatus === this.manifestStatusFilter);
+    // Update latest status from history if available
+    const latest = c.history[c.history.length - 1];
+
+    if (latest?.manifestStatus) {
+      g.manifestStatus = latest.manifestStatus;
     }
 
-    for (const g of groups) {
-
-      const avg =
-        g.orders.reduce((s, o) => s + Math.max(o.stageIndex, 0), 0) /
-        (g.orders.length || 1);
-
-      g.progress =
-        lastIndex > 0
-          ? Math.round((avg / lastIndex) * 100)
-          : (g.delivered ? 100 : 0);
-
-      g.sources = [...new Set(g.orders.map(o => o.source).filter(Boolean))].join(', ');
-
-      g.destinations = [...new Set(g.orders.map(o => o.destination).filter(Boolean))].join(', ');
-
-      g.stageData = this.buildManifestStageData(g.manifestNo);
+    if (latest?.orderStatus) {
+      g.orderStatus = latest.orderStatus;
     }
 
-    return groups.sort((a, b) => a.manifestNo.localeCompare(b.manifestNo));
+    if (lastIndex >= 0 && c.stageIndex >= lastIndex) {
+      g.delivered++;
+    }
   }
 
+  let groups = [...map.values()];
+
+  if (this.manifestStatusFilter !== 'ALL') {
+    groups = groups.filter(g => g.manifestStatus === this.manifestStatusFilter);
+  }
+
+  for (const g of groups) {
+
+    const avg =
+      g.orders.reduce((s, o) => s + Math.max(o.stageIndex, 0), 0) /
+      (g.orders.length || 1);
+
+    g.progress =
+      lastIndex > 0
+        ? Math.round((avg / lastIndex) * 100)
+        : (g.delivered ? 100 : 0);
+
+    g.sources = [...new Set(g.orders.map(o => o.source).filter(Boolean))].join(', ');
+
+    g.destinations = [...new Set(g.orders.map(o => o.destination).filter(Boolean))].join(', ');
+
+    g.stageData = this.buildManifestStageData(g.manifestNo);
+  }
+
+  return groups.sort((a, b) => a.manifestNo.localeCompare(b.manifestNo));
+}
   getManifestStageTime(group: ManifestGroup, statusCode: string): Date | null {
     const stage = group.stageData.find(s => s.code === statusCode);
     return stage?.time ?? null;

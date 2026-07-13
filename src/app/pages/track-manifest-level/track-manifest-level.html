@@ -30,39 +30,39 @@
   </div>
 
   <!-- ===== KPI Stat Cards (Manifests / Open / Pickup Ready / Pickup Assigned / Picked Up / Delivered) ===== -->
-<div class="dashboard-summary" *ngIf="!loading">
+  <div class="dashboard-summary" *ngIf="!loading">
 
     <div class="summary-card created">
-        <div class="summary-left">
-            <div class="summary-title">Created</div>
-            <div class="summary-value">{{createdManifestCount}}</div>
-        </div>
-        <div class="summary-icon">
-            <i class="fa-solid fa-box"></i>
-        </div>
+      <div class="summary-left">
+        <div class="summary-title">Created</div>
+        <div class="summary-value">{{createdManifestCount}}</div>
+      </div>
+      <div class="summary-icon">
+        <i class="fa-solid fa-box"></i>
+      </div>
     </div>
 
     <div class="summary-card progress">
-        <div class="summary-left">
-            <div class="summary-title">In Progress</div>
-            <div class="summary-value">{{inProgressManifestCount}}</div>
-        </div>
-        <div class="summary-icon">
-            <i class="fa-solid fa-truck-fast"></i>
-        </div>
+      <div class="summary-left">
+        <div class="summary-title">In Progress</div>
+        <div class="summary-value">{{inProgressManifestCount}}</div>
+      </div>
+      <div class="summary-icon">
+        <i class="fa-solid fa-truck-fast"></i>
+      </div>
     </div>
 
     <div class="summary-card completed">
-        <div class="summary-left">
-            <div class="summary-title">Completed</div>
-            <div class="summary-value">{{completedManifestCount}}</div>
-        </div>
-        <div class="summary-icon">
-            <i class="fa-solid fa-circle-check"></i>
-        </div>
+      <div class="summary-left">
+        <div class="summary-title">Completed</div>
+        <div class="summary-value">{{completedManifestCount}}</div>
+      </div>
+      <div class="summary-icon">
+        <i class="fa-solid fa-circle-check"></i>
+      </div>
     </div>
 
-</div>
+  </div>
 
   <!-- ===== View Switcher + Filters ===== -->
   <div class="card toolbar-card">
@@ -161,6 +161,8 @@
               <th>Pickup Assigned</th>
               <th>Picked Up</th>
               <th>Delivered</th>
+              <th>Manifest Status</th>
+              <th>Order Status</th>
             </tr>
           </thead>
 
@@ -224,16 +226,20 @@
                 </div>
               </td>
 
+
+
+              <td>{{ g.manifestStatus || '-' }}</td>
+              <td>{{ g.orderStatus || '-' }}</td>
+
+
             </tr>
+
+
+
+
           </tbody>
 
-          <tfoot>
-            <tr class="total-row">
-              <td colspan="9" class="total-label">Total</td>
-              <td class="num"><b>{{manifestTotalOrders}}</b></td>
-              <td colspan="5"></td>
-            </tr>
-          </tfoot>
+
 
         </table>
 

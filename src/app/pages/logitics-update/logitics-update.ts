@@ -217,17 +217,9 @@ export class LogiticsUpdate {
   // buttons only appear where a next step exists for THAT order.
 loadAssignedManifests(): void {
 
+ 
   this.loading = true;
   this.errorMessage = '';
-
-  // Logged-in User Id
-  const userId = this.userDataService.getUserId();
-
-  if (userId === 0) {
-    this.loading = false;
-    this.errorMessage = 'Invalid user. Please login again.';
-    return;
-  }
 
   this.logisticsService.getManifestOrders().subscribe({
 
@@ -235,11 +227,10 @@ loadAssignedManifests(): void {
 
       this.selectedOrderIds.clear();
 
-      console.log('Login User Id :', userId);
-
-      // Load only assigned manifests
+      // Courier + Other Party only
       this.deliveryOrders = rows.filter(x =>
-        x.assignedUserId === userId
+        x.transferModeName === 'Courier' ||
+        x.transferModeName === 'Other Party'
       );
 
       this.locationList = [
@@ -254,9 +245,11 @@ loadAssignedManifests(): void {
       this.applyGroupFilters();
 
       this.loading = false;
+
     },
 
     error: (err) => {
+
       console.error(err);
 
       this.deliveryOrders = [];
@@ -264,10 +257,11 @@ loadAssignedManifests(): void {
       this.filteredManifestGroups = [];
 
       this.loading = false;
-      this.errorMessage = 'Failed to load assigned manifests.';
+      this.errorMessage = 'Failed to load transfer manifests.';
     }
 
   });
+
 
 }
   // Group by manifestNo -> then bucket each manifest's orders by destination.

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 
@@ -19,18 +19,17 @@ export class Sidebar implements OnInit {
 
   roleId = 0;
   roleName = '';
-  trackingMenuOpen = false;
   operationsMenuOpen = false;
   logisticsMenuOpen = false;
+
   constructor(
     private logisticsService: LogisticsService,
-    private userDataService: UserDataService
+    private userDataService: UserDataService,
+    private elementRef: ElementRef
   ) { }
 
   ngOnInit(): void {
-
     this.loadUserRole();
-
   }
 
   loadUserRole(): void {
@@ -46,21 +45,14 @@ export class Sidebar implements OnInit {
       next: (res) => {
 
         if (res.length > 0) {
-
           this.roleId = res[0].roleID;
           this.roleName = res[0].roleName;
-
         }
-
-        console.log('Role Id :', this.roleId);
-        console.log('Role Name :', this.roleName);
 
       },
 
       error: (err) => {
-
         console.error(err);
-
       }
 
     });
@@ -68,34 +60,46 @@ export class Sidebar implements OnInit {
   }
 
   isLogisticsAdmin(): boolean {
-
     return this.roleName === 'Logistics Admin';
-
   }
 
   isLogisticsManager(): boolean {
-
     return this.roleName === 'Logistics Manager';
-
   }
 
   isDeliveryExecutive(): boolean {
-
     return this.roleName === 'Delivery Executive';
-
   }
 
-  toggleOperationsMenu(): void {
-  this.operationsMenuOpen = !this.operationsMenuOpen;
-}
+  toggleOperationsMenu(event: Event): void {
+    event.stopPropagation();
+    this.operationsMenuOpen = !this.operationsMenuOpen;
+    this.logisticsMenuOpen = false;
+  }
 
-toggleLogisticsMenu(): void {
-  this.logisticsMenuOpen = !this.logisticsMenuOpen;
-}
+  toggleLogisticsMenu(event: Event): void {
+    event.stopPropagation();
+    this.logisticsMenuOpen = !this.logisticsMenuOpen;
+    this.operationsMenuOpen = false;
+  }
 
-closeMenus(): void {
-  this.operationsMenuOpen = false;
-  this.logisticsMenuOpen = false;
-}
+  closeMenus(): void {
+    this.operationsMenuOpen = false;
+    this.logisticsMenuOpen = false;
+  }
+
+  // Close flyouts when clicking anywhere outside the sidebar
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event): void {
+    if (!this.elementRef.nativeElement.contains(event.target)) {
+      this.closeMenus();
+    }
+  }
+
+  // Close on Escape for accessibility
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.closeMenus();
+  }
 
 }

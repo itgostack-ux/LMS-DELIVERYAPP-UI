@@ -397,7 +397,7 @@
   position: sticky;
   top: 0;
   z-index: 5;
-  background: #2563eb;
+  background:#1e3a8a;
   color: #fff;
   padding: 10px;
   text-align: left;
@@ -438,14 +438,14 @@
 ================================ */
 
 .transit-link {
-  color: #2563eb;
+  color: #1e3a8a;
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
 }
 
 .transit-link:hover {
-  color: #1d4ed8;
+  color: #1e3a8a;
   text-decoration: underline;
 }
 
@@ -1206,4 +1206,279 @@ tr.row-current td { background: #eff6ff !important; font-weight: 600; }
     width: 100%;
     height: 40px;
     border-radius: 6px;
+}
+
+
+
+/* ==========================================
+   Large Desktop (1600px+)
+========================================== */
+@media (min-width: 1600px) {
+
+  .page {
+    padding: 30px;
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  .kanban-col {
+    flex: 0 0 330px;
+    width: 330px;
+  }
+
+}
+
+
+/* ==========================================
+   Laptop (1200px - 1599px)
+========================================== */
+@media (max-width: 1400px) {
+
+  .stat-grid {
+    grid-template-columns: repeat(3,1fr);
+  }
+
+  .lc-summary-grid {
+    grid-template-columns: repeat(2,1fr);
+  }
+
+  .table {
+    min-width: 1800px;
+  }
+
+}
+
+
+/* ==========================================
+   Tablet Landscape
+========================================== */
+@media (max-width: 1024px) {
+
+  .page-header{
+      flex-direction:column;
+      align-items:flex-start;
+      gap:15px;
+  }
+
+  .header-actions{
+      width:100%;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+  }
+
+  .toolbar{
+      flex-direction:column;
+      align-items:stretch;
+  }
+
+  .field{
+      width:100%;
+  }
+
+  .btn-primary,
+  .btn-secondary{
+      width:100%;
+  }
+
+  .kanban-col{
+      width:300px;
+      flex:0 0 300px;
+  }
+
+  .summary-grid{
+      grid-template-columns:repeat(2,1fr);
+  }
+
+}
+
+
+/* ==========================================
+   Tablet Portrait
+========================================== */
+@media (max-width:768px){
+
+  .page{
+      padding:15px;
+  }
+
+  .page-title h2{
+      font-size:20px;
+  }
+
+  .page-subtitle{
+      font-size:12px;
+  }
+
+  .stat-grid{
+      grid-template-columns:repeat(2,1fr);
+      gap:10px;
+  }
+
+  .stat-card{
+      padding:12px;
+  }
+
+  .stat-value{
+      font-size:18px;
+  }
+
+  .summary-grid{
+      grid-template-columns:1fr;
+  }
+
+  .lc-summary-grid{
+      grid-template-columns:1fr;
+  }
+
+  .modal-container,
+  .modal-dialog{
+      width:98%;
+      max-height:95vh;
+  }
+
+  .modal-body{
+      padding:15px;
+  }
+
+  .search-box{
+      width:100%;
+  }
+
+}
+
+
+/* ==========================================
+   Mobile
+========================================== */
+@media (max-width:576px){
+
+  .page{
+      padding:10px;
+  }
+
+  .page-header{
+      gap:10px;
+  }
+
+  .header-actions{
+      flex-direction:column;
+      width:100%;
+  }
+
+  .btn-export,
+  .btn-primary,
+  .btn-secondary{
+      width:100%;
+      justify-content:center;
+  }
+
+  .stat-grid{
+      grid-template-columns:1fr;
+  }
+
+  .stat-card{
+      padding:10px;
+  }
+
+  .stat-icon{
+      width:34px;
+      height:34px;
+      font-size:15px;
+  }
+
+  .stat-value{
+      font-size:17px;
+  }
+
+  .kanban-col{
+      width:100%;
+      flex:0 0 100%;
+  }
+
+  .modal-head{
+      flex-direction:column;
+      align-items:flex-start;
+  }
+
+  .modal-foot{
+      flex-direction:column;
+  }
+
+  .modal-foot button{
+      width:100%;
+  }
+
+  .table{
+      font-size:12px;
+  }
+
+}
+
+
+/* ==========================================
+   Small Mobile
+========================================== */
+@media (max-width:360px){
+
+  .page-title h2{
+      font-size:18px;
+  }
+
+  .stat-label{
+      font-size:10px;
+  }
+
+  .stat-value{
+      font-size:16px;
+  }
+
+  .btn-export,
+  .btn-primary,
+  .btn-secondary{
+      font-size:12px;
+      padding:10px;
+  }
+
+}
+
+
+/* Table Container */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 460px;   /* Approximately 10 rows */
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+}
+
+/* Sticky Header */
+.table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #2563eb;
+    color: #fff;
+}
+
+/* Optional - Fixed Row Height */
+.table tbody tr {
+    height: 44px;
+}
+
+.table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #1e3a8a;
+    color: #ffffff;
+    padding: 12px 10px;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    white-space: nowrap;
+    border: 1px solid #1e40af;
 }

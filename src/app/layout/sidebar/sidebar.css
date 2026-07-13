@@ -1,5 +1,5 @@
 /* ==========================================
-   GLOBAL
+GLOBAL
 ========================================== */
 
 *,
@@ -17,7 +17,7 @@ body{
 }
 
 /* ==========================================
-   SIDEBAR
+SIDEBAR
 ========================================== */
 
 .sidebar{
@@ -35,7 +35,7 @@ body{
 }
 
 /* ==========================================
-   LOGO
+LOGO
 ========================================== */
 
 .logo{
@@ -53,7 +53,7 @@ body{
 }
 
 /* ==========================================
-   MENU
+MENU
 ========================================== */
 
 .menu{
@@ -77,7 +77,7 @@ body{
 }
 
 /* ==========================================
-   LINKS
+LINKS
 ========================================== */
 
 .menu li>a{
@@ -114,8 +114,12 @@ body{
 }
 
 /* ==========================================
-   SUBMENU
+SUBMENU TOGGLE
 ========================================== */
+
+.has-submenu{
+    position:relative;
+}
 
 .has-submenu>a{
     justify-content:space-between;
@@ -127,195 +131,26 @@ body{
     gap:16px;
 }
 
-.has-submenu>a i:last-child{
+.has-submenu>a .chevron{
     width:auto;
-    transition:.3s;
-}
-
-.has-submenu.open>a i:last-child{
-    transform:rotate(180deg);
+    font-size:13px;
+    transition:transform .3s;
 }
 
 /* ==========================================
-   SUBMENU LIST
+SUBMENU (desktop tree style)
 ========================================== */
+
+.submenu-title{
+    display:none; /* shown only in flyout/sheet modes */
+}
 
 .submenu{
     list-style:none;
     max-height:0;
     overflow:hidden;
-    transition:max-height .35s ease;
-}
-
-.has-submenu.open .submenu{
-    max-height:250px;
-}
-
-.submenu li{
-    margin:4px 0;
-}
-
-.submenu li>a{
-    display:flex;
-    align-items:center;
-    gap:14px;
-    padding:12px 18px 12px 56px;
-    border-radius:10px;
-    color:#fff;
-    text-decoration:none;
-    transition:.25s;
-}
-
-.submenu li>a:hover{
-    background:rgba(255,255,255,.08);
-}
-
-.submenu li.active>a{
-    background:#FF7A18;
-}
-
-/* ==========================================
-   TABLET
-========================================== */
-
-@media (max-width:992px){
-
-.sidebar{
-    width:80px;
-}
-
-.logo h2{
-    font-size:18px;
-}
-
-.menu li span{
-    display:none;
-}
-
-.menu-left span{
-    display:none;
-}
-
-.menu li>a{
-    justify-content:center;
-    padding:18px 0;
-}
-
-.menu-left{
-    justify-content:center;
-}
-
-.has-submenu>a{
-    justify-content:center;
-}
-
-.has-submenu>a i:last-child{
-    display:none;
-}
-
-.submenu{
-    display:none;
-}
-
-}
-
-/* ==========================================
-   MOBILE
-========================================== */
-
-@media(max-width:768px){
-
-.sidebar{
-
-    width:100%;
-    height:70px;
-
-    top:auto;
-    bottom:0;
-
-    flex-direction:row;
-
-    overflow:hidden;
-}
-
-.logo{
-    display:none;
-}
-
-.menu{
-
-    display:flex;
-
-    width:100%;
-
-    justify-content:space-around;
-    align-items:center;
-
-    padding:0;
-
-    overflow:hidden;
-}
-
-.menu>li{
-
-    flex:1;
-
-    margin:0;
-}
-
-.menu li>a{
-
-    justify-content:center;
-    padding:18px 0;
-
-    border-radius:0;
-}
-
-.menu li span{
-
-    display:none;
-}
-
-.submenu{
-
-    display:none !important;
-}
-
-}
-
-/* ==========================================
-   LARGE DESKTOP
-========================================== */
-
-@media(min-width:1400px){
-
-.sidebar{
-
-    width:290px;
-}
-
-.logo h2{
-
-    font-size:28px;
-}
-
-.menu li>a{
-
-    padding:16px 22px;
-}
-
-}
-
-/* ==========================================
-   SUBMENU
-========================================== */
-
-.submenu{
-    list-style:none;
-    max-height:0;
-    overflow:hidden;
-    transition:max-height .35s ease;
-    margin-left:20px;          /* Indent submenu */
+    transition:max-height .35s ease, margin .35s ease;
+    margin-left:20px;
     padding-left:18px;
     border-left:2px solid rgba(255,255,255,.18);
 }
@@ -331,7 +166,6 @@ body{
     margin:8px 0;
 }
 
-/* Tree connector */
 .submenu li::before{
     content:"";
     position:absolute;
@@ -346,16 +180,12 @@ body{
     display:flex;
     align-items:center;
     gap:14px;
-
     padding:12px 18px;
-
-    margin-right:18px;      /* Right side distance */
+    margin-right:18px;
     border-radius:10px;
-
     color:#fff;
     text-decoration:none;
     transition:.25s;
-
     background:rgba(255,255,255,.05);
 }
 
@@ -367,4 +197,566 @@ body{
 .submenu li.active>a{
     background:#FF7A18;
     box-shadow:0 4px 12px rgba(255,122,24,.35);
+}
+
+/* ==========================================
+BACKDROP (tablet + mobile only)
+========================================== */
+
+.sidebar-backdrop{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(15,23,42,.45);
+    z-index:998;
+    opacity:0;
+    visibility:hidden;
+    transition:opacity .25s ease, visibility .25s ease;
+}
+
+/* ==========================================
+TABLET — collapsed rail + flyout submenu
+========================================== */
+
+@media (max-width:992px){
+
+    .sidebar{
+        width:80px;
+    }
+
+    .logo h2{
+        font-size:18px;
+    }
+
+    .menu li span{
+        display:none;
+    }
+
+    .menu-left span{
+        display:none;
+    }
+
+    .menu li>a{
+        justify-content:center;
+        padding:18px 0;
+    }
+
+    .menu-left{
+        justify-content:center;
+    }
+
+    .has-submenu>a{
+        justify-content:center;
+    }
+
+    .has-submenu>a .chevron{
+        display:none;
+    }
+
+    .submenu-title{
+        display:block;
+        font-size:12px;
+        font-weight:600;
+        letter-spacing:.04em;
+        text-transform:uppercase;
+        color:rgba(255,255,255,.55);
+        padding:14px 16px 6px;
+    }
+
+    .submenu{
+        display:block;
+        position:absolute;
+        top:0;
+        left:calc(100% + 10px);
+        width:230px;
+        max-height:none;
+        height:auto;
+        margin:0;
+        padding:6px;
+        border-left:none;
+        background:#1E3A8A;
+        border-radius:14px;
+        box-shadow:0 12px 32px rgba(0,0,0,.3);
+        opacity:0;
+        visibility:hidden;
+        transform:translateX(-6px);
+        pointer-events:none;
+        transition:opacity .2s ease, transform .2s ease, visibility .2s ease;
+        z-index:1001;
+    }
+
+    .has-submenu.open .submenu{
+        opacity:1;
+        visibility:visible;
+        transform:translateX(0);
+        pointer-events:auto;
+    }
+
+    .sidebar .submenu li{
+        margin:2px 0;
+    }
+
+    .sidebar .submenu li::before{
+        display:none;
+    }
+
+    .sidebar .submenu li>a{
+        padding:12px 14px;
+        margin-right:0;
+        background:transparent;
+    }
+
+    .sidebar .submenu li span{
+        display:inline;
+        flex:1;
+        font-size:14px;
+    }
+
+    .sidebar-backdrop{
+        display:block;
+    }
+
+    .sidebar-backdrop.show{
+        opacity:1;
+        visibility:visible;
+    }
+
+}
+
+/* ==========================================
+MOBILE — icon-first bottom tab bar + bottom sheet
+========================================== */
+
+@media(max-width:768px){
+
+    .sidebar{
+        width:100%;
+        height:64px;
+        top:auto;
+        bottom:0;
+        flex-direction:row;
+        overflow:visible;
+        box-shadow:0 -3px 12px rgba(0,0,0,.15);
+    }
+
+    .logo{
+        display:none;
+    }
+
+    /* Horizontally scrollable icon rail instead of squeezed flex items */
+    .menu{
+        display:flex;
+        width:100%;
+        height:100%;
+        justify-content:flex-start;
+        align-items:stretch;
+        padding:6px 6px;
+        gap:2px;
+        overflow-x:auto;
+        overflow-y:visible;
+        scrollbar-width:none;
+        -ms-overflow-style:none;
+    }
+
+    .menu::-webkit-scrollbar{
+        display:none;
+    }
+
+    .menu>li{
+        flex:0 0 auto;
+        margin:0;
+        display:flex;
+        align-items:stretch;
+    }
+
+    /* Icon on top, tiny label underneath — standard tab-bar pattern */
+    .menu li>a,
+    .has-submenu>a{
+        flex-direction:column;
+        justify-content:center;
+        align-items:center;
+        gap:3px;
+        width:60px;
+        height:100%;
+        padding:6px 4px;
+        border-radius:14px;
+    }
+
+    .menu-left{
+        flex-direction:column;
+        gap:3px;
+    }
+
+    .menu li i{
+        width:auto;
+        font-size:19px;
+    }
+
+    .menu li span,
+    .menu-left span{
+        display:block;
+        flex:none;
+        font-size:10px;
+        font-weight:500;
+        line-height:1.1;
+        text-align:center;
+        white-space:nowrap;
+        opacity:.85;
+    }
+
+    /* Active pill instead of full-width fill */
+    .menu li.active>a{
+        background:rgba(255,122,24,.16);
+        color:#FF7A18;
+    }
+
+    .menu li.active>a span{
+        color:#FF7A18;
+        opacity:1;
+    }
+
+    .has-submenu.open>a{
+        background:rgba(255,255,255,.10);
+    }
+
+    .has-submenu>a .chevron{
+        display:none;
+    }
+
+    .submenu-title{
+        display:block;
+        font-size:13px;
+        font-weight:600;
+        letter-spacing:.03em;
+        text-transform:uppercase;
+        color:rgba(255,255,255,.55);
+        padding:4px 6px 12px;
+        text-align:center;
+    }
+
+    /* Bottom sheet, floats above the tab bar */
+    .submenu{
+        display:block;
+        position:fixed;
+        left:12px;
+        right:12px;
+        bottom:80px;
+        top:auto;
+        max-height:none;
+        height:auto;
+        margin:0;
+        padding:14px;
+        border-left:none;
+        background:#1E3A8A;
+        border-radius:18px;
+        box-shadow:0 -10px 32px rgba(0,0,0,.35);
+        opacity:0;
+        visibility:hidden;
+        transform:translateY(12px);
+        pointer-events:none;
+        transition:opacity .25s ease, transform .25s ease, visibility .25s ease;
+        z-index:1001;
+    }
+
+    .has-submenu.open .submenu{
+        opacity:1;
+        visibility:visible;
+        transform:translateY(0);
+        pointer-events:auto;
+    }
+
+    .sidebar .submenu li{
+        margin:4px 0;
+    }
+
+    .sidebar .submenu li::before{
+        display:none;
+    }
+
+    .sidebar .submenu li>a{
+        flex-direction:row;
+        justify-content:flex-start;
+        width:100%;
+        height:auto;
+        padding:14px 16px;
+        margin-right:0;
+        border-radius:10px;
+        background:rgba(255,255,255,.06);
+    }
+
+    .sidebar .submenu li span{
+        display:inline;
+        flex:1;
+        font-size:15px;
+        text-align:left;
+        opacity:1;
+        white-space:normal;
+    }
+
+    .sidebar-backdrop{
+        display:block;
+    }
+
+    .sidebar-backdrop.show{
+        opacity:1;
+        visibility:visible;
+    }
+
+}
+
+/* ==========================================
+LARGE DESKTOP
+========================================== */
+
+@media(min-width:1400px){
+
+    .sidebar{
+        width:290px;
+    }
+
+    .logo h2{
+        font-size:28px;
+    }
+
+    .menu li>a{
+        padding:16px 22px;
+    }
+
+}
+
+/* ==========================================
+MOBILE — icon-only bottom tab bar + bottom sheet
+========================================== */
+
+@media(max-width:768px){
+
+    .sidebar{
+        width:100%;
+        height:64px;
+        top:auto;
+        bottom:0;
+        flex-direction:row;
+        overflow:visible;
+        box-shadow:0 -3px 12px rgba(0,0,0,.15);
+    }
+
+    .logo{
+        display:none;
+    }
+
+    .menu{
+        display:flex;
+        width:100%;
+        height:100%;
+        justify-content:flex-start;
+        align-items:stretch;
+        padding:6px 6px;
+        gap:2px;
+        overflow-x:auto;
+        overflow-y:visible;
+        scrollbar-width:none;
+        -ms-overflow-style:none;
+    }
+
+    .menu::-webkit-scrollbar{
+        display:none;
+    }
+
+    .menu>li{
+        flex:0 0 auto;
+        margin:0;
+        display:flex;
+        align-items:center;
+    }
+
+    /* Icon-only tab buttons — no labels on the bottom bar itself */
+    .menu li>a,
+    .has-submenu>a{
+        flex-direction:column;
+        justify-content:center;
+        align-items:center;
+        width:52px;
+        height:52px;
+        padding:0;
+        border-radius:14px;
+    }
+
+    .menu-left{
+        flex-direction:column;
+    }
+
+    .menu li i{
+        width:auto;
+        font-size:21px;
+    }
+
+    .menu li span,
+    .menu-left span{
+        display:none;
+    }
+
+    /* Active tab = filled orange pill behind the icon */
+    .menu li.active>a{
+        background:rgba(255,122,24,.16);
+        color:#FF7A18;
+    }
+
+    .has-submenu.open>a{
+        background:rgba(255,255,255,.10);
+    }
+
+    .has-submenu>a .chevron{
+        display:none;
+    }
+
+    /* Labels still show inside the submenu bottom sheet */
+    .submenu-title{
+        display:block;
+        font-size:13px;
+        font-weight:600;
+        letter-spacing:.03em;
+        text-transform:uppercase;
+        color:rgba(255,255,255,.55);
+        padding:4px 6px 12px;
+        text-align:center;
+    }
+
+    .submenu{
+        display:block;
+        position:fixed;
+        left:12px;
+        right:12px;
+        bottom:80px;
+        top:auto;
+        max-height:none;
+        height:auto;
+        margin:0;
+        padding:14px;
+        border-left:none;
+        background:#1E3A8A;
+        border-radius:18px;
+        box-shadow:0 -10px 32px rgba(0,0,0,.35);
+        opacity:0;
+        visibility:hidden;
+        transform:translateY(12px);
+        pointer-events:none;
+        transition:opacity .25s ease, transform .25s ease, visibility .25s ease;
+        z-index:1001;
+    }
+
+    .has-submenu.open .submenu{
+        opacity:1;
+        visibility:visible;
+        transform:translateY(0);
+        pointer-events:auto;
+    }
+
+    .sidebar .submenu li{
+        margin:4px 0;
+    }
+
+    .sidebar .submenu li::before{
+        display:none;
+    }
+
+    .sidebar .submenu li>a{
+        flex-direction:row;
+        justify-content:flex-start;
+        width:100%;
+        height:auto;
+        padding:14px 16px;
+        margin-right:0;
+        border-radius:10px;
+        background:rgba(255,255,255,.06);
+    }
+
+    .sidebar .submenu li span{
+        display:inline;
+        flex:1;
+        font-size:15px;
+        text-align:left;
+        white-space:normal;
+    }
+
+    .sidebar-backdrop{
+        display:block;
+    }
+
+    .sidebar-backdrop.show{
+        opacity:1;
+        visibility:visible;
+    }
+
+    /* Icon-only submenu — floating pill of icon buttons, no text */
+    .submenu-title{
+        display:none;
+    }
+
+    .submenu{
+        display:flex;
+        flex-direction:row;
+        justify-content:center;
+        align-items:center;
+        gap:12px;
+        position:fixed;
+        left:50%;
+        bottom:80px;
+        top:auto;
+        width:auto;
+        max-height:none;
+        height:auto;
+        margin:0;
+        padding:10px;
+        border-left:none;
+        background:#1E3A8A;
+        border-radius:20px;
+        box-shadow:0 -10px 32px rgba(0,0,0,.35);
+        opacity:0;
+        visibility:hidden;
+        transform:translate(-50%, 12px);
+        pointer-events:none;
+        transition:opacity .25s ease, transform .25s ease, visibility .25s ease;
+        z-index:1001;
+    }
+
+    .has-submenu.open .submenu{
+        opacity:1;
+        visibility:visible;
+        transform:translate(-50%, 0);
+        pointer-events:auto;
+    }
+
+    .sidebar .submenu li{
+        margin:0;
+    }
+
+    .sidebar .submenu li::before{
+        display:none;
+    }
+
+    .sidebar .submenu li>a{
+        flex-direction:column;
+        justify-content:center;
+        align-items:center;
+        width:52px;
+        height:52px;
+        padding:0;
+        margin-right:0;
+        border-radius:14px;
+        background:rgba(255,255,255,.07);
+    }
+
+    .sidebar .submenu li>a i{
+        font-size:19px;
+    }
+
+    .sidebar .submenu li span{
+        display:none;
+    }
+
+    .sidebar .submenu li.active>a{
+        background:rgba(255,122,24,.18);
+        color:#FF7A18;
+    }
+
 }

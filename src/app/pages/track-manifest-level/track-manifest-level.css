@@ -522,3 +522,70 @@
         grid-template-columns:1fr;
     }
 }
+
+
+/* ===================================
+   ERP Responsive Table
+=================================== */
+
+.table-wrap{
+    width:100%;
+    max-height:520px;      /* About 10 rows */
+    overflow-y:auto;       /* Vertical Scroll */
+    overflow-x:auto;       /* Horizontal Scroll */
+    border:1px solid #d1d5db;
+    border-radius:10px;
+    background:#fff;
+}
+
+/* Table */
+.mf-table{
+    width:100%;
+    min-width:1800px;
+    border-collapse:collapse;
+}
+
+/* Sticky Header */
+.mf-table thead th{
+    position:sticky;
+    top:0;
+    z-index:100;
+    background:#1e3a8a;
+    color:#fff;
+    padding:10px;
+    white-space:nowrap;
+}
+
+/* Fixed Row Height */
+.mf-table tbody tr{
+    height:46px;
+}
+
+.mf-table tbody td{
+    padding:10px;
+    white-space:nowrap;
+}
+
+/* Zebra */
+.mf-table tbody tr:nth-child(even){
+    background:#f8fafc;
+}
+
+.mf-table tbody tr:hover{
+    background:#e0f2fe;
+}
+
+/* Scrollbar */
+.table-wrap::-webkit-scrollbar{
+    width:10px;
+    height:10px;
+}
+
+.table-wrap::-webkit-scrollbar-thumb{
+    background:#94a3b8;
+    border-radius:10px;
+}
+
+.table-wrap::-webkit-scrollbar-track{
+    background:#e5e7eb;
+}

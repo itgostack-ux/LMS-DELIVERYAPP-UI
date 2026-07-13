@@ -1,343 +1,365 @@
-<div class="sidebar">
+<div class="sidebar" #sidebarRef>
 
-    <div class="logo">
-        <h2>LMS</h2>
-    </div>
+  <div class="logo">
+    <h2>LMS</h2>
+  </div>
 
-    <ul class="menu">
+  <ul class="menu">
 
-        <!-- Dashboard -->
-        <li routerLinkActive="active">
-            <a routerLink="/dashboard">
-                <i class="fa-solid fa-chart-line"></i>
-                <span>Dashboard</span>
+    <!-- Dashboard -->
+    <li routerLinkActive="active">
+      <a routerLink="/dashboard">
+        <i class="fa-solid fa-chart-line"></i>
+        <span>Dashboard</span>
+      </a>
+    </li>
+
+    <!-- ================= Logistics Admin ================= -->
+    <ng-container *ngIf="roleName === 'Logistics Admin'">
+
+      <li routerLinkActive="active">
+        <a routerLink="/master-management">
+          <i class="fa-solid fa-building"></i>
+          <span>Organization</span>
+        </a>
+      </li>
+
+      <li routerLinkActive="active">
+        <a routerLink="/administration">
+          <i class="fa-solid fa-user-shield"></i>
+          <span>Administration</span>
+        </a>
+      </li>
+
+      <!-- ================= Operations Tracking ================= -->
+      <li class="has-submenu" [class.open]="operationsMenuOpen">
+
+        <a href="javascript:void(0)"
+           (click)="toggleOperationsMenu($event)"
+           aria-haspopup="true"
+           [attr.aria-expanded]="operationsMenuOpen">
+
+          <div class="menu-left">
+            <i class="fa-solid fa-gears"></i>
+            <span>Operations Tracking</span>
+          </div>
+
+          <i class="fa-solid chevron" [ngClass]="operationsMenuOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+
+        </a>
+
+        <div class="submenu-title">Operations Tracking</div>
+        <ul class="submenu">
+
+          <li routerLinkActive="active">
+            <a routerLink="/operations" (click)="closeMenus()">
+              <i class="fa-solid fa-file-lines"></i>
+              <span>Order Update</span>
             </a>
-        </li>
-
-        <!-- ================= Logistics Admin ================= -->
-        <ng-container *ngIf="roleName === 'Logistics Admin'">
-
-            <li routerLinkActive="active">
-                <a routerLink="/master-management">
-                    <i class="fa-solid fa-building"></i>
-                    <span>Organization</span>
-                </a>
-            </li>
-
-            <li routerLinkActive="active">
-                <a routerLink="/administration">
-                    <i class="fa-solid fa-user-shield"></i>
-                    <span>Administration</span>
-                </a>
-            </li>
+          </li>
 
-            <!-- ================= Operations Tracking ================= -->
-            <li class="has-submenu" [class.open]="operationsMenuOpen">
+          <li routerLinkActive="active">
+            <a routerLink="/logictics-update" (click)="closeMenus()">
+              <i class="fa-solid fa-truck-fast"></i>
+              <span>Logistics Update</span>
+            </a>
+          </li>
 
-                <a href="javascript:void(0)" (click)="toggleOperationsMenu()">
+        </ul>
+
+      </li>
+
+      <!-- ================= Logistics Tracking ================= -->
+      <li class="has-submenu" [class.open]="logisticsMenuOpen">
+
+        <a href="javascript:void(0)"
+           (click)="toggleLogisticsMenu($event)"
+           aria-haspopup="true"
+           [attr.aria-expanded]="logisticsMenuOpen">
 
-                    <div class="menu-left">
-                        <i class="fa-solid fa-gears"></i>
-                        <span>Operations Tracking</span>
-                    </div>
+          <div class="menu-left">
+            <i class="fa-solid fa-location-dot"></i>
+            <span>Logistics Tracking</span>
+          </div>
 
-                    <i class="fa-solid" [ngClass]="operationsMenuOpen ? 'fa-chevron-up' : 'fa-chevron-down'">
-                    </i>
+          <i class="fa-solid chevron" [ngClass]="logisticsMenuOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
 
-                </a>
+        </a>
 
-                <ul class="submenu">
+        <div class="submenu-title">Logistics Tracking</div>
+        <ul class="submenu">
 
-                    <li routerLinkActive="active">
-                        <a routerLink="/operations" (click)="closeMenus()">
-                            <i class="fa-solid fa-file-lines"></i>
-                            <span>Order Update</span>
-                        </a>
-                    </li>
+          <li routerLinkActive="active">
+            <a routerLink="/track-manifest-report" (click)="closeMenus()">
+              <i class="fa-solid fa-file-lines"></i>
+              <span>Manifest Tracking</span>
+            </a>
+          </li>
 
-                    <li routerLinkActive="active">
-                       <a routerLink="/logictics-update" (click)="closeMenus()">
-                            <i class="fa-solid fa-truck-fast"></i>
-                            <span>Logistics Update</span>
-                        </a>
-                    </li>
+          <li routerLinkActive="active">
+            <a routerLink="/track-order-level-report" (click)="closeMenus()">
+              <i class="fa-solid fa-box"></i>
+              <span>Order Tracking</span>
+            </a>
+          </li>
 
-                </ul>
+        </ul>
 
-            </li>
+      </li>
 
-            <!-- ================= Logistics Tracking ================= -->
-            <li class="has-submenu" [class.open]="logisticsMenuOpen">
+      <!-- Driver Console -->
+      <li routerLinkActive="active">
+        <a routerLink="/driver-console">
+          <i class="fa-solid fa-truck"></i>
+          <span>Driver Console</span>
+        </a>
+      </li>
 
-                <a href="javascript:void(0)" (click)="toggleLogisticsMenu()">
+      <!-- Driver Report -->
+      <li routerLinkActive="active">
+        <a routerLink="/d-report">
+          <i class="fa-solid fa-route"></i>
+          <span>Driver Report</span>
+        </a>
+      </li>
 
-                    <div class="menu-left">
-                        <i class="fa-solid fa-location-dot"></i>
-                        <span>Logistics Tracking</span>
-                    </div>
+      <!-- Manager Report -->
+      <li routerLinkActive="active">
+        <a routerLink="/m-report">
+          <i class="fa-solid fa-chart-column"></i>
+          <span>Manager Report</span>
+        </a>
+      </li>
 
-                    <i class="fa-solid" [ngClass]="logisticsMenuOpen ? 'fa-chevron-up' : 'fa-chevron-down'">
-                    </i>
+    </ng-container>
 
-                </a>
 
-                <ul class="submenu">
+    <ng-container *ngIf="roleName === 'Manager'">
 
-                    <li routerLinkActive="active">
-                        <a routerLink="/track-manifest-report" (click)="closeMenus()">
-                            <i class="fa-solid fa-file-lines"></i>
-                            <span>Manifest Tracking</span>
-                        </a>
-                    </li>
+      <!-- ================= Logistics Tracking ================= -->
+      <li class="has-submenu" [class.open]="logisticsMenuOpen">
 
-                    <li routerLinkActive="active">
-                        <a routerLink="/track-order-level-report" (click)="closeMenus()">
-                            <i class="fa-solid fa-box"></i>
-                            <span>Order Tracking</span>
-                        </a>
-                    </li>
+        <a href="javascript:void(0)"
+           (click)="toggleLogisticsMenu($event)"
+           aria-haspopup="true"
+           [attr.aria-expanded]="logisticsMenuOpen">
 
-                </ul>
+          <div class="menu-left">
+            <i class="fa-solid fa-location-dot"></i>
+            <span>Logistics Tracking</span>
+          </div>
 
-            </li>
+          <i class="fa-solid chevron" [ngClass]="logisticsMenuOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
 
-            <!-- Driver Console -->
-            <li routerLinkActive="active">
-                <a routerLink="/driver-console">
-                    <i class="fa-solid fa-truck"></i>
-                    <span>Driver Console</span>
-                </a>
-            </li>
+        </a>
 
-            <!-- Driver Report -->
-            <li routerLinkActive="active">
-                <a routerLink="/d-report">
-                    <i class="fa-solid fa-route"></i>
-                    <span>Driver Report</span>
-                </a>
-            </li>
+        <div class="submenu-title">Logistics Tracking</div>
+        <ul class="submenu">
 
-            <!-- Manager Report -->
-            <li routerLinkActive="active">
-                <a routerLink="/m-report">
-                    <i class="fa-solid fa-chart-column"></i>
-                    <span>Manager Report</span>
-                </a>
-            </li>
+          <li routerLinkActive="active">
+            <a routerLink="/track-manifest-report" (click)="closeMenus()">
+              <i class="fa-solid fa-file-lines"></i>
+              <span>Manifest Tracking</span>
+            </a>
+          </li>
 
-        </ng-container>
+          <li routerLinkActive="active">
+            <a routerLink="/logictics-update" (click)="closeMenus()">
+              <i class="fa-solid fa-box"></i>
+              <span>Order Tracking</span>
+            </a>
+          </li>
+
+        </ul>
 
+      </li>
 
-        <ng-container *ngIf="roleName === 'Manager'">
+    </ng-container>
 
 
-            <!-- ================= Logistics Tracking ================= -->
-            <li class="has-submenu" [class.open]="logisticsMenuOpen">
+    <ng-container *ngIf="roleName === 'Delivery Executive'">
 
-                <a href="javascript:void(0)" (click)="toggleLogisticsMenu()">
+      <!-- Driver Console -->
+      <li routerLinkActive="active">
+        <a routerLink="/driver-console">
+          <i class="fa-solid fa-truck"></i>
+          <span>Driver Console</span>
+        </a>
+      </li>
 
-                    <div class="menu-left">
-                        <i class="fa-solid fa-location-dot"></i>
-                        <span>Logistics Tracking</span>
-                    </div>
+      <!-- Driver Report -->
+      <li routerLinkActive="active">
+        <a routerLink="/d-report">
+          <i class="fa-solid fa-route"></i>
+          <span>Driver Report</span>
+        </a>
+      </li>
 
-                    <i class="fa-solid" [ngClass]="logisticsMenuOpen ? 'fa-chevron-up' : 'fa-chevron-down'">
-                    </i>
+    </ng-container>
 
-                </a>
+    <ng-container *ngIf="roleName === 'Operations Executive'">
 
-                <ul class="submenu">
+      <li class="has-submenu" [class.open]="operationsMenuOpen">
 
-                    <li routerLinkActive="active">
-                        <a routerLink="/track-manifest-report" (click)="closeMenus()">
-                            <i class="fa-solid fa-file-lines"></i>
-                            <span>Manifest Tracking</span>
-                        </a>
-                    </li>
+        <a href="javascript:void(0)"
+           (click)="toggleOperationsMenu($event)"
+           aria-haspopup="true"
+           [attr.aria-expanded]="operationsMenuOpen">
 
-                    <li routerLinkActive="active">
-                        <a routerLink="/logictics-update" (click)="closeMenus()">
-                            <i class="fa-solid fa-box"></i>
-                            <span>Order Tracking</span>
-                        </a>
-                    </li>
+          <div class="menu-left">
+            <i class="fa-solid fa-gears"></i>
+            <span>Operations Tracking</span>
+          </div>
 
-                </ul>
+          <i class="fa-solid chevron" [ngClass]="operationsMenuOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
 
-            </li>
+        </a>
 
+        <div class="submenu-title">Operations Tracking</div>
+        <ul class="submenu">
 
-        </ng-container>
+          <li routerLinkActive="active">
+            <a routerLink="/operations" (click)="closeMenus()">
+              <i class="fa-solid fa-file-lines"></i>
+              <span>Order Update</span>
+            </a>
+          </li>
 
+          <li routerLinkActive="active">
+            <a routerLink="/logictics-update" (click)="closeMenus()">
+              <i class="fa-solid fa-truck-fast"></i>
+              <span>Logistics Update</span>
+            </a>
+          </li>
 
-        <ng-container *ngIf="roleName === 'Delivery Executive'">
+        </ul>
 
+      </li>
 
-            <!-- Driver Console -->
-            <li routerLinkActive="active">
-                <a routerLink="/driver-console">
-                    <i class="fa-solid fa-truck"></i>
-                    <span>Driver Console</span>
-                </a>
-            </li>
+      <!-- ================= Logistics Tracking ================= -->
+      <li class="has-submenu" [class.open]="logisticsMenuOpen">
 
-            <!-- Driver Report -->
-            <li routerLinkActive="active">
-                <a routerLink="/d-report">
-                    <i class="fa-solid fa-route"></i>
-                    <span>Driver Report</span>
-                </a>
-            </li>
+        <a href="javascript:void(0)"
+           (click)="toggleLogisticsMenu($event)"
+           aria-haspopup="true"
+           [attr.aria-expanded]="logisticsMenuOpen">
 
+          <div class="menu-left">
+            <i class="fa-solid fa-location-dot"></i>
+            <span>Logistics Tracking</span>
+          </div>
 
+          <i class="fa-solid chevron" [ngClass]="logisticsMenuOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
 
-        </ng-container>
+        </a>
 
-        <ng-container *ngIf="roleName === 'Operations Executive'">
+        <div class="submenu-title">Logistics Tracking</div>
+        <ul class="submenu">
 
-            <li class="has-submenu" [class.open]="operationsMenuOpen">
+          <li routerLinkActive="active">
+            <a routerLink="/track-manifest-report" (click)="closeMenus()">
+              <i class="fa-solid fa-file-lines"></i>
+              <span>Manifest Tracking</span>
+            </a>
+          </li>
 
-                <a href="javascript:void(0)" (click)="toggleOperationsMenu()">
+          <li routerLinkActive="active">
+            <a routerLink="/track-order-level-report" (click)="closeMenus()">
+              <i class="fa-solid fa-box"></i>
+              <span>Order Tracking</span>
+            </a>
+          </li>
 
-                    <div class="menu-left">
-                        <i class="fa-solid fa-gears"></i>
-                        <span>Operations Tracking</span>
-                    </div>
+        </ul>
 
-                    <i class="fa-solid" [ngClass]="operationsMenuOpen ? 'fa-chevron-up' : 'fa-chevron-down'">
-                    </i>
+      </li>
 
-                </a>
+    </ng-container>
 
-                <ul class="submenu">
+    <ng-container *ngIf="roleName === 'Logistics Executive'">
 
-                    <li routerLinkActive="active">
-                        <a routerLink="/operations" (click)="closeMenus()">
-                            <i class="fa-solid fa-file-lines"></i>
-                            <span>Order Update</span>
-                        </a>
-                    </li>
+      <li class="has-submenu" [class.open]="operationsMenuOpen">
 
-                    <li routerLinkActive="active">
-                        <a routerLink="/logictics-update" (click)="closeMenus()">
-                            <i class="fa-solid fa-truck-fast"></i>
-                            <span>Logistics Update</span>
-                        </a>
-                    </li>
+        <a href="javascript:void(0)"
+           (click)="toggleOperationsMenu($event)"
+           aria-haspopup="true"
+           [attr.aria-expanded]="operationsMenuOpen">
 
-                </ul>
+          <div class="menu-left">
+            <i class="fa-solid fa-gears"></i>
+            <span>Operations Tracking</span>
+          </div>
 
-            </li>
-            <!-- ================= Logistics Tracking ================= -->
-            <li class="has-submenu" [class.open]="logisticsMenuOpen">
+          <i class="fa-solid chevron" [ngClass]="operationsMenuOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
 
-                <a href="javascript:void(0)" (click)="toggleLogisticsMenu()">
+        </a>
 
-                    <div class="menu-left">
-                        <i class="fa-solid fa-location-dot"></i>
-                        <span>Logistics Tracking</span>
-                    </div>
+        <div class="submenu-title">Operations Tracking</div>
+        <ul class="submenu">
 
-                    <i class="fa-solid" [ngClass]="logisticsMenuOpen ? 'fa-chevron-up' : 'fa-chevron-down'">
-                    </i>
+          <li routerLinkActive="active">
+            <a routerLink="/operations" (click)="closeMenus()">
+              <i class="fa-solid fa-file-lines"></i>
+              <span>Order Update</span>
+            </a>
+          </li>
 
-                </a>
+          <li routerLinkActive="active">
+            <a routerLink="/logictics-update" (click)="closeMenus()">
+              <i class="fa-solid fa-truck-fast"></i>
+              <span>Logistics Update</span>
+            </a>
+          </li>
 
-                <ul class="submenu">
+        </ul>
 
-                    <li routerLinkActive="active">
-                        <a routerLink="/track-manifest-report" (click)="closeMenus()">
-                            <i class="fa-solid fa-file-lines"></i>
-                            <span>Manifest Tracking</span>
-                        </a>
-                    </li>
+      </li>
 
-                    <li routerLinkActive="active">
-                        <a routerLink="/track-order-level-report" (click)="closeMenus()">
-                            <i class="fa-solid fa-box"></i>
-                            <span>Order Tracking</span>
-                        </a>
-                    </li>
+      <!-- ================= Logistics Tracking ================= -->
+      <li class="has-submenu" [class.open]="logisticsMenuOpen">
 
-                </ul>
+        <a href="javascript:void(0)"
+           (click)="toggleLogisticsMenu($event)"
+           aria-haspopup="true"
+           [attr.aria-expanded]="logisticsMenuOpen">
 
-            </li>
+          <div class="menu-left">
+            <i class="fa-solid fa-location-dot"></i>
+            <span>Logistics Tracking</span>
+          </div>
 
+          <i class="fa-solid chevron" [ngClass]="logisticsMenuOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
 
-        </ng-container>
+        </a>
 
-               <ng-container *ngIf="roleName === 'Logistics Executive'">
+        <div class="submenu-title">Logistics Tracking</div>
+        <ul class="submenu">
 
-            <li class="has-submenu" [class.open]="operationsMenuOpen">
+          <li routerLinkActive="active">
+            <a routerLink="/track-manifest-report" (click)="closeMenus()">
+              <i class="fa-solid fa-file-lines"></i>
+              <span>Manifest Tracking</span>
+            </a>
+          </li>
 
-                <a href="javascript:void(0)" (click)="toggleOperationsMenu()">
+          <li routerLinkActive="active">
+            <a routerLink="/track-order-level-report" (click)="closeMenus()">
+              <i class="fa-solid fa-box"></i>
+              <span>Order Tracking</span>
+            </a>
+          </li>
 
-                    <div class="menu-left">
-                        <i class="fa-solid fa-gears"></i>
-                        <span>Operations Tracking</span>
-                    </div>
+        </ul>
 
-                    <i class="fa-solid" [ngClass]="operationsMenuOpen ? 'fa-chevron-up' : 'fa-chevron-down'">
-                    </i>
+      </li>
 
-                </a>
+    </ng-container>
+  </ul>
 
-                <ul class="submenu">
+</div>
 
-                    <li routerLinkActive="active">
-                        <a routerLink="/operations" (click)="closeMenus()">
-                            <i class="fa-solid fa-file-lines"></i>
-                            <span>Order Update</span>
-                        </a>
-                    </li>
-
-                    <li routerLinkActive="active">
-                       <a routerLink="/logictics-update" (click)="closeMenus()">
-                            <i class="fa-solid fa-truck-fast"></i>
-                            <span>Logistics Update</span>
-                        </a>
-                    </li>
-
-                </ul>
-
-            </li>
-            <!-- ================= Logistics Tracking ================= -->
-            <li class="has-submenu" [class.open]="logisticsMenuOpen">
-
-                <a href="javascript:void(0)" (click)="toggleLogisticsMenu()">
-
-                    <div class="menu-left">
-                        <i class="fa-solid fa-location-dot"></i>
-                        <span>Logistics Tracking</span>
-                    </div>
-
-                    <i class="fa-solid" [ngClass]="logisticsMenuOpen ? 'fa-chevron-up' : 'fa-chevron-down'">
-                    </i>
-
-                </a>
-
-                <ul class="submenu">
-
-                    <li routerLinkActive="active">
-                        <a routerLink="/track-manifest-report" (click)="closeMenus()">
-                            <i class="fa-solid fa-file-lines"></i>
-                            <span>Manifest Tracking</span>
-                        </a>
-                    </li>
-
-                    <li routerLinkActive="active">
-                        <a routerLink="/track-order-level-report" (click)="closeMenus()">
-                            <i class="fa-solid fa-box"></i>
-                            <span>Order Tracking</span>
-                        </a>
-                    </li>
-
-                </ul>
-
-            </li>
-
-
-        </ng-container>
-    </ul>
-
+<!-- Backdrop for tablet/mobile flyouts -->
+<div class="sidebar-backdrop"
+     [class.show]="operationsMenuOpen || logisticsMenuOpen"
+     (click)="closeMenus()">
 </div>

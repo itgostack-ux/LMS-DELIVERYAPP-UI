@@ -21,13 +21,10 @@ interface DestinationGroup {
 }
 
 interface ManifestGroup {
-
-  // Representative manifestId (first order's) - display/back-compat only.
-  // Orders inside a group can carry DIFFERENT manifestId values while
-  // sharing the same manifestNo, so never assume this is the only manifest
-  // row backing the card - see updateOrders().
+  // Display key only. Orders inside a group can carry DIFFERENT manifestId
+  // values while sharing the same manifestNo. Every action below is keyed on
+  // the ORDER (transferOrderId) + that order's own manifestId.
   manifestId: number;
-
   manifestNo: string;
 
   sourceLocationName: string;
@@ -35,21 +32,12 @@ interface ManifestGroup {
   vehicleNo: string;
   assignedUserName: string;
 
-  receiverUserId?: number;
-  receiverUserName?: string;
-  otp?: string;
-
   orders: TransferManifestResponse[];
-
-  // Orders bucketed by destination for the card body.
   destinationGroups: DestinationGroup[];
 
-  // Card starts collapsed; clicking the header expands it.
   expanded: boolean;
-
 }
 
-// Small summary chip shown in the manifest header, e.g. "3 Picked Up".
 interface StatusBreakdown {
   code: string;
   name: string;
@@ -72,9 +60,8 @@ export class DriverConsole implements OnInit {
   // ===== Logged-in driver =====
   driverId = 0;
   driverName = '';
-  generatedOtp = '';
 
-  selectedReceiverId = 0;
+  // ===== Filters =====
   locationFilter = '';
   statusFilter = 'ALL';
 
@@ -87,30 +74,35 @@ export class DriverConsole implements OnInit {
 
   loading = false;
   saving = false;
-
-  // Only the order currently being saved gets its button disabled.
   savingOrderId: number | null = null;
-
-  // Transit rows the driver has ticked (keyed on transferOrderId). One
-  // "Mark <Next>" button per destination acts on the ticked rows in THAT
-  // destination only - so a delivery is always for the same location.
-  selectedOrderIds = new Set<number>();
 
   errorMessage = '';
 
-  // ===== OTP modal state (final "Delivered" step) =====
+  // ===== Transit-level selection (keyed on transferOrderId) =====
+  selectedOrderIds = new Set<number>();
+
+  // Expanded cards survive re-filtering.
+  private expandedManifestNos = new Set<string>();
+
+  // ===== OTP modal state (final lifecycle step) =====
   showOtpModal = false;
   otpInput = '';
   otpError = '';
   otpSent = false;
   sendingOtp = false;
+  generatedOtp = '';
 
   users: User[] = [];
   filteredUsers: User[] = [];
   receiverSearch = '';
 
+  selectedReceiverId = 0;
   selectedReceiverName = '';
   selectedReceiverEmail = '';
+
+  // Receiver / OTP recorded PER ORDER, so a manifest can be delivered in parts.
+  private otpByOrderId = new Map<number, string>();
+  private receiverByOrderId = new Map<number, { id: number; name: string }>();
 
   // Pending delivery details for the OTP flow.
   private pendingGroup!: ManifestGroup;
@@ -153,7 +145,6 @@ export class DriverConsole implements OnInit {
       next: (roles) => {
 
         if (!roles || roles.length === 0) {
-          console.error('No role mapped for this user.');
           this.loading = false;
           this.errorMessage = 'No role mapped for this user.';
           return;
@@ -200,65 +191,55 @@ export class DriverConsole implements OnInit {
   }
 
   // ===== Manifest load =====
-  // Backend returns ALL manifest-order rows; filter client-side to this
-  // driver. All statuses kept so every manifest is visible; per-order
-  // buttons only appear where a next step exists for THAT order.
-loadAssignedManifests(): void {
 
-  this.loading = true;
-  this.errorMessage = '';
+  loadAssignedManifests(): void {
 
-  // Logged-in User Id
-  const userId = this.userDataService.getUserId();
+    this.loading = true;
+    this.errorMessage = '';
 
-  if (userId === 0) {
-    this.loading = false;
-    this.errorMessage = 'Invalid user. Please login again.';
-    return;
-  }
-
-  this.logisticsService.getManifestOrders().subscribe({
-
-    next: (rows: TransferManifestResponse[]) => {
-
-      this.selectedOrderIds.clear();
-
-      console.log('Login User Id :', userId);
-
-      // Load only assigned manifests
-      this.deliveryOrders = rows.filter(x =>
-        x.assignedUserId === userId
-      );
-
-      this.locationList = [
-        ...new Set(
-          this.deliveryOrders
-            .map(x => x.sourceLocationName)
-            .filter(x => x)
-        )
-      ].sort();
-
-      this.manifestGroups = this.groupByManifest(this.deliveryOrders);
-      this.applyGroupFilters();
-
+    const userId = this.userDataService.getUserId();
+    if (userId === 0) {
       this.loading = false;
-    },
-
-    error: (err) => {
-      console.error(err);
-
-      this.deliveryOrders = [];
-      this.manifestGroups = [];
-      this.filteredManifestGroups = [];
-
-      this.loading = false;
-      this.errorMessage = 'Failed to load assigned manifests.';
+      this.errorMessage = 'Invalid user. Please login again.';
+      return;
     }
 
-  });
+    this.logisticsService.getManifestOrders().subscribe({
 
-}
-  // Group by manifestNo -> then bucket each manifest's orders by destination.
+      next: (rows: TransferManifestResponse[]) => {
+
+        this.selectedOrderIds.clear();
+
+        this.deliveryOrders = rows.filter(x => x.assignedUserId === userId);
+
+        this.locationList = [
+          ...new Set(
+            this.deliveryOrders
+              .map(x => x.sourceLocationName)
+              .filter(x => x)
+          )
+        ].sort();
+
+        this.manifestGroups = this.groupByManifest(this.deliveryOrders);
+        this.applyGroupFilters();
+
+        this.loading = false;
+      },
+
+      error: (err) => {
+        console.error(err);
+        this.deliveryOrders = [];
+        this.manifestGroups = [];
+        this.filteredManifestGroups = [];
+        this.loading = false;
+        this.errorMessage = 'Failed to load assigned manifests.';
+      }
+
+    });
+
+  }
+
+  // Group by manifestNo (display only) -> bucket each manifest's orders by destination.
   private groupByManifest(rows: TransferManifestResponse[]): ManifestGroup[] {
 
     const map = new Map<string, TransferManifestResponse[]>();
@@ -280,15 +261,11 @@ loadAssignedManifests(): void {
           transferModeName: first.transferModeName,
           vehicleNo: first.vehicleNo,
           assignedUserName: first.assignedUserName,
-          receiverUserId: first.receiverUserId ?? 0,
-          receiverUserName: first.receiverUserName ?? '',
-          otp: first.otp ?? '',
           orders,
           destinationGroups: this.groupByDestination(orders),
-          expanded: false
+          expanded: this.expandedManifestNos.has(manifestNo)
         } as ManifestGroup;
       })
-      // Actionable manifests first, then newest by highest manifestId.
       .sort((a, b) => {
         const aAct = this.manifestHasAnyNextStatus(a) ? 0 : 1;
         const bAct = this.manifestHasAnyNextStatus(b) ? 0 : 1;
@@ -333,21 +310,40 @@ loadAssignedManifests(): void {
     return group.orders.some(o => this.hasNextStatus(o.lifecycleCode));
   }
 
-  // ===== Filters =====
+  // ===== Filters (status filter now works at ORDER level) =====
 
   get visibleGroups(): ManifestGroup[] {
     return this.filteredManifestGroups;
   }
 
   applyGroupFilters(): void {
-    this.filteredManifestGroups = this.manifestGroups.filter(group => {
-      const locationMatch =
-        !this.locationFilter || group.sourceLocationName === this.locationFilter;
-      const statusMatch =
-        this.statusFilter === 'ALL' ||
-        group.orders.some(o => o.lifecycleCode === this.statusFilter);
-      return locationMatch && statusMatch;
-    });
+
+    const result: ManifestGroup[] = [];
+
+    for (const group of this.manifestGroups) {
+
+      if (this.locationFilter && group.sourceLocationName !== this.locationFilter) {
+        continue;
+      }
+
+      const orders = this.statusFilter === 'ALL'
+        ? group.orders
+        : group.orders.filter(o => o.lifecycleCode === this.statusFilter);
+
+      if (orders.length === 0) {
+        continue;
+      }
+
+      result.push({
+        ...group,
+        orders,
+        destinationGroups: this.groupByDestination(orders),
+        expanded: this.expandedManifestNos.has(group.manifestNo)
+      });
+
+    }
+
+    this.filteredManifestGroups = result;
   }
 
   applyFilters(): void {
@@ -359,8 +355,11 @@ loadAssignedManifests(): void {
     this.applyGroupFilters();
   }
 
-  // One tab per lifecycle status that has orders under it, in sequence
-  // order, each with its ORDER count.
+  get totalOrderCount(): number {
+    return this.manifestGroups.reduce((sum, g) => sum + g.orders.length, 0);
+  }
+
+  // One tab per lifecycle status that has orders under it, with its ORDER count.
   get statusTabs(): { code: string; name: string; count: number }[] {
 
     const counts = new Map<string, number>();
@@ -380,7 +379,7 @@ loadAssignedManifests(): void {
 
   }
 
-  // ===== Header chips / status helpers =====
+  // ===== Header chips =====
 
   statusBreakdown(group: ManifestGroup): StatusBreakdown[] {
     const counts = new Map<string, number>();
@@ -395,9 +394,8 @@ loadAssignedManifests(): void {
     }));
   }
 
-  // ===== Per-transit checkbox selection (scoped to a destination) =====
+  // ===== Transit-level checkbox selection =====
 
-  // A row is tickable only while it still has a next step.
   isOrderCheckable(order: TransferManifestResponse): boolean {
     return this.hasNextStatus(order.lifecycleCode);
   }
@@ -417,7 +415,6 @@ loadAssignedManifests(): void {
     }
   }
 
-  // Header "select all" for one destination - only its actionable rows.
   private checkableOrders(dest: DestinationGroup): TransferManifestResponse[] {
     return dest.orders.filter(o => this.isOrderCheckable(o));
   }
@@ -449,8 +446,7 @@ loadAssignedManifests(): void {
     return dest.orders.some(o => this.isOrderCheckable(o));
   }
 
-  // Button label: the next step of the ticked rows. Falls back to the next
-  // step of the destination's first actionable row when nothing is ticked.
+  // Button label = next step of the ticked transits.
   destActionLabel(dest: DestinationGroup): string {
     const checked = this.checkedOrdersInDest(dest);
     const basis = checked.length > 0 ? checked : this.checkableOrders(dest);
@@ -465,8 +461,14 @@ loadAssignedManifests(): void {
   }
 
   // ===== Expand / collapse =====
+
   toggleGroup(group: ManifestGroup): void {
     group.expanded = !group.expanded;
+    if (group.expanded) {
+      this.expandedManifestNos.add(group.manifestNo);
+    } else {
+      this.expandedManifestNos.delete(group.manifestNo);
+    }
   }
 
   // ===== Lifecycle helpers =====
@@ -499,177 +501,56 @@ loadAssignedManifests(): void {
     return this.findLifecycle(statusCode)?.colorCode || '#6B7280';
   }
 
-  // ===== Advance actions (all keyed on the order / transit) =====
+  // ===== Advance action: ORDER LEVEL =====
+  // Acts ONLY on the ticked transits of this destination. Nothing else in the
+  // manifest is touched.
+  processCheckedOrders(group: ManifestGroup, dest: DestinationGroup): void {
 
-  // ONE button per destination: advance the ticked transits in THIS
-  // destination (same location). All ticked rows must share the same
-  // current status so a single next step applies to them together.
- processCheckedOrders(group: ManifestGroup, dest: DestinationGroup): void {
-
-  // Selected orders in this destination
-  const checkedOrders = this.checkedOrdersInDest(dest);
-
-  if (checkedOrders.length === 0) {
-    alert('Please select at least one order.');
-    return;
-  }
-
-  // All selected orders must have same current status
-  const currentStatus = checkedOrders[0].lifecycleCode;
-
-  const invalidStatus = checkedOrders.some(x => x.lifecycleCode !== currentStatus);
-
-  if (invalidStatus) {
-    alert('Please select orders having the same status.');
-    return;
-  }
-
-  // Find next lifecycle
-  const nextLifecycle = this.nextLifecycleOf(currentStatus);
-
-  if (!nextLifecycle) {
-    alert('No next lifecycle configured.');
-    return;
-  }
-
-  // Final status requires OTP
-  if (this.isFinalStep(nextLifecycle)) {
-
-    this.openDeliveryOtpModal(
-      group,
-      checkedOrders,
-      nextLifecycle
-    );
-
-    return;
-  }
-
-  // Update only selected orders
-  this.updateOrders(
-    group,
-    checkedOrders,
-    nextLifecycle
-  );
-
-}
-  // Shared OTP modal setup for the final (Delivered) step.
-  private openDeliveryOtpModal(
-    group: ManifestGroup,
-    orders: TransferManifestResponse[],
-    nextLifecycle: DeliveryLifecycle
-  ): void {
-
-    this.pendingGroup = group;
-    this.pendingOrders = orders;
-    this.pendingLifecycle = nextLifecycle;
-
-    this.otpInput = '';
-    this.otpError = '';
-    this.selectedReceiverId = 0;
-    this.selectedReceiverName = '';
-    this.selectedReceiverEmail = '';
-    this.receiverSearch = '';
-    this.otpSent = false;
-    this.generatedOtp = '';
-
-    const order = orders[0];
-
-    console.log('==============================');
-    console.log('Opening OTP Modal');
-    console.log('Company Id :', order.companyId);
-    console.log('Destination Location Id :', order.destinationLocationId);
-    console.log('Destination Location :', order.destinationLocationName);
-    console.log('==============================');
-
-    this.logisticsService
-      .getReceiverUsers(
-        order.companyId,
-        order.destinationLocationId
-      )
-      .subscribe({
-        next: (res: any[]) => {
-
-          console.log('Receiver Users API Response:', res);
-
-          this.users = res
-            .map((x: any) => ({
-              userId: x.userId,
-              fullName: x.fullName,
-              loginName: x.loginName ?? '',
-              emailId: x.emailId ?? '',
-              mobileNo: x.mobileNo ?? ''
-            }))
-            .sort((a: any, b: any) =>
-              a.fullName.localeCompare(b.fullName)
-            );
-
-          console.log('Mapped Users:', this.users);
-
-          this.filteredUsers = [...this.users];
-
-          console.log('Filtered Users:', this.filteredUsers);
-
-          this.showOtpModal = true;
-        },
-        error: (err) => {
-          console.error('Receiver Users API Error:', err);
-          alert('Unable to load receiver users.');
-        }
-      });
-  }
-  // ===== OTP modal actions =====
-
-  confirmOtp(): void {
-
-    if (!this.pendingGroup || !this.pendingLifecycle) {
-      this.cancelOtp();
+    const checked = this.checkedOrdersInDest(dest);
+    if (checked.length === 0) {
+      alert('Please select at least one transit.');
       return;
     }
 
-    if (!this.otpSent) {
-      this.otpError = 'Please send the OTP to the receiver first.';
+    const statuses = new Set(checked.map(o => o.lifecycleCode));
+    if (statuses.size > 1) {
+      alert('Please select transits that are at the same status.');
       return;
     }
 
-    const entered = this.otpInput.trim();
-    if (!entered) {
-      this.otpError = 'Please enter the OTP.';
+    const statusCode = [...statuses][0];
+    const nextLifecycle = this.nextLifecycleOf(statusCode);
+    if (!nextLifecycle) {
+      alert('Next lifecycle step not found.');
       return;
     }
 
-    const expected = (this.pendingGroup.otp || this.generatedOtp || '').trim();
-    if (!expected || entered !== expected) {
-      this.otpError = 'Invalid OTP. Please check with the receiver and try again.';
+    if (this.isFinalStep(nextLifecycle)) {
+      this.openDeliveryOtpModal(group, checked, nextLifecycle);
       return;
     }
 
-    this.otpError = '';
-    this.showOtpModal = false;
-
-    this.updateOrders(
-      this.pendingGroup,
-      this.pendingOrders,
-      this.pendingLifecycle
-    );
-
+    this.updateOrders(group, checked, nextLifecycle);
   }
 
-  cancelOtp(): void {
-    this.showOtpModal = false;
-    this.otpInput = '';
-    this.otpError = '';
-    this.otpSent = false;
-    this.receiverSearch = '';
-    this.pendingOrders = [];
+  // Single-row quick action (optional button in the row).
+  processSingleOrder(group: ManifestGroup, order: TransferManifestResponse): void {
+
+    const nextLifecycle = this.nextLifecycleOf(order.lifecycleCode);
+    if (!nextLifecycle) {
+      alert('Next lifecycle step not found.');
+      return;
+    }
+
+    if (this.isFinalStep(nextLifecycle)) {
+      this.openDeliveryOtpModal(group, [order], nextLifecycle);
+      return;
+    }
+
+    this.updateOrders(group, [order], nextLifecycle);
   }
 
-  // ===== Save =====
-  // One DeliveryOrderTransaction per order being advanced (keyed on the
-  // order). The manifest row(s) are only bumped once EVERY order under the
-  // manifest has reached the next status - checked AFTER this advance so a
-  // partial per-transit mark never pushes the manifest ahead of orders
-  // still waiting. A card can be backed by several manifestId rows sharing
-  // one manifestNo, so every distinct manifestId is updated.
+  // ===== Save: one transaction + one manifest row PER ORDER =====
   private updateOrders(
     group: ManifestGroup,
     ordersToAdvance: TransferManifestResponse[],
@@ -682,32 +563,25 @@ loadAssignedManifests(): void {
 
     const isFinal = this.isFinalStep(nextLifecycle);
 
-    const requests: Observable<any>[] = ordersToAdvance.map(order =>
-      this.logisticsService.saveDeliveryOrderTransaction(
-        this.buildTransactionRequest(order, nextLifecycle, isFinal)
-      )
-    );
+    const requests: Observable<any>[] = [];
 
-    // Would every order in the manifest be at nextLifecycle AFTER this save?
-    const advancedIds = new Set(ordersToAdvance.map(o => o.transferOrderId));
-    const allAtNextAfterAdvance = group.orders.every(o =>
-      advancedIds.has(o.transferOrderId) ||
-      o.lifecycleCode === nextLifecycle.statusCode
-    );
+    for (const order of ordersToAdvance) {
 
-    if (allAtNextAfterAdvance) {
-      const seenManifestIds = new Set<number>();
-      for (const order of group.orders) {
-        if (seenManifestIds.has(order.manifestId)) {
-          continue;
-        }
-        seenManifestIds.add(order.manifestId);
-        requests.push(
-          this.logisticsService.saveTransferManifest(
-            this.buildManifestRequest(group, order, nextLifecycle)
-          )
-        );
-      }
+      // 1) Transit / order transaction - keyed on transferOrderId.
+      requests.push(
+        this.logisticsService.saveDeliveryOrderTransaction(
+          this.buildTransactionRequest(order, nextLifecycle, isFinal)
+        )
+      );
+
+      // 2) Manifest row for THAT order only (its own manifestId +
+      //    transferOrderId). No waiting for the rest of the manifest.
+      requests.push(
+        this.logisticsService.saveTransferManifest(
+          this.buildManifestRequest(group, order, nextLifecycle)
+        )
+      );
+
     }
 
     forkJoin(requests).subscribe({
@@ -715,7 +589,8 @@ loadAssignedManifests(): void {
         this.saving = false;
         this.savingOrderId = null;
         this.clearPending();
-        alert(`${ordersToAdvance.length} order(s) marked as ${nextLifecycle.statusName}.`);
+        const ids = ordersToAdvance.map(o => o.transitID).join(', ');
+        alert(`Transit ${ids} marked as ${nextLifecycle.statusName}.`);
         this.loadAssignedManifests();
       },
       error: (err: any) => {
@@ -726,7 +601,7 @@ loadAssignedManifests(): void {
         if (err?.error?.errors) {
           console.error('Validation errors:', err.error.errors);
         }
-        alert('Failed to update one or more orders. Please try again.');
+        alert('Failed to update one or more transits. Please try again.');
         this.loadAssignedManifests();
       }
     });
@@ -753,11 +628,6 @@ loadAssignedManifests(): void {
 
     const now = new Date().toISOString();
 
-    console.log('===== Save Delivery Transaction =====');
-    console.log('TransferOrderId:', order.transferOrderId);
-    console.log('CompanyId:', order.companyId);
-    console.log('CompanyName:', order.companyName);
-
     return {
       transferOrderId: order.transferOrderId,
 
@@ -779,37 +649,31 @@ loadAssignedManifests(): void {
 
       transferQty: order.transferQty ?? 0,
 
-      // Lifecycle
       lifecycleId: nextLifecycle.lifecycleId,
       lifecycleSequenceNo: nextLifecycle.sequenceNo,
       lifecycleCode: nextLifecycle.statusCode,
       lifecycleName: nextLifecycle.statusName,
 
-      // Transfer Mode
       transferModeId: order.transferModeId ?? 0,
       transferModeName: order.transferModeName ?? '',
 
-      // Assigned User
       assignedUserId: order.assignedUserId ?? 0,
       assignedUserName: order.assignedUserName ?? '',
 
-      // Courier
       courierId: order.courierId ?? 0,
       courierName: order.courierName ?? '',
       awbBillNo: order.awbBillNo ?? '',
 
-      // Vehicle / Other
       vehicleNo: order.vehicleNo ?? '',
       otherPartyName: order.otherPartyName ?? '',
       otherPartyType: order.otherPartyType ?? '',
 
-      // Company
       companyId: order.companyId ?? 0,
       companyName: order.companyName ?? '',
 
       pickupManifestId: order.pickupManifestId ?? undefined,
       pickupManifestNo: order.pickupManifestNo ?? '',
-      // Location Type
+
       locationTypeId: order.locationTypeId ?? 0,
       locationTypeName: order.locationTypeName ?? '',
 
@@ -819,7 +683,6 @@ loadAssignedManifests(): void {
       destinationLocationTypeId: order.destinationLocationTypeId ?? 0,
       destinationLocationTypeName: order.destinationLocationTypeName ?? '',
 
-      // Delivery
       transferInTime: isFinal
         ? now
         : (this.toIsoString(order.transferInTime) || undefined),
@@ -837,12 +700,9 @@ loadAssignedManifests(): void {
 
       isActive: true,
 
-      // Audit
       createdBy: order.createdBy ?? this.driverId,
       createdByName: order.createdByName ?? this.driverName,
-      createdDate: order.createdDate
-        ? this.toIsoString(order.createdDate)
-        : now,
+      createdDate: order.createdDate ? this.toIsoString(order.createdDate) : now,
 
       modifiedBy: this.driverId,
       modifiedByName: this.driverName,
@@ -850,11 +710,16 @@ loadAssignedManifests(): void {
     };
   }
 
+  // Manifest row for ONE order. Receiver / OTP come from the per-order maps
+  // so a partially delivered manifest keeps correct data per transit.
   private buildManifestRequest(
     group: ManifestGroup,
     forOrder: TransferManifestResponse,
     nextLifecycle: DeliveryLifecycle
   ): TransferManifest {
+
+    const receiver = this.receiverByOrderId.get(forOrder.transferOrderId);
+    const otp = this.otpByOrderId.get(forOrder.transferOrderId);
 
     return {
       manifestId: forOrder.manifestId,
@@ -864,10 +729,10 @@ loadAssignedManifests(): void {
       assignedUserId: forOrder.assignedUserId ?? this.driverId,
       assignedUserName: forOrder.assignedUserName ?? this.driverName,
 
-      receiverUserId: group.receiverUserId ?? forOrder.receiverUserId ?? 0,
-      receiverUserName: group.receiverUserName ?? forOrder.receiverUserName ?? '',
+      receiverUserId: receiver?.id ?? forOrder.receiverUserId ?? 0,
+      receiverUserName: receiver?.name ?? forOrder.receiverUserName ?? '',
 
-      otp: group.otp ?? forOrder.otp ?? '',
+      otp: otp ?? forOrder.otp ?? '',
 
       lifecycleId: nextLifecycle.lifecycleId,
       lifecycleSequenceNo: nextLifecycle.sequenceNo,
@@ -892,7 +757,61 @@ loadAssignedManifests(): void {
 
   }
 
-  // ===== Receiver / OTP send =====
+  // ===== OTP flow (final step, still scoped to the ticked transits) =====
+
+  get pendingTransitIds(): string {
+    return this.pendingOrders.map(o => o.transitID).join(', ');
+  }
+
+  get pendingOrderCount(): number {
+    return this.pendingOrders.length;
+  }
+
+  private openDeliveryOtpModal(
+    group: ManifestGroup,
+    orders: TransferManifestResponse[],
+    nextLifecycle: DeliveryLifecycle
+  ): void {
+
+    this.pendingGroup = group;
+    this.pendingOrders = orders;
+    this.pendingLifecycle = nextLifecycle;
+
+    this.otpInput = '';
+    this.otpError = '';
+    this.selectedReceiverId = 0;
+    this.selectedReceiverName = '';
+    this.selectedReceiverEmail = '';
+    this.receiverSearch = '';
+    this.otpSent = false;
+    this.generatedOtp = '';
+
+    const order = orders[0];
+
+    this.logisticsService
+      .getReceiverUsers(order.companyId, order.destinationLocationId)
+      .subscribe({
+        next: (res: any[]) => {
+
+          this.users = res
+            .map((x: any) => ({
+              userId: x.userId,
+              fullName: x.fullName,
+              loginName: x.loginName ?? '',
+              emailId: x.emailId ?? '',
+              mobileNo: x.mobileNo ?? ''
+            }))
+            .sort((a: any, b: any) => a.fullName.localeCompare(b.fullName));
+
+          this.filteredUsers = [...this.users];
+          this.showOtpModal = true;
+        },
+        error: (err) => {
+          console.error('Receiver Users API Error:', err);
+          alert('Unable to load receiver users.');
+        }
+      });
+  }
 
   receiverChanged(): void {
 
@@ -904,19 +823,32 @@ loadAssignedManifests(): void {
     }
 
     this.selectedReceiverName = receiver.fullName;
+    this.selectedReceiverEmail = receiver.emailId ?? '';
 
-    this.logisticsService.getUsers().subscribe({
-      next: (users: User[]) => {
-        const user = users.find(x => x.userId === this.selectedReceiverId);
-        this.selectedReceiverEmail = user?.emailId ?? '';
-      },
-      error: (err) => {
-        console.error('Failed to load user email', err);
-      }
-    });
+    if (!this.selectedReceiverEmail) {
+      this.logisticsService.getUsers().subscribe({
+        next: (users: User[]) => {
+          const user = users.find(x => x.userId === this.selectedReceiverId);
+          this.selectedReceiverEmail = user?.emailId ?? '';
+        },
+        error: (err) => console.error('Failed to load user email', err)
+      });
+    }
 
   }
 
+  filterUsers(): void {
+    const search = this.receiverSearch.trim().toLowerCase();
+    if (!search) {
+      this.filteredUsers = [...this.users];
+      return;
+    }
+    this.filteredUsers = this.users.filter(x =>
+      (x.fullName || '').toLowerCase().includes(search)
+    );
+  }
+
+  // OTP is stamped on EACH selected transit's manifest row.
   sendOtp(): void {
 
     if (this.selectedReceiverId === 0) {
@@ -938,50 +870,29 @@ loadAssignedManifests(): void {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     this.generatedOtp = otp;
 
-    this.pendingGroup.receiverUserId = receiver.userId;
-    this.pendingGroup.receiverUserName = receiver.fullName;
-    this.pendingGroup.otp = otp;
-
     const currentStatusCode = this.pendingOrders[0]?.lifecycleCode;
     const currentLifecycle =
       (currentStatusCode ? this.findLifecycle(currentStatusCode) : undefined)
       ?? this.pendingLifecycle;
 
     this.sendingOtp = true;
-    const pendingOrder = this.pendingOrders[0];
 
-    this.logisticsService.saveTransferManifest({
-      manifestId: pendingOrder.manifestId,
-      manifestNo: this.pendingGroup.manifestNo,
-      transferOrderId: pendingOrder.transferOrderId,
+    // Remember receiver + OTP per order, then persist one manifest row per order
+    // at its CURRENT status (status only moves on Verify & Deliver).
+    const requests: Observable<any>[] = this.pendingOrders.map(order => {
 
-      assignedUserId: pendingOrder.assignedUserId ?? this.driverId,
-      assignedUserName: pendingOrder.assignedUserName ?? this.driverName,
+      this.otpByOrderId.set(order.transferOrderId, otp);
+      this.receiverByOrderId.set(order.transferOrderId, {
+        id: receiver.userId,
+        name: receiver.fullName
+      });
 
-      receiverUserId: receiver.userId,
-      receiverUserName: receiver.fullName,
-      otp: otp,
+      return this.logisticsService.saveTransferManifest(
+        this.buildManifestRequest(this.pendingGroup, order, currentLifecycle)
+      );
+    });
 
-      lifecycleId: currentLifecycle.lifecycleId,
-      lifecycleSequenceNo: currentLifecycle.sequenceNo,
-      lifecycleCode: currentLifecycle.statusCode,
-      lifecycleName: currentLifecycle.statusName,
-
-      manifestDate: new Date(),
-      status: currentLifecycle.statusName,
-
-      createdBy: this.driverId,
-      createdByName: this.driverName,
-      createdDate: new Date(),
-
-      modifiedBy: this.driverId,
-      modifiedByName: this.driverName,
-      modifiedDate: new Date(),
-
-      assignedById: this.driverId,
-      assignedByName: this.driverName,
-      assignedDate: new Date()
-    }).subscribe({
+    forkJoin(requests).subscribe({
       next: () => {
 
         const body = `
@@ -990,6 +901,7 @@ loadAssignedManifests(): void {
       <h2 style="color:#2563EB">${otp}</h2>
       <table cellpadding="5">
         <tr><td><b>Manifest No</b></td><td>${this.pendingGroup.manifestNo}</td></tr>
+        <tr><td><b>Transit ID(s)</b></td><td>${this.pendingTransitIds}</td></tr>
         <tr><td><b>Driver</b></td><td>${this.driverName}</td></tr>
       </table>
       <br>
@@ -1029,15 +941,43 @@ loadAssignedManifests(): void {
 
   }
 
-  filterUsers(): void {
-    const search = this.receiverSearch.trim().toLowerCase();
-    if (!search) {
-      this.filteredUsers = [...this.users];
+  confirmOtp(): void {
+
+    if (!this.pendingGroup || !this.pendingLifecycle || this.pendingOrders.length === 0) {
+      this.cancelOtp();
       return;
     }
-    this.filteredUsers = this.users.filter(x =>
-      (x.fullName || '').toLowerCase().includes(search)
-    );
+
+    if (!this.otpSent) {
+      this.otpError = 'Please send the OTP to the receiver first.';
+      return;
+    }
+
+    const entered = this.otpInput.trim();
+    if (!entered) {
+      this.otpError = 'Please enter the OTP.';
+      return;
+    }
+
+    const expected = (this.generatedOtp || '').trim();
+    if (!expected || entered !== expected) {
+      this.otpError = 'Invalid OTP. Please check with the receiver and try again.';
+      return;
+    }
+
+    this.otpError = '';
+    this.showOtpModal = false;
+
+    this.updateOrders(this.pendingGroup, this.pendingOrders, this.pendingLifecycle);
+  }
+
+  cancelOtp(): void {
+    this.showOtpModal = false;
+    this.otpInput = '';
+    this.otpError = '';
+    this.otpSent = false;
+    this.receiverSearch = '';
+    this.pendingOrders = [];
   }
 
 }

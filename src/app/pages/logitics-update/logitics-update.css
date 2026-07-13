@@ -821,3 +821,119 @@ input[type="checkbox"] {
   }
 
 }
+
+/* ===== APPEND TO logitics-update.css =====
+   These classes are used by the template but were never styled, which is why
+   the destination header + "Mark ..." button render broken. */
+
+.dest-group {
+  border-top: 1px solid #e2e8f0;
+}
+
+.dest-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 18px;
+  background: #fbfdff;
+}
+
+.dest-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.dest-pin {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.dest-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  background: #f1f5f9;
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+.dest-selected {
+  font-size: 12px;
+  font-weight: 700;
+  color: #15803d;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+.dest-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Checkbox column */
+.col-check {
+  width: 40px;
+  text-align: center;
+}
+
+/* Row highlight when a transit is ticked */
+tbody tr.row-selected {
+  background: #eff6ff;
+}
+
+tbody tr.row-selected:hover {
+  background: #e0ecff;
+}
+
+/* Tick shown for transits with no next step */
+.done-tick {
+  color: #16a34a;
+  font-weight: 700;
+}
+
+/* Per-row single-transit action button */
+.btn-row {
+  padding: 5px 12px;
+  border: 1px solid #16a34a;
+  border-radius: 6px;
+  background: #fff;
+  color: #16a34a;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-row:hover:not(:disabled) {
+  background: #16a34a;
+  color: #fff;
+}
+
+.btn-row:disabled {
+  border-color: #cbd5e1;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+
+  .dest-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .dest-actions .btn-action {
+    width: 100%;
+  }
+
+}

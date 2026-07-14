@@ -51,13 +51,17 @@ export class Login {
 
   ngOnInit(): void {
 
-  const lastEmail = localStorage.getItem('lastEmail');
+    if (environment.maintenanceMode) {
+      this.router.navigate(['/maintenance']);
+      return;
+    }
 
-  if (lastEmail) {
-    this.email = lastEmail;
+    const lastEmail = localStorage.getItem('lastEmail');
+    if (lastEmail) {
+      this.email = lastEmail;
+    }
   }
 
-}
 
 sendOtp() {
 
@@ -103,11 +107,6 @@ sendOtp() {
 
 login() {
 
-  // Maintenance Mode Check
-  if (environment.maintenanceMode) {
-    this.router.navigate(['/maintenance']);
-    return;
-  }
 
   if (!this.otp) {
     this.errorMessage = "Enter OTP";

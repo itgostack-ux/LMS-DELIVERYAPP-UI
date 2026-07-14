@@ -40,6 +40,11 @@ export const routes: Routes = [
   },
 
   {
+    path: 'maintenance',
+    component: Maintenance
+  },
+
+  {
     path: '',
     component: MainLayout,
     children: [
@@ -212,10 +217,7 @@ export const routes: Routes = [
         ]
       },
 
-      {
-        path: 'maintenance',
-        component: Maintenance
-      },
+
       {
         path: 'logictics-update',
         component: LogiticsUpdate,

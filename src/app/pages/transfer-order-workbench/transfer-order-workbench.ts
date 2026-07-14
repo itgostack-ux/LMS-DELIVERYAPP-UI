@@ -15,9 +15,12 @@ import {
   TransferMode,
   User,
   Courier,
-  TransferManifest
+  TransferManifest,
+  CompanyUserLifecycleAccess,
+  CompanyUserLifecycleAccessView
 } from '../../services/models/common-master-model';
 import { UserDataService } from '../../service/user-data-service';
+import { CompanyRoleLifecycleAccess } from '../company-role-lifecycle-access/company-role-lifecycle-access';
 
 interface GroupedTransferLog {
 
@@ -392,36 +395,53 @@ export class TransferOrderWorkbench implements OnInit {
     });
 
   }
-  loadUsers(): void {
+loadUsers(): void {
 
-    this.logisticsService.getCompanyUserLifecycleAccess().subscribe({
+  const companyId =
+    this.selectedGroups.length > 0
+      ? this.selectedGroups[0].companyId
+      : this.selectedCompanyId;
 
-      next: (res: any[]) => {
+  this.logisticsService.getCompanyUserLifecycleAccess().subscribe({
 
-        this.users = res
-          .filter(x =>
-            x.isActive &&
-            x.roleName === 'Delivery Executive'
-          )
-          .map(x => ({
-            userId: x.userId,
-            fullName: x.userName,
-            loginName: x.loginName ?? '',
-            emailId: x.emailId ?? '',
-            mobileNo: x.mobileNo ?? ''
-          }));
+    next: (res) => {
 
-        console.log('Delivery Executives:', this.users);
+      this.users = res
+        .filter(x =>
+          x.isActive &&
+          x.companyId === companyId &&
+          x.roleName?.trim() === 'Delivery Executive'
+        )
+        .map(x => ({
+          userId: x.userId,
+          fullName: x.userName,
+          loginName: '',
+          emailId: '',
+          mobileNo: ''
+        }));
 
-      },
+      console.log(this.users);
 
-      error: err => {
-        console.error('Failed to load Delivery Executives', err);
-      }
+    },
 
-    });
+    error: err => {
+      console.error(err);
+    }
 
-  } loadTransferModes(): void {
+  });
+
+}
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  loadTransferModes(): void {
     this.logisticsService.getTransferModes().subscribe({
       next: (res) => {
 
@@ -718,20 +738,41 @@ export class TransferOrderWorkbench implements OnInit {
         x => (x.transferStatus ?? '').trim() === 'In Transit'
       ).length;
 
-      const transferQty = items.length; // 1 IMEI = 1 Qty
+      const transferQty = items.length;
 
-      // Representative logistics status for the whole TransitID group.
-      // Rows in the same workflow group share the same lifecycle status;
-      // fall back to the first row that actually has one.
+      // Find current logistics status
       const withStatus = items.find(x => !!x.logisticsStatus);
-      const logisticsStatus = withStatus?.logisticsStatus ?? '';
 
-      let transferStatus: string;
-      if (acceptedQty === transferQty) transferStatus = 'Received';
-      else if (acceptedQty === 0) transferStatus = 'In Transit';
-      else transferStatus = `Partial (${acceptedQty}/${transferQty})`;
+      let transferStatus = '';
+      let logisticsStatus = '';
+
+      // ===========================
+      // IPOS Status
+      // ===========================
+
+      if (acceptedQty === transferQty) {
+
+        transferStatus = 'Received';
+        logisticsStatus = 'Delivered';
+
+      }
+      else if (acceptedQty > 0) {
+
+        transferStatus = `Partial (${acceptedQty}/${transferQty})`;
+        logisticsStatus = 'Delivered';
+
+      }
+      else {
+
+        transferStatus = 'In Transit';
+
+        // Workflow Status
+        logisticsStatus = withStatus?.logisticsStatus?.trim() || 'Open';
+
+      }
 
       groups.push({
+
         transitID,
         transferOrderId: first.transferOrderId ?? 0,
         deliveryNoteNo: first.deliveryNoteNo ?? '',
@@ -756,6 +797,7 @@ export class TransferOrderWorkbench implements OnInit {
         transferQty,
         acceptedQty,
         pendingQty,
+
         transferStatus,
         logisticsStatus,
 
@@ -783,24 +825,26 @@ export class TransferOrderWorkbench implements OnInit {
 
         selected: false,
         items
+
       });
+
     }
 
-    // Workflow groups (with a logistics status) first, then by transitID —
-    // same default ordering as before, just applied at the group level.
+    // Sort by lifecycle
     return groups.sort((a, b) => {
 
-      const aActive = !!a.logisticsStatus;
-      const bActive = !!b.logisticsStatus;
+      // Delivered goes to bottom
+      if (a.logisticsStatus === 'Delivered' && b.logisticsStatus !== 'Delivered')
+        return 1;
 
-      if (aActive && !bActive) return -1;
-      if (!aActive && bActive) return 1;
+      if (a.logisticsStatus !== 'Delivered' && b.logisticsStatus === 'Delivered')
+        return -1;
 
       return a.transitID - b.transitID;
 
     });
-  }
 
+  }
   // ===== Logistics Status filter =====
 
   // Distinct non-blank statuses present in the loaded grid,
@@ -839,16 +883,21 @@ export class TransferOrderWorkbench implements OnInit {
   // Grouped rows after the client-side Logistics Status filter is applied
   get filteredGroups(): GroupedTransferLog[] {
 
+    // Initial Search
     if (!this.selectedLifecycleStatus) {
-      return this.groupedLogs;
+
+      return this.groupedLogs.filter(
+        x => x.logisticsStatus !== 'Delivered'
+      );
+
     }
 
+    // Dropdown filter
     return this.groupedLogs.filter(
       x => x.logisticsStatus === this.selectedLifecycleStatus
     );
 
   }
-
   // ===== Column sorting (operates on grouped rows) =====
 
   sortBy(column: keyof GroupedTransferLog): void {
@@ -1599,28 +1648,39 @@ export class TransferOrderWorkbench implements OnInit {
 
   // ===== Pickup Assignment modal =====
 
-  openPickupAssignModal(): void {
+openPickupAssignModal(): void {
 
-    this.showPickupModal = true;
-
-    this.pickupValidationMessage = '';
-
-    // Reset all modal fields
-    this.pickupDriverId = 0;
-    this.pickupCourierId = 0;
-    this.pickupVehicleNo = '';
-    this.pickupAwbNo = '';
-    this.pickupOtherPartyName = '';
-    this.pickupTransportType = '';
-    this.pickupRemarks = '';
-
-    const direct = this.transferModes.find(x => x.transferModeCode === 'DIRECT');
-
-    if (direct) {
-      this.setTransferMode(direct);
-    }
-
+  // Validation
+  if (this.selectedGroups.length === 0) {
+    alert('Please select at least one order.');
+    return;
   }
+
+  // Load drivers for selected company
+  this.loadUsers();
+
+  this.showPickupModal = true;
+
+  this.pickupValidationMessage = '';
+
+  // Reset all modal fields
+  this.pickupDriverId = 0;
+  this.pickupCourierId = 0;
+  this.pickupVehicleNo = '';
+  this.pickupAwbNo = '';
+  this.pickupOtherPartyName = '';
+  this.pickupTransportType = '';
+  this.pickupRemarks = '';
+
+  const direct = this.transferModes.find(
+    x => x.transferModeCode === 'DIRECT'
+  );
+
+  if (direct) {
+    this.setTransferMode(direct);
+  }
+
+}
 
   closePickupModal(): void {
     this.showPickupModal = false;

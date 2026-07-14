@@ -937,3 +937,105 @@ tbody tr.row-selected:hover {
   }
 
 }
+
+/* ===== APPEND TO driver-console.css =====
+   New elements introduced by the transit-level rewrite. Everything else in your
+   existing stylesheet still applies unchanged. */
+
+/* "3 item(s) · qty 5" toggle inside a transit row */
+.items-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.items-toggle:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.items-caret {
+  display: inline-block;
+  font-size: 10px;
+  color: #94a3b8;
+  transition: transform 0.15s ease;
+}
+
+.items-caret.open {
+  transform: rotate(90deg);
+  color: #2563eb;
+}
+
+.items-qty {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+/* Expanded item detail row */
+.items-row > td {
+  background: #f8fafc;
+  padding: 0 14px 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.items-table thead th {
+  padding: 7px 12px;
+  background: #f1f5f9;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.items-table tbody td {
+  padding: 7px 12px;
+  font-size: 12.5px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.items-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Legacy rows whose items drifted apart before this fix */
+.mixed-tag {
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: help;
+}
+
+@media (max-width: 640px) {
+
+  .items-row > td {
+    padding: 0 8px 10px;
+  }
+
+  .items-table thead th,
+  .items-table tbody td {
+    padding: 6px 8px;
+    font-size: 11.5px;
+  }
+
+}

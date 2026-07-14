@@ -29,15 +29,20 @@
     </div>
   </div>
 
-  <!-- ===== KPI Stat Cards ===== -->
+  <!-- ===== KPI cards: every number is a TRANSIT count ===== -->
   <div class="stat-grid" *ngIf="!loading && statCards.length > 0">
     <div class="stat-card" *ngFor="let card of statCards" [style.--accent]="card.color">
       <div class="stat-icon"><i [class]="card.icon"></i></div>
       <div class="stat-info">
-        <span class="stat-label">{{card.label}}</span>
-        <span class="stat-value">{{card.value}}</span>
+        <span class="stat-label">{{ card.label }}</span>
+        <span class="stat-value">{{ card.value }}</span>
       </div>
     </div>
+  </div>
+
+  <!-- Items sit behind the transits, so they get a line rather than a card -->
+  <div class="stat-meta" *ngIf="!loading && filteredGroups.length > 0">
+    {{ totalTransits }} transit(s) &middot; {{ totalItems }} item(s) &middot; total qty {{ totalQty }}
   </div>
 
   <!-- ===== Filters ===== -->
@@ -85,20 +90,21 @@
       <button class="btn-secondary" (click)="clearFilters()" [disabled]="!hasActiveFilters">Clear</button>
     </div>
   </div>
+
   <div class="search-container">
     <div class="search-box">
       <label>Search</label>
       <input type="text" class="form-control" placeholder="Transit ID / Item / IMEI / User..." [(ngModel)]="searchText">
     </div>
   </div>
+
   <!-- ===== States ===== -->
   <div *ngIf="loading" class="loading"><span class="spinner"></span> Loading tracker...</div>
   <div *ngIf="errorMessage" class="hint text-danger">{{errorMessage}}</div>
   <div *ngIf="!loading && rows.length === 0 && !errorMessage" class="empty-hint">No timeline data found.</div>
 
-  <!-- ===== Order-Level (Transit) Table ===== -->
+  <!-- ===== Transit table: one row per transitID ===== -->
   <div class="table-responsive" *ngIf="!loading && filteredGroups.length > 0">
-
 
     <table class="table table-bordered table-hover table-striped">
       <thead>
@@ -143,7 +149,9 @@
           <td>{{group.assignedUserName}}</td>
           <td>{{group.courierName || '-'}}</td>
           <td>{{group.vehicleNo || '-'}}</td>
-          <td>{{group.lifecycleName}}</td>
+          <td>
+            <span class="status-pill" [style.background]="group.currentColor">{{group.lifecycleName}}</span>
+          </td>
           <td><span class="status-badge">{{group.transferStatus}}</span></td>
           <td class="qty-cell">{{group.totalItems}}</td>
           <td class="qty-cell">{{group.totalQty}}</td>
@@ -161,6 +169,7 @@
                 <i class="fa-regular fa-clock"></i> {{p.startTime | date:'dd/MM/yy HH:mm'}}
                 <span *ngIf="p.endTime">&rarr; {{p.endTime | date:'HH:mm'}}</span>
               </div>
+              <div class="cell-count">{{p.doneCount}}/{{p.totalCount}} item(s)</div>
               <div class="cell-dur" *ngIf="p.durationMinutes != null">{{p.durationMinutes}} min</div>
             </ng-container>
             <ng-template #mdash><span class="cell-empty">—</span></ng-template>
@@ -178,7 +187,7 @@
 
 
 <!-- ========================================================= -->
-<!-- Transit Details Popup (IMEI-based status matrix)          -->
+<!-- Transit Details Popup (IMEI breakdown)                    -->
 <!-- ========================================================= -->
 <div class="modal-backdrop" *ngIf="selectedTransit" (click)="closeTransit()">
   <div class="modal-container" (click)="$event.stopPropagation()">
@@ -213,7 +222,7 @@
 
     <hr>
 
-    <!-- ===== IMEI Details: item-specific info (status timing is transit-level, shown above) ===== -->
+    <!-- ===== IMEI rows behind this transit ===== -->
     <div class="detail-subtitle">Items in this Transit</div>
     <div class="table-responsive">
       <table class="table table-bordered table-sm detail-table">

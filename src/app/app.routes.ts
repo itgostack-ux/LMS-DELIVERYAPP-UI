@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-
+import { Maintenance } from './pages/maintenance/maintenance';
 import { Login } from './pages/login/login';
 import { Dashboard } from './pages/dashboard/dashboard';
 
@@ -211,7 +211,12 @@ export const routes: Routes = [
 
         ]
       },
-            {
+
+      {
+        path: 'maintenance',
+        component: Maintenance
+      },
+      {
         path: 'logictics-update',
         component: LogiticsUpdate,
         children: [

@@ -9,6 +9,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../service/auth';
 
 import { UserDataService } from '../../service/user-data-service';
+import { environment } from '../../pages/confiq';
 
 @Component({
 
@@ -36,6 +37,8 @@ export class Login {
 
   errorMessage = '';
 
+
+
   constructor(
 
     private authService: AuthService,
@@ -46,92 +49,103 @@ export class Login {
 
   ) { }
 
-  sendOtp() {
+  ngOnInit(): void {
 
-    if (!this.email) {
+  const lastEmail = localStorage.getItem('lastEmail');
 
-      this.errorMessage = "Enter Email";
+  if (lastEmail) {
+    this.email = lastEmail;
+  }
 
-      return;
+}
 
-    }
+sendOtp() {
 
-    this.loading = true;
+  if (!this.email) {
+    this.errorMessage = "Enter Email";
+    return;
+  }
 
-    this.authService.sendOtp(this.email).subscribe({
+  this.loading = true;
 
-      next: (res: any) => {
+  this.authService.sendOtp(this.email).subscribe({
 
-        this.loading = false;
+    next: (res: any) => {
 
-        if (res.isValidUser) {
+      this.loading = false;
 
-          this.showOtp = true;
+      if (res.isValidUser) {
 
-        } else {
+        // Save the last email
+        localStorage.setItem('lastEmail', this.email);
 
-          this.errorMessage = "Invalid User";
+        this.showOtp = true;
+        this.errorMessage = "";
 
-        }
+      } else {
 
-      },
-
-      error: () => {
-
-        this.loading = false;
-
-        this.errorMessage = "Server Error";
+        this.errorMessage = "Invalid User";
 
       }
 
-    });
+    },
 
-  }
+    error: () => {
 
-  login() {
-
-    if (!this.otp) {
-
-      this.errorMessage = "Enter OTP";
-
-      return;
+      this.loading = false;
+      this.errorMessage = "Server Error";
 
     }
 
-    this.loading = true;
+  });
 
-    this.authService.validateOtp(this.email, this.otp).subscribe({
+}
 
-      next: (user: any) => {
+login() {
 
-        this.loading = false;
+  // Maintenance Mode Check
+  if (environment.maintenanceMode) {
+    this.router.navigate(['/maintenance']);
+    return;
+  }
 
-        if (user.isValidOTP) {
+  if (!this.otp) {
+    this.errorMessage = "Enter OTP";
+    return;
+  }
 
-          this.userService.setUser(user);
+  this.loading = true;
+  this.errorMessage = "";
 
-          this.router.navigate(['/dashboard']);
+  this.authService.validateOtp(this.email, this.otp).subscribe({
 
-        }
+    next: (user: any) => {
 
-        else {
+      this.loading = false;
 
-          this.errorMessage = "Invalid OTP";
+      if (user.isValidOTP) {
 
-        }
+        this.userService.setUser(user);
 
-      },
+        this.router.navigate(['/dashboard']);
 
-      error: () => {
+      } else {
 
-        this.loading = false;
-
-        this.errorMessage = "Login Failed";
+        this.errorMessage = "Invalid OTP";
 
       }
 
-    });
+    },
 
-  }
+    error: () => {
+
+      this.loading = false;
+      this.errorMessage = "Login Failed";
+
+    }
+
+  });
+
+}
 
 }

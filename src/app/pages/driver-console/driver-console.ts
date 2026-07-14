@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Observable, forkJoin } from 'rxjs';
+import { Observable, forkJoin, of } from 'rxjs';
 
 import { LogisticsService } from '../../services/logistics-service';
 import { UserDataService } from '../../service/user-data-service';
@@ -14,17 +14,45 @@ import {
 } from '../../services/models/common-master-model';
 import { AuthService } from '../../service/auth';
 
+/**
+ * The API returns ONE ROW PER ITEM (IMEI / item code). Several rows can share the
+ * same transitID. The driver works on TRANSITS, not items, so every row in the UI
+ * below is a TRANSIT and every action fans out to all item rows behind it.
+ */
+interface TransitGroup {
+  transitKey: string;          // manifestNo::transitID  (stable id for selection)
+  transitID: number;
+  manifestNo: string;
+
+  deliveryNoteNo: string;
+  companyId: number;
+  companyName: string;
+
+  sourceLocationId: number;
+  sourceLocationName: string;
+  destinationLocationId: number;
+  destinationLocationName: string;
+
+  itemCount: number;
+  totalQty: number;
+
+  // Effective status = the LEAST advanced item row in the transit.
+  lifecycleCode: string;
+  lifecycleName: string;
+  mixed: boolean;              // true if item rows disagree (legacy data)
+
+  orders: TransferManifestResponse[];   // item rows behind this transit
+  expanded: boolean;                    // item detail open?
+}
+
 interface DestinationGroup {
   destinationLocationId: number;
   destinationLocationName: string;
-  orders: TransferManifestResponse[];
+  transits: TransitGroup[];
 }
 
 interface ManifestGroup {
-  // Display key only. Orders inside a group can carry DIFFERENT manifestId
-  // values while sharing the same manifestNo. Every action below is keyed on
-  // the ORDER (transferOrderId) + that order's own manifestId.
-  manifestId: number;
+  manifestId: number;          // display only
   manifestNo: string;
 
   sourceLocationName: string;
@@ -32,7 +60,7 @@ interface ManifestGroup {
   vehicleNo: string;
   assignedUserName: string;
 
-  orders: TransferManifestResponse[];
+  transits: TransitGroup[];
   destinationGroups: DestinationGroup[];
 
   expanded: boolean;
@@ -42,7 +70,7 @@ interface StatusBreakdown {
   code: string;
   name: string;
   color: string;
-  count: number;
+  count: number;               // TRANSIT count, not item count
 }
 
 @Component({
@@ -74,15 +102,15 @@ export class DriverConsole implements OnInit {
 
   loading = false;
   saving = false;
-  savingOrderId: number | null = null;
+  savingTransitKey: string | null = null;
 
   errorMessage = '';
 
-  // ===== Transit-level selection (keyed on transferOrderId) =====
-  selectedOrderIds = new Set<number>();
+  // ===== Selection: keyed on TRANSIT, never on an item row =====
+  selectedTransitKeys = new Set<string>();
 
-  // Expanded cards survive re-filtering.
   private expandedManifestNos = new Set<string>();
+  private expandedTransitKeys = new Set<string>();
 
   // ===== OTP modal state (final lifecycle step) =====
   showOtpModal = false;
@@ -100,13 +128,13 @@ export class DriverConsole implements OnInit {
   selectedReceiverName = '';
   selectedReceiverEmail = '';
 
-  // Receiver / OTP recorded PER ORDER, so a manifest can be delivered in parts.
-  private otpByOrderId = new Map<number, string>();
-  private receiverByOrderId = new Map<number, { id: number; name: string }>();
+  // Receiver / OTP recorded PER TRANSIT, so a manifest can be delivered in parts.
+  private otpByTransitKey = new Map<string, string>();
+  private receiverByTransitKey = new Map<string, { id: number; name: string }>();
 
   // Pending delivery details for the OTP flow.
   private pendingGroup!: ManifestGroup;
-  private pendingOrders: TransferManifestResponse[] = [];
+  private pendingTransits: TransitGroup[] = [];
   private pendingLifecycle!: DeliveryLifecycle;
 
   constructor(
@@ -135,7 +163,7 @@ export class DriverConsole implements OnInit {
 
     const userId = this.userDataService.getUserId();
     if (userId === 0) {
-      console.error('Invalid User Id');
+      this.errorMessage = 'Invalid user. Please log in again.';
       return;
     }
 
@@ -181,12 +209,13 @@ export class DriverConsole implements OnInit {
   }
 
   refresh(): void {
-    if (this.driverId !== 0) {
-      if (this.deliveryLifecycles.length === 0) {
-        this.loadDeliveryLifecycles(true);
-      } else {
-        this.loadAssignedManifests();
-      }
+    if (this.driverId === 0) {
+      return;
+    }
+    if (this.deliveryLifecycles.length === 0) {
+      this.loadDeliveryLifecycles(true);
+    } else {
+      this.loadAssignedManifests();
     }
   }
 
@@ -200,7 +229,7 @@ export class DriverConsole implements OnInit {
     const userId = this.userDataService.getUserId();
     if (userId === 0) {
       this.loading = false;
-      this.errorMessage = 'Invalid user. Please login again.';
+      this.errorMessage = 'Invalid user. Please log in again.';
       return;
     }
 
@@ -208,7 +237,7 @@ export class DriverConsole implements OnInit {
 
       next: (rows: TransferManifestResponse[]) => {
 
-        this.selectedOrderIds.clear();
+        this.selectedTransitKeys.clear();
 
         this.deliveryOrders = rows.filter(x => x.assignedUserId === userId);
 
@@ -216,7 +245,7 @@ export class DriverConsole implements OnInit {
           ...new Set(
             this.deliveryOrders
               .map(x => x.sourceLocationName)
-              .filter(x => x)
+              .filter(x => !!x)
           )
         ].sort();
 
@@ -239,7 +268,7 @@ export class DriverConsole implements OnInit {
 
   }
 
-  // Group by manifestNo (display only) -> bucket each manifest's orders by destination.
+  // manifestNo -> transitID -> item rows
   private groupByManifest(rows: TransferManifestResponse[]): ManifestGroup[] {
 
     const map = new Map<string, TransferManifestResponse[]>();
@@ -253,7 +282,10 @@ export class DriverConsole implements OnInit {
 
     return [...map.entries()]
       .map(([manifestNo, orders]) => {
+
         const first = orders[0];
+        const transits = this.buildTransits(manifestNo, orders);
+
         return {
           manifestId: first.manifestId,
           manifestNo,
@@ -261,41 +293,90 @@ export class DriverConsole implements OnInit {
           transferModeName: first.transferModeName,
           vehicleNo: first.vehicleNo,
           assignedUserName: first.assignedUserName,
-          orders,
-          destinationGroups: this.groupByDestination(orders),
+          transits,
+          destinationGroups: this.groupByDestination(transits),
           expanded: this.expandedManifestNos.has(manifestNo)
         } as ManifestGroup;
+
       })
       .sort((a, b) => {
-        const aAct = this.manifestHasAnyNextStatus(a) ? 0 : 1;
-        const bAct = this.manifestHasAnyNextStatus(b) ? 0 : 1;
+        const aAct = this.manifestHasAnyActionable(a) ? 0 : 1;
+        const bAct = this.manifestHasAnyActionable(b) ? 0 : 1;
         if (aAct !== bAct) {
           return aAct - bAct;
         }
-        const aMax = Math.max(...a.orders.map(o => o.manifestId));
-        const bMax = Math.max(...b.orders.map(o => o.manifestId));
-        return bMax - aMax;
+        return b.manifestNo.localeCompare(a.manifestNo);
       });
 
   }
 
-  private groupByDestination(rows: TransferManifestResponse[]): DestinationGroup[] {
+  /** Collapse the item rows of one manifest into TRANSITS. */
+  private buildTransits(
+    manifestNo: string,
+    rows: TransferManifestResponse[]
+  ): TransitGroup[] {
+
+    const map = new Map<number, TransferManifestResponse[]>();
+
+    for (const row of rows) {
+      const id = Number(row.transitID) || 0;
+      const list = map.get(id) ?? [];
+      list.push(row);
+      map.set(id, list);
+    }
+
+    return [...map.entries()]
+      .map(([transitID, orders]) => {
+
+        const base = this.leastAdvancedOrder(orders);
+        const codes = new Set(orders.map(o => o.lifecycleCode));
+        const transitKey = `${manifestNo}::${transitID}`;
+
+        return {
+          transitKey,
+          transitID,
+          manifestNo,
+
+          deliveryNoteNo: base.deliveryNoteNo ?? '',
+          companyId: base.companyId ?? 0,
+          companyName: base.companyName ?? '',
+
+          sourceLocationId: base.sourceLocationId,
+          sourceLocationName: base.sourceLocationName ?? '',
+          destinationLocationId: base.destinationLocationId ?? 0,
+          destinationLocationName: base.destinationLocationName ?? '—',
+
+          itemCount: orders.length,
+          totalQty: orders.reduce((sum, o) => sum + (o.transferQty ?? 0), 0),
+
+          lifecycleCode: base.lifecycleCode,
+          lifecycleName:
+            this.findLifecycle(base.lifecycleCode)?.statusName ?? base.lifecycleName,
+          mixed: codes.size > 1,
+
+          orders,
+          expanded: this.expandedTransitKeys.has(transitKey)
+        } as TransitGroup;
+
+      })
+      .sort((a, b) => a.transitID - b.transitID);
+
+  }
+
+  private groupByDestination(transits: TransitGroup[]): DestinationGroup[] {
 
     const map = new Map<string, DestinationGroup>();
 
-    for (const row of rows) {
-      const id = row.destinationLocationId ?? 0;
-      const name = row.destinationLocationName ?? '—';
-      const key = `${id}|${name}`;
-
+    for (const transit of transits) {
+      const key = `${transit.destinationLocationId}|${transit.destinationLocationName}`;
       const existing = map.get(key);
       if (existing) {
-        existing.orders.push(row);
+        existing.transits.push(transit);
       } else {
         map.set(key, {
-          destinationLocationId: id,
-          destinationLocationName: name,
-          orders: [row]
+          destinationLocationId: transit.destinationLocationId,
+          destinationLocationName: transit.destinationLocationName,
+          transits: [transit]
         });
       }
     }
@@ -306,11 +387,22 @@ export class DriverConsole implements OnInit {
 
   }
 
-  private manifestHasAnyNextStatus(group: ManifestGroup): boolean {
-    return group.orders.some(o => this.hasNextStatus(o.lifecycleCode));
+  /** The item row that is furthest behind — it drives the transit's status. */
+  private leastAdvancedOrder(
+    orders: TransferManifestResponse[]
+  ): TransferManifestResponse {
+    return orders.reduce((slowest, current) =>
+      this.sequenceOf(current.lifecycleCode) < this.sequenceOf(slowest.lifecycleCode)
+        ? current
+        : slowest
+    );
   }
 
-  // ===== Filters (status filter now works at ORDER level) =====
+  private sequenceOf(statusCode: string): number {
+    return this.findLifecycle(statusCode)?.sequenceNo ?? Number.MAX_SAFE_INTEGER;
+  }
+
+  // ===== Filters (status filter works at TRANSIT level) =====
 
   get visibleGroups(): ManifestGroup[] {
     return this.filteredManifestGroups;
@@ -326,18 +418,18 @@ export class DriverConsole implements OnInit {
         continue;
       }
 
-      const orders = this.statusFilter === 'ALL'
-        ? group.orders
-        : group.orders.filter(o => o.lifecycleCode === this.statusFilter);
+      const transits = this.statusFilter === 'ALL'
+        ? group.transits
+        : group.transits.filter(t => t.lifecycleCode === this.statusFilter);
 
-      if (orders.length === 0) {
+      if (transits.length === 0) {
         continue;
       }
 
       result.push({
         ...group,
-        orders,
-        destinationGroups: this.groupByDestination(orders),
+        transits,
+        destinationGroups: this.groupByDestination(transits),
         expanded: this.expandedManifestNos.has(group.manifestNo)
       });
 
@@ -355,17 +447,17 @@ export class DriverConsole implements OnInit {
     this.applyGroupFilters();
   }
 
-  get totalOrderCount(): number {
-    return this.manifestGroups.reduce((sum, g) => sum + g.orders.length, 0);
+  get totalTransitCount(): number {
+    return this.manifestGroups.reduce((sum, g) => sum + g.transits.length, 0);
   }
 
-  // One tab per lifecycle status that has orders under it, with its ORDER count.
+  /** One tab per lifecycle status that has transits under it. */
   get statusTabs(): { code: string; name: string; count: number }[] {
 
     const counts = new Map<string, number>();
     for (const g of this.manifestGroups) {
-      for (const o of g.orders) {
-        counts.set(o.lifecycleCode, (counts.get(o.lifecycleCode) ?? 0) + 1);
+      for (const t of g.transits) {
+        counts.set(t.lifecycleCode, (counts.get(t.lifecycleCode) ?? 0) + 1);
       }
     }
 
@@ -379,12 +471,12 @@ export class DriverConsole implements OnInit {
 
   }
 
-  // ===== Header chips =====
+  // ===== Header chips (transit counts) =====
 
   statusBreakdown(group: ManifestGroup): StatusBreakdown[] {
     const counts = new Map<string, number>();
-    for (const o of group.orders) {
-      counts.set(o.lifecycleCode, (counts.get(o.lifecycleCode) ?? 0) + 1);
+    for (const t of group.transits) {
+      counts.set(t.lifecycleCode, (counts.get(t.lifecycleCode) ?? 0) + 1);
     }
     return [...counts.entries()].map(([code, count]) => ({
       code,
@@ -394,62 +486,62 @@ export class DriverConsole implements OnInit {
     }));
   }
 
-  // ===== Transit-level checkbox selection =====
+  // ===== Transit selection =====
 
-  isOrderCheckable(order: TransferManifestResponse): boolean {
-    return this.hasNextStatus(order.lifecycleCode);
+  isTransitCheckable(transit: TransitGroup): boolean {
+    return this.hasNextStatus(transit.lifecycleCode);
   }
 
-  isChecked(order: TransferManifestResponse): boolean {
-    return this.selectedOrderIds.has(order.transferOrderId);
+  isChecked(transit: TransitGroup): boolean {
+    return this.selectedTransitKeys.has(transit.transitKey);
   }
 
-  toggleOrder(order: TransferManifestResponse): void {
-    if (!this.isOrderCheckable(order)) {
+  toggleTransit(transit: TransitGroup): void {
+    if (!this.isTransitCheckable(transit)) {
       return;
     }
-    if (this.selectedOrderIds.has(order.transferOrderId)) {
-      this.selectedOrderIds.delete(order.transferOrderId);
+    if (this.selectedTransitKeys.has(transit.transitKey)) {
+      this.selectedTransitKeys.delete(transit.transitKey);
     } else {
-      this.selectedOrderIds.add(order.transferOrderId);
+      this.selectedTransitKeys.add(transit.transitKey);
     }
   }
 
-  private checkableOrders(dest: DestinationGroup): TransferManifestResponse[] {
-    return dest.orders.filter(o => this.isOrderCheckable(o));
+  private checkableTransits(dest: DestinationGroup): TransitGroup[] {
+    return dest.transits.filter(t => this.isTransitCheckable(t));
   }
 
   allCheckedInDest(dest: DestinationGroup): boolean {
-    const checkable = this.checkableOrders(dest);
-    return checkable.length > 0 && checkable.every(o => this.isChecked(o));
+    const checkable = this.checkableTransits(dest);
+    return checkable.length > 0 && checkable.every(t => this.isChecked(t));
   }
 
   toggleAllInDest(dest: DestinationGroup, checked: boolean): void {
-    for (const o of this.checkableOrders(dest)) {
+    for (const t of this.checkableTransits(dest)) {
       if (checked) {
-        this.selectedOrderIds.add(o.transferOrderId);
+        this.selectedTransitKeys.add(t.transitKey);
       } else {
-        this.selectedOrderIds.delete(o.transferOrderId);
+        this.selectedTransitKeys.delete(t.transitKey);
       }
     }
   }
 
-  checkedOrdersInDest(dest: DestinationGroup): TransferManifestResponse[] {
-    return dest.orders.filter(o => this.isChecked(o));
+  checkedTransitsInDest(dest: DestinationGroup): TransitGroup[] {
+    return dest.transits.filter(t => this.isChecked(t));
   }
 
   checkedCountInDest(dest: DestinationGroup): number {
-    return this.checkedOrdersInDest(dest).length;
+    return this.checkedTransitsInDest(dest).length;
   }
 
   destHasActionable(dest: DestinationGroup): boolean {
-    return dest.orders.some(o => this.isOrderCheckable(o));
+    return dest.transits.some(t => this.isTransitCheckable(t));
   }
 
-  // Button label = next step of the ticked transits.
+  /** Button label = next step of the ticked transits. */
   destActionLabel(dest: DestinationGroup): string {
-    const checked = this.checkedOrdersInDest(dest);
-    const basis = checked.length > 0 ? checked : this.checkableOrders(dest);
+    const checked = this.checkedTransitsInDest(dest);
+    const basis = checked.length > 0 ? checked : this.checkableTransits(dest);
     if (basis.length === 0) {
       return 'Mark';
     }
@@ -457,7 +549,7 @@ export class DriverConsole implements OnInit {
   }
 
   manifestHasAnyActionable(group: ManifestGroup): boolean {
-    return this.manifestHasAnyNextStatus(group);
+    return group.transits.some(t => this.isTransitCheckable(t));
   }
 
   // ===== Expand / collapse =====
@@ -468,6 +560,16 @@ export class DriverConsole implements OnInit {
       this.expandedManifestNos.add(group.manifestNo);
     } else {
       this.expandedManifestNos.delete(group.manifestNo);
+    }
+  }
+
+  toggleTransitItems(transit: TransitGroup, event?: Event): void {
+    event?.stopPropagation();
+    transit.expanded = !transit.expanded;
+    if (transit.expanded) {
+      this.expandedTransitKeys.add(transit.transitKey);
+    } else {
+      this.expandedTransitKeys.delete(transit.transitKey);
     }
   }
 
@@ -501,25 +603,23 @@ export class DriverConsole implements OnInit {
     return this.findLifecycle(statusCode)?.colorCode || '#6B7280';
   }
 
-  // ===== Advance action: ORDER LEVEL =====
-  // Acts ONLY on the ticked transits of this destination. Nothing else in the
-  // manifest is touched.
-  processCheckedOrders(group: ManifestGroup, dest: DestinationGroup): void {
+  // ===== Advance action: TRANSIT LEVEL =====
 
-    const checked = this.checkedOrdersInDest(dest);
+  processCheckedTransits(group: ManifestGroup, dest: DestinationGroup): void {
+
+    const checked = this.checkedTransitsInDest(dest);
     if (checked.length === 0) {
       alert('Please select at least one transit.');
       return;
     }
 
-    const statuses = new Set(checked.map(o => o.lifecycleCode));
+    const statuses = new Set(checked.map(t => t.lifecycleCode));
     if (statuses.size > 1) {
       alert('Please select transits that are at the same status.');
       return;
     }
 
-    const statusCode = [...statuses][0];
-    const nextLifecycle = this.nextLifecycleOf(statusCode);
+    const nextLifecycle = this.nextLifecycleOf([...statuses][0]);
     if (!nextLifecycle) {
       alert('Next lifecycle step not found.');
       return;
@@ -530,74 +630,82 @@ export class DriverConsole implements OnInit {
       return;
     }
 
-    this.updateOrders(group, checked, nextLifecycle);
+    this.updateTransits(group, checked, nextLifecycle);
   }
 
-  // Single-row quick action (optional button in the row).
-  processSingleOrder(group: ManifestGroup, order: TransferManifestResponse): void {
+  /** Row button: advances THIS transit (and every item row inside it). */
+  processSingleTransit(group: ManifestGroup, transit: TransitGroup): void {
 
-    const nextLifecycle = this.nextLifecycleOf(order.lifecycleCode);
+    const nextLifecycle = this.nextLifecycleOf(transit.lifecycleCode);
     if (!nextLifecycle) {
       alert('Next lifecycle step not found.');
       return;
     }
 
     if (this.isFinalStep(nextLifecycle)) {
-      this.openDeliveryOtpModal(group, [order], nextLifecycle);
+      this.openDeliveryOtpModal(group, [transit], nextLifecycle);
       return;
     }
 
-    this.updateOrders(group, [order], nextLifecycle);
+    this.updateTransits(group, [transit], nextLifecycle);
   }
 
-  // ===== Save: one transaction + one manifest row PER ORDER =====
-  private updateOrders(
+  // ===== Save: one transaction + one manifest row per ITEM of each TRANSIT =====
+  private updateTransits(
     group: ManifestGroup,
-    ordersToAdvance: TransferManifestResponse[],
+    transitsToAdvance: TransitGroup[],
     nextLifecycle: DeliveryLifecycle
   ): void {
 
-    this.saving = true;
-    this.savingOrderId =
-      ordersToAdvance.length === 1 ? ordersToAdvance[0].transferOrderId : null;
-
     const isFinal = this.isFinalStep(nextLifecycle);
-
     const requests: Observable<any>[] = [];
 
-    for (const order of ordersToAdvance) {
+    for (const transit of transitsToAdvance) {
+      for (const order of transit.orders) {
 
-      // 1) Transit / order transaction - keyed on transferOrderId.
-      requests.push(
-        this.logisticsService.saveDeliveryOrderTransaction(
-          this.buildTransactionRequest(order, nextLifecycle, isFinal)
-        )
-      );
+        // Never pull an item row backwards (guards legacy mixed data).
+        if (this.sequenceOf(order.lifecycleCode) >= nextLifecycle.sequenceNo) {
+          continue;
+        }
 
-      // 2) Manifest row for THAT order only (its own manifestId +
-      //    transferOrderId). No waiting for the rest of the manifest.
-      requests.push(
-        this.logisticsService.saveTransferManifest(
-          this.buildManifestRequest(group, order, nextLifecycle)
-        )
-      );
+        requests.push(
+          this.logisticsService.saveDeliveryOrderTransaction(
+            this.buildTransactionRequest(order, nextLifecycle, isFinal)
+          )
+        );
 
+        requests.push(
+          this.logisticsService.saveTransferManifest(
+            this.buildManifestRequest(group, transit, order, nextLifecycle)
+          )
+        );
+
+      }
     }
+
+    if (requests.length === 0) {
+      alert('These transits are already at this status.');
+      return;
+    }
+
+    this.saving = true;
+    this.savingTransitKey =
+      transitsToAdvance.length === 1 ? transitsToAdvance[0].transitKey : null;
 
     forkJoin(requests).subscribe({
       next: () => {
         this.saving = false;
-        this.savingOrderId = null;
+        this.savingTransitKey = null;
         this.clearPending();
-        const ids = ordersToAdvance.map(o => o.transitID).join(', ');
+        const ids = transitsToAdvance.map(t => t.transitID).join(', ');
         alert(`Transit ${ids} marked as ${nextLifecycle.statusName}.`);
         this.loadAssignedManifests();
       },
       error: (err: any) => {
         this.saving = false;
-        this.savingOrderId = null;
+        this.savingTransitKey = null;
         this.clearPending();
-        console.error('Failed to update orders:', err);
+        console.error('Failed to update transits:', err);
         if (err?.error?.errors) {
           console.error('Validation errors:', err.error.errors);
         }
@@ -609,10 +717,10 @@ export class DriverConsole implements OnInit {
   }
 
   private clearPending(): void {
-    this.pendingOrders = [];
+    this.pendingTransits = [];
   }
 
-  private toIsoString(value: Date | null | undefined): string {
+  private toIsoString(value: Date | string | null | undefined): string {
     if (!value) {
       return '';
     }
@@ -710,16 +818,16 @@ export class DriverConsole implements OnInit {
     };
   }
 
-  // Manifest row for ONE order. Receiver / OTP come from the per-order maps
-  // so a partially delivered manifest keeps correct data per transit.
+  /** Manifest row for one item row; receiver / OTP come from the TRANSIT maps. */
   private buildManifestRequest(
     group: ManifestGroup,
+    transit: TransitGroup,
     forOrder: TransferManifestResponse,
     nextLifecycle: DeliveryLifecycle
   ): TransferManifest {
 
-    const receiver = this.receiverByOrderId.get(forOrder.transferOrderId);
-    const otp = this.otpByOrderId.get(forOrder.transferOrderId);
+    const receiver = this.receiverByTransitKey.get(transit.transitKey);
+    const otp = this.otpByTransitKey.get(transit.transitKey);
 
     return {
       manifestId: forOrder.manifestId,
@@ -757,24 +865,28 @@ export class DriverConsole implements OnInit {
 
   }
 
-  // ===== OTP flow (final step, still scoped to the ticked transits) =====
+  // ===== OTP flow (final step, scoped to the ticked transits) =====
 
   get pendingTransitIds(): string {
-    return this.pendingOrders.map(o => o.transitID).join(', ');
+    return this.pendingTransits.map(t => t.transitID).join(', ');
   }
 
-  get pendingOrderCount(): number {
-    return this.pendingOrders.length;
+  get pendingTransitCount(): number {
+    return this.pendingTransits.length;
+  }
+
+  get pendingItemCount(): number {
+    return this.pendingTransits.reduce((sum, t) => sum + t.itemCount, 0);
   }
 
   private openDeliveryOtpModal(
     group: ManifestGroup,
-    orders: TransferManifestResponse[],
+    transits: TransitGroup[],
     nextLifecycle: DeliveryLifecycle
   ): void {
 
     this.pendingGroup = group;
-    this.pendingOrders = orders;
+    this.pendingTransits = transits;
     this.pendingLifecycle = nextLifecycle;
 
     this.otpInput = '';
@@ -786,14 +898,14 @@ export class DriverConsole implements OnInit {
     this.otpSent = false;
     this.generatedOtp = '';
 
-    const order = orders[0];
+    const first = transits[0];
 
     this.logisticsService
-      .getReceiverUsers(order.companyId, order.destinationLocationId)
+      .getReceiverUsers(first.companyId, first.destinationLocationId)
       .subscribe({
         next: (res: any[]) => {
 
-          this.users = res
+          this.users = (res ?? [])
             .map((x: any) => ({
               userId: x.userId,
               fullName: x.fullName,
@@ -848,7 +960,7 @@ export class DriverConsole implements OnInit {
     );
   }
 
-  // OTP is stamped on EACH selected transit's manifest row.
+  /** OTP is stamped on every item row of each selected TRANSIT. */
   sendOtp(): void {
 
     if (this.selectedReceiverId === 0) {
@@ -870,29 +982,33 @@ export class DriverConsole implements OnInit {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     this.generatedOtp = otp;
 
-    const currentStatusCode = this.pendingOrders[0]?.lifecycleCode;
-    const currentLifecycle =
-      (currentStatusCode ? this.findLifecycle(currentStatusCode) : undefined)
-      ?? this.pendingLifecycle;
-
     this.sendingOtp = true;
 
-    // Remember receiver + OTP per order, then persist one manifest row per order
-    // at its CURRENT status (status only moves on Verify & Deliver).
-    const requests: Observable<any>[] = this.pendingOrders.map(order => {
+    // Remember receiver + OTP per transit, then persist the manifest rows at their
+    // CURRENT status (status only moves on Verify & Deliver).
+    const requests: Observable<any>[] = [];
 
-      this.otpByOrderId.set(order.transferOrderId, otp);
-      this.receiverByOrderId.set(order.transferOrderId, {
+    for (const transit of this.pendingTransits) {
+
+      this.otpByTransitKey.set(transit.transitKey, otp);
+      this.receiverByTransitKey.set(transit.transitKey, {
         id: receiver.userId,
         name: receiver.fullName
       });
 
-      return this.logisticsService.saveTransferManifest(
-        this.buildManifestRequest(this.pendingGroup, order, currentLifecycle)
-      );
-    });
+      for (const order of transit.orders) {
+        const currentLifecycle =
+          this.findLifecycle(order.lifecycleCode) ?? this.pendingLifecycle;
 
-    forkJoin(requests).subscribe({
+        requests.push(
+          this.logisticsService.saveTransferManifest(
+            this.buildManifestRequest(this.pendingGroup, transit, order, currentLifecycle)
+          )
+        );
+      }
+    }
+
+    forkJoin(requests.length ? requests : [of(null)]).subscribe({
       next: () => {
 
         const body = `
@@ -943,32 +1059,32 @@ export class DriverConsole implements OnInit {
 
   confirmOtp(): void {
 
-    if (!this.pendingGroup || !this.pendingLifecycle || this.pendingOrders.length === 0) {
+    if (!this.pendingGroup || !this.pendingLifecycle || this.pendingTransits.length === 0) {
       this.cancelOtp();
       return;
     }
 
     if (!this.otpSent) {
-      this.otpError = 'Please send the OTP to the receiver first.';
+      this.otpError = 'Send the OTP to the receiver first.';
       return;
     }
 
     const entered = this.otpInput.trim();
     if (!entered) {
-      this.otpError = 'Please enter the OTP.';
+      this.otpError = 'Enter the OTP.';
       return;
     }
 
     const expected = (this.generatedOtp || '').trim();
     if (!expected || entered !== expected) {
-      this.otpError = 'Invalid OTP. Please check with the receiver and try again.';
+      this.otpError = 'Invalid OTP. Check with the receiver and try again.';
       return;
     }
 
     this.otpError = '';
     this.showOtpModal = false;
 
-    this.updateOrders(this.pendingGroup, this.pendingOrders, this.pendingLifecycle);
+    this.updateTransits(this.pendingGroup, this.pendingTransits, this.pendingLifecycle);
   }
 
   cancelOtp(): void {
@@ -977,7 +1093,7 @@ export class DriverConsole implements OnInit {
     this.otpError = '';
     this.otpSent = false;
     this.receiverSearch = '';
-    this.pendingOrders = [];
+    this.pendingTransits = [];
   }
 
 }

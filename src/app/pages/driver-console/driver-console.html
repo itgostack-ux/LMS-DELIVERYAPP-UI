@@ -125,8 +125,8 @@
                             <button class="btn-action" [disabled]="saving || checkedCountInDest(dest) === 0"
                                 (click)="processCheckedTransits(group, dest)">
                                 {{ saving
-                                    ? 'Saving...'
-                                    : 'Mark ' + destActionLabel(dest) + ' (' + checkedCountInDest(dest) + ')' }}
+                                ? 'Saving...'
+                                : 'Mark ' + destActionLabel(dest) + ' (' + checkedCountInDest(dest) + ')' }}
                             </button>
                         </div>
 
@@ -143,7 +143,6 @@
                                             (change)="toggleAllInDest(dest, $any($event.target).checked)">
                                     </th>
                                     <th>Transit ID</th>
-                                    <th>Items</th>
                                     <th>Company</th>
                                     <th>Delivery Note</th>
                                     <th>Source</th>
@@ -168,15 +167,6 @@
 
                                         <td class="mono">{{ transit.transitID }}</td>
 
-                                        <td>
-                                            <button class="items-toggle" (click)="toggleTransitItems(transit, $event)">
-                                                <span class="items-caret" [class.open]="transit.expanded">▸</span>
-                                                {{ transit.itemCount }} item(s)
-                                                <span class="items-qty" *ngIf="transit.totalQty">
-                                                    &middot; qty {{ transit.totalQty }}
-                                                </span>
-                                            </button>
-                                        </td>
 
                                         <td>{{ transit.companyName }}</td>
                                         <td>{{ transit.deliveryNoteNo }}</td>
@@ -197,48 +187,21 @@
                                         <!-- Advances THIS transit and all its item rows -->
                                         <td>
                                             <button class="btn-row" *ngIf="isTransitCheckable(transit)"
-                                                [disabled]="saving"
-                                                (click)="processSingleTransit(group, transit)">
+                                                [disabled]="saving" (click)="processSingleTransit(group, transit)">
                                                 {{ savingTransitKey === transit.transitKey
-                                                    ? 'Saving...'
-                                                    : getNextStatusName(transit.lifecycleCode) }}
+                                                ? 'Saving...'
+                                                : getNextStatusName(transit.lifecycleCode) }}
                                             </button>
-                                            <span class="done-tag" *ngIf="!isTransitCheckable(transit)">Completed</span>
+                                            <!--
+                                            <span class="done-tag" *ngIf="!isTransitCheckable(transit)">Completed</span>-->
                                         </td>
 
                                     </tr>
-    
+
                                     <tr class="items-row" *ngIf="transit.expanded">
                                         <td></td>
                                         <td colspan="8">
-                                            <table class="items-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Item Code</th>
-                                                        <th>Item Name</th>
-                                                        <th>IMEI</th>
-                                                        <th>Status</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <tr *ngFor="let item of transit.orders">
-                                                        <td class="mono">{{ item.itemCode || '—' }}</td>
-                                                        <td class="item-name">{{ item.itemName || '—' }}</td>
-                                                        <td class="mono">{{ item.imei || '—' }}</td>
-                                                        <td>
-                                                            <span class="status-badge-sm"
-                                                                [style.background]="getStatusColor(item.lifecycleCode)">
-                                                                {{ item.lifecycleName }}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
 
-
-
-
-
-                                                </tbody>
-                                            </table>
                                         </td>
                                     </tr>
 
@@ -250,10 +213,7 @@
                     </div>
 
                 </div>
-
-                <div class="manifest-footer done" *ngIf="!manifestHasAnyActionable(group)">
-                    <span class="done-info">All transits in this manifest are delivered.</span>
-                </div>
+                >
 
             </ng-container>
 

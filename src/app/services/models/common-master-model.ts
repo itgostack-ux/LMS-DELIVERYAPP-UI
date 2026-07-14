@@ -84,7 +84,7 @@ export interface DeliveryLifecycle {
 
   modifiedDate: Date;
   selected?: boolean
-
+  readonly?: boolean;
 
 }
 

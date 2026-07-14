@@ -48,8 +48,7 @@
 
                     </label>
 
-                    <select class="form-select"
-                            [(ngModel)]="mapping.roleId">
+                    <select class="form-select" [(ngModel)]="mapping.roleId">
 
                         <option [ngValue]="0">
 
@@ -57,8 +56,7 @@
 
                         </option>
 
-                        <option *ngFor="let role of roles"
-                                [ngValue]="role.roleID">
+                        <option *ngFor="let role of roles" [ngValue]="role.roleID">
 
                             {{role.roleName}}
 
@@ -86,20 +84,13 @@
 
                     <div class="lifecycle-container">
 
-                        <div class="lifecycle-item"
-                             *ngFor="let l of lifecycles">
-
+                        <div class="lifecycle-item" *ngFor="let l of lifecycles">
                             <label class="checkbox-label">
+                                <input type="checkbox" [(ngModel)]="l.selected" [disabled]="l.readonly ?? false">
 
-                                <input type="checkbox"
-                                       [(ngModel)]="l.selected">
-
-                                {{l.statusName}}
-
+                                {{ l.statusName }}
                             </label>
-
                         </div>
-
                     </div>
 
                 </div>
@@ -116,8 +107,7 @@
 
                     <label>
 
-                        <input type="checkbox"
-                               [(ngModel)]="mapping.canView">
+                        <input type="checkbox" [(ngModel)]="mapping.canView">
 
                         View
 
@@ -129,8 +119,7 @@
 
                     <label>
 
-                        <input type="checkbox"
-                               [(ngModel)]="mapping.canCreate">
+                        <input type="checkbox" [(ngModel)]="mapping.canCreate">
 
                         Create
 
@@ -142,8 +131,7 @@
 
                     <label>
 
-                        <input type="checkbox"
-                               [(ngModel)]="mapping.canEdit">
+                        <input type="checkbox" [(ngModel)]="mapping.canEdit">
 
                         Edit
 
@@ -155,8 +143,7 @@
 
                     <label>
 
-                        <input type="checkbox"
-                               [(ngModel)]="mapping.canDelete">
+                        <input type="checkbox" [(ngModel)]="mapping.canDelete">
 
                         Delete
 
@@ -168,8 +155,7 @@
 
                     <label>
 
-                        <input type="checkbox"
-                               [(ngModel)]="mapping.canChangeStatus">
+                        <input type="checkbox" [(ngModel)]="mapping.canChangeStatus">
 
                         Change Status
 
@@ -181,15 +167,13 @@
 
             <div class="mt-4">
 
-                <button class="btn btn-primary me-2"
-                        (click)="save()">
+                <button class="btn btn-primary me-2" (click)="save()">
 
                     {{mapping.mappingId==0 ? 'Save' : 'Update'}}
 
                 </button>
 
-                <button class="btn btn-secondary"
-                        (click)="reset()">
+                <button class="btn btn-secondary" (click)="reset()">
 
                     Cancel
 
@@ -271,48 +255,37 @@
 
                         <td>
 
-                            <input type="checkbox"
-                                   [checked]="item.canView"
-                                   disabled>
+                            <input type="checkbox" [checked]="item.canView" disabled>
 
                         </td>
 
                         <td>
 
-                            <input type="checkbox"
-                                   [checked]="item.canCreate"
-                                   disabled>
+                            <input type="checkbox" [checked]="item.canCreate" disabled>
 
                         </td>
 
                         <td>
 
-                            <input type="checkbox"
-                                   [checked]="item.canEdit"
-                                   disabled>
+                            <input type="checkbox" [checked]="item.canEdit" disabled>
 
                         </td>
 
                         <td>
 
-                            <input type="checkbox"
-                                   [checked]="item.canDelete"
-                                   disabled>
+                            <input type="checkbox" [checked]="item.canDelete" disabled>
 
                         </td>
 
                         <td>
 
-                            <input type="checkbox"
-                                   [checked]="item.canChangeStatus"
-                                   disabled>
+                            <input type="checkbox" [checked]="item.canChangeStatus" disabled>
 
                         </td>
 
                         <td>
 
-                            <span class="badge"
-                                  [ngClass]="item.isActive ? 'bg-success':'bg-danger'">
+                            <span class="badge" [ngClass]="item.isActive ? 'bg-success':'bg-danger'">
 
                                 {{item.isActive ? 'Active' : 'Inactive'}}
 
@@ -322,15 +295,13 @@
 
                         <td>
 
-                            <button class="btn btn-warning btn-sm me-2"
-                                    (click)="edit(item)">
+                            <button class="btn btn-warning btn-sm me-2" (click)="edit(item)">
 
                                 Edit
 
                             </button>
 
-                            <button class="btn btn-danger btn-sm"
-                                    (click)="delete(item)">
+                            <button class="btn btn-danger btn-sm" (click)="delete(item)">
 
                                 Delete
 
@@ -342,8 +313,7 @@
 
                     <tr *ngIf="mappingList.length==0">
 
-                        <td colspan="10"
-                            class="text-center">
+                        <td colspan="10" class="text-center">
 
                             No Records Found
 

@@ -92,15 +92,19 @@
 
                     <span class="label">Current</span>
 
-                    <span class="status current">
-                        {{ selectedStatus }}
-                    </span>
+                    <span class="status current" [style.background]="getLifecycleColor(selectedStatus)"
+                        style="color:#fff">
 
+                        {{ selectedStatus }}
+
+                    </span>
                     <span class="arrow">➜</span>
 
                     <span class="label">Next</span>
 
-                    <span class="status next" [class.no-next]="!actionButtonText">
+                    <span class="status next"
+                        [style.background]="actionButtonText ? getLifecycleColor(actionButtonText) : '#e5e7eb'"
+                        [style.color]="actionButtonText ? '#fff' : '#64748b'" [class.no-next]="!actionButtonText">
 
                         {{ actionButtonText || 'No Next Status' }}
 
@@ -111,7 +115,7 @@
                 <div *ngIf="isSameStatus && !actionButtonText" class="text-danger mt-2">
 
                     <i class="bi bi-exclamation-triangle-fill"></i>
-                    No next status is configured for the selected Logistics Status.
+                   You don't access to change the status contact Administrator.
 
                 </div>
 
@@ -133,7 +137,8 @@
             <div class="right-section">
 
                 <button class="btn-action" [disabled]="!isSameStatus || saving || !actionButtonText"
-                    (click)="processSelectedOrders()">
+                    [style.background]="actionButtonText ? getLifecycleColor(actionButtonText) : '#94a3b8'"
+                    [style.color]="'#fff'" (click)="processSelectedOrders()">
 
                     {{ saving ? 'Saving...' : (actionButtonText || 'No Next Status') }}
 

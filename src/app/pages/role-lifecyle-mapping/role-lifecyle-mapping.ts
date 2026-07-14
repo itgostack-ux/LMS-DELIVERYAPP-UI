@@ -289,5 +289,48 @@ export class RoleLifecyleMapping implements OnInit {
     );
 
   }
+selectLifecycle(selectedLifecycle: DeliveryLifecycle) {
 
+  this.lifecycles.forEach(l => {
+
+    if (l.lifecycleId === selectedLifecycle.lifecycleId) {
+      l.selected = true;
+    } else {
+      l.selected = false;
+    }
+
+  });
+
+}
+
+onRoleChange(roleId: number) {
+
+  // Reset all
+  this.lifecycles.forEach(l => {
+    l.selected = false;
+    l.readonly = false;
+  });
+
+  if (roleId === 0) {
+    return;
+  }
+
+  const mapped = this.mappingList.filter(x =>
+    x.roleId === roleId && x.isActive
+  );
+
+  mapped.forEach(m => {
+
+    const lifecycle = this.lifecycles.find(x =>
+      x.lifecycleId === m.lifecycleId
+    );
+
+    if (lifecycle) {
+      lifecycle.selected = true;
+      lifecycle.readonly = true;
+    }
+
+  });
+
+}
 }

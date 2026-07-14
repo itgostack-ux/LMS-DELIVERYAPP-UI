@@ -136,7 +136,11 @@ export class DriverConsole implements OnInit {
   private pendingGroup!: ManifestGroup;
   private pendingTransits: TransitGroup[] = [];
   private pendingLifecycle!: DeliveryLifecycle;
+  // Complete workflow from DeliveryLifecycleMaster
+  allLifecycles: DeliveryLifecycle[] = [];
 
+  // Logged-in role permissions
+  roleLifecycles: DeliveryLifecycle[] = [];
   constructor(
     private logisticsService: LogisticsService,
     private userDataService: UserDataService,
@@ -162,6 +166,7 @@ export class DriverConsole implements OnInit {
   private loadDeliveryLifecycles(loadManifestsAfter: boolean): void {
 
     const userId = this.userDataService.getUserId();
+
     if (userId === 0) {
       this.errorMessage = 'Invalid user. Please log in again.';
       return;
@@ -169,7 +174,9 @@ export class DriverConsole implements OnInit {
 
     this.loading = true;
 
+    // Load User Role
     this.logisticsService.getRoleslifecycle(userId).subscribe({
+
       next: (roles) => {
 
         if (!roles || roles.length === 0) {
@@ -180,30 +187,62 @@ export class DriverConsole implements OnInit {
 
         const roleId = roles[0].roleID;
 
-        this.logisticsService.getRoleBasedLifecycles(roleId).subscribe({
-          next: (lifecycles) => {
-            this.deliveryLifecycles = lifecycles.sort(
-              (a, b) => a.sequenceNo - b.sequenceNo
-            );
-            if (loadManifestsAfter) {
-              this.loadAssignedManifests();
-            } else {
-              this.loading = false;
-            }
+        // Load ALL Lifecycle Master
+        this.logisticsService.getDeliveryLifecycles().subscribe({
+
+          next: (allLifeCycles) => {
+
+            this.allLifecycles = allLifeCycles
+              .filter(x => x.isActive)
+              .sort((a, b) => a.sequenceNo - b.sequenceNo);
+
+            console.log('All Lifecycles :', this.allLifecycles);
+
+            // Load Role Based Lifecycle
+            this.logisticsService.getRoleBasedLifecycles(roleId).subscribe({
+
+              next: (roleLifeCycles) => {
+
+                this.roleLifecycles = roleLifeCycles
+                  .filter(x => x.isActive)
+                  .sort((a, b) => a.sequenceNo - b.sequenceNo);
+
+                console.log('Role Lifecycles :', this.roleLifecycles);
+
+                if (loadManifestsAfter) {
+                  this.loadAssignedManifests();
+                } else {
+                  this.loading = false;
+                }
+
+              },
+
+              error: (err: any) => {
+                console.error('Failed to load role lifecycles:', err);
+                this.loading = false;
+                this.errorMessage = 'Failed to load role lifecycles.';
+              }
+
+            });
+
           },
+
           error: (err: any) => {
-            console.error('Failed to load role-based lifecycles:', err);
+            console.error('Failed to load lifecycle master:', err);
             this.loading = false;
-            this.errorMessage = 'Failed to load lifecycle steps. Please try again.';
+            this.errorMessage = 'Failed to load lifecycle master.';
           }
+
         });
 
       },
+
       error: (err: any) => {
         console.error('Failed to load user roles:', err);
         this.loading = false;
-        this.errorMessage = 'Failed to load user roles. Please try again.';
+        this.errorMessage = 'Failed to load user roles.';
       }
+
     });
 
   }
@@ -455,14 +494,19 @@ export class DriverConsole implements OnInit {
   get statusTabs(): { code: string; name: string; count: number }[] {
 
     const counts = new Map<string, number>();
+
     for (const g of this.manifestGroups) {
       for (const t of g.transits) {
-        counts.set(t.lifecycleCode, (counts.get(t.lifecycleCode) ?? 0) + 1);
+        counts.set(
+          t.lifecycleCode,
+          (counts.get(t.lifecycleCode) ?? 0) + 1
+        );
       }
     }
 
-    return this.deliveryLifecycles
-      .filter(l => counts.has(l.statusCode))
+    return this.allLifecycles
+      .filter(l => l.isActive)
+      .sort((a, b) => a.sequenceNo - b.sequenceNo)
       .map(l => ({
         code: l.statusCode,
         name: l.statusName,
@@ -574,9 +618,12 @@ export class DriverConsole implements OnInit {
   }
 
   // ===== Lifecycle helpers =====
-
   private findLifecycle(statusCode: string): DeliveryLifecycle | undefined {
-    return this.deliveryLifecycles.find(x => x.statusCode === statusCode);
+
+    return this.allLifecycles.find(
+      x => x.statusCode === statusCode
+    );
+
   }
 
   private nextLifecycleOf(currentStatusCode: string): DeliveryLifecycle | undefined {
@@ -596,7 +643,18 @@ export class DriverConsole implements OnInit {
   }
 
   hasNextStatus(currentStatusCode: string): boolean {
-    return !!this.findLifecycle(currentStatusCode)?.nextStatusCode;
+
+    const next = this.nextLifecycleOf(currentStatusCode);
+
+    if (!next) {
+      return false;
+    }
+
+    // Allow action only if the logged-in role has access
+    return this.roleLifecycles.some(
+      x => x.statusCode === next.statusCode
+    );
+
   }
 
   getStatusColor(statusCode: string): string {

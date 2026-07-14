@@ -208,36 +208,37 @@ export class TransferOrderWorkbench implements OnInit {
   // source location. Kept as one constant so both places that need it
   // (processSelectedOrders + isManifestNext) stay in sync.
   private readonly PICKUP_ASSIGNED_SEQUENCE_NO = 3;
-
+  allLifecycles: DeliveryLifecycle[] = [];
+  roleLifecycles: DeliveryLifecycle[] = [];
   constructor(
     private logisticsService: LogisticsService,
     private userDataService: UserDataService
   ) { }
 
-ngOnInit(): void {
+  ngOnInit(): void {
 
-  // Default Date Range - Last 7 Days
-  this.fromDate = this.getLastWeekDate();
-  this.toDate = this.today();
+    // Default Date Range - Last 7 Days
+    this.fromDate = this.getLastWeekDate();
+    this.toDate = this.today();
 
-  this.loggedInUserId = this.userDataService.getUserId();
-  this.loggedInUserName = this.userDataService.getUserName();
+    this.loggedInUserId = this.userDataService.getUserId();
+    this.loggedInUserName = this.userDataService.getUserName();
 
-  this.loadCompanies();
-  this.loadDeliveryLifecycles();
-  this.loadTransferModes();
-  this.loadUsers();
-  this.loadCouriers();
+    this.loadCompanies();
+    this.loadDeliveryLifecycles();
+    this.loadTransferModes();
+    this.loadUsers();
+    this.loadCouriers();
 
-  this.pickupLoadMode = 'DIRECT';
-  this.pickupTransferModeId = 1;
-}
+    this.pickupLoadMode = 'DIRECT';
+    this.pickupTransferModeId = 1;
+  }
 
-private getLastWeekDate(): string {
-  const date = new Date();
-  date.setDate(date.getDate() - 7);
-  return date.toISOString().split('T')[0];
-}
+  private getLastWeekDate(): string {
+    const date = new Date();
+    date.setDate(date.getDate() - 7);
+    return date.toISOString().split('T')[0];
+  }
 
 
   private today(): string {
@@ -248,53 +249,64 @@ private getLastWeekDate(): string {
 
     const userId = this.userDataService.getUserId();
 
-    console.log('Logged In UserId :', userId);
-
     if (userId === 0) {
       console.error('User Id not found');
       return;
     }
 
-    this.logisticsService.getRoleslifecycle(userId).subscribe({
+    // Load ALL lifecycle master
+    this.logisticsService.getDeliveryLifecycles().subscribe({
 
-      next: (roles) => {
+      next: (allLifeCycles) => {
 
-        console.log('User Roles Response :', roles);
+        this.allLifecycles = allLifeCycles
+          .filter(x => x.isActive)
+          .sort((a, b) => a.sequenceNo - b.sequenceNo);
 
-        if (!roles || roles.length === 0) {
-          console.error('No role mapped for this user.');
-          return;
-        }
+        console.log('All Lifecycles :', this.allLifecycles);
 
-        const roleId = roles[0].roleID;
+        // Load Role
+        this.logisticsService.getRoleslifecycle(userId).subscribe({
 
-        console.log('Selected Role Id :', roleId);
-        console.log('Selected Role Name :', roles[0].roleName);
+          next: (roles) => {
 
-        this.logisticsService.getRoleBasedLifecycles(roleId).subscribe({
+            if (!roles || roles.length === 0) {
+              console.error('No role mapped.');
+              return;
+            }
 
-          next: (lifecycles) => {
+            const roleId = roles[0].roleID;
 
-            console.log('Role Based Lifecycles :', lifecycles);
+            this.logisticsService.getRoleBasedLifecycles(roleId).subscribe({
 
-            this.deliveryLifecycles = lifecycles
-              .filter(x => x.isActive)
-              .sort((a, b) => a.sequenceNo - b.sequenceNo);
+              next: (roleLifeCycles) => {
 
-            console.log('Filtered Lifecycles :', this.deliveryLifecycles);
+                this.roleLifecycles = roleLifeCycles
+                  .filter(x => x.isActive)
+                  .sort((a, b) => a.sequenceNo - b.sequenceNo);
+
+                console.log('Role Lifecycles :', this.roleLifecycles);
+
+              },
+
+              error: err => {
+                console.error(err);
+              }
+
+            });
 
           },
 
-          error: (err) => {
-            console.error('Failed to load lifecycles', err);
+          error: err => {
+            console.error(err);
           }
 
         });
 
       },
 
-      error: (err) => {
-        console.error('Failed to load user roles', err);
+      error: err => {
+        console.error('Failed to load lifecycle master', err);
       }
 
     });
@@ -335,51 +347,51 @@ private getLastWeekDate(): string {
   // ===== Master data loading =====
   loadCompanies(): void {
 
-  const userId = this.userDataService.getUserId();
+    const userId = this.userDataService.getUserId();
 
-  if (userId === 0) {
-    console.error('Invalid User Id');
-    return;
-  }
-
-  this.logisticsService.getUserCompanies(userId).subscribe({
-
-    next: (res) => {
-
-      this.companies = res;
-
-      // Default Company 20, otherwise 19
-      const defaultCompany =
-        this.companies.find(x => x.compId === 20) ||
-        this.companies.find(x => x.compId === 19);
-
-      if (defaultCompany) {
-        this.selectedCompanyId = defaultCompany.compId;
-      }
-      else if (this.companies.length === 1) {
-        this.selectedCompanyId = this.companies[0].compId;
-      }
-
-      if (this.selectedCompanyId > 0) {
-
-        this.onCompanyChange();
-
-        // Auto Search after form load
-        setTimeout(() => {
-          this.loadTransferLogs();
-        }, 300);
-
-      }
-
-    },
-
-    error: (err) => {
-      console.error('Failed to load user companies:', err);
+    if (userId === 0) {
+      console.error('Invalid User Id');
+      return;
     }
 
-  });
+    this.logisticsService.getUserCompanies(userId).subscribe({
 
-}
+      next: (res) => {
+
+        this.companies = res;
+
+        // Default Company 20, otherwise 19
+        const defaultCompany =
+          this.companies.find(x => x.compId === 20) ||
+          this.companies.find(x => x.compId === 19);
+
+        if (defaultCompany) {
+          this.selectedCompanyId = defaultCompany.compId;
+        }
+        else if (this.companies.length === 1) {
+          this.selectedCompanyId = this.companies[0].compId;
+        }
+
+        if (this.selectedCompanyId > 0) {
+
+          this.onCompanyChange();
+
+          // Auto Search after form load
+          setTimeout(() => {
+            this.loadTransferLogs();
+          }, 300);
+
+        }
+
+      },
+
+      error: (err) => {
+        console.error('Failed to load user companies:', err);
+      }
+
+    });
+
+  }
   loadUsers(): void {
 
     this.logisticsService.getCompanyUserLifecycleAccess().subscribe({
@@ -447,38 +459,38 @@ private getLastWeekDate(): string {
     });
   }
 
-onCompanyChange(loadGrid: boolean = false): void {
+  onCompanyChange(loadGrid: boolean = false): void {
 
-  this.locationTypes = [];
-  this.locations = [];
-  this.selectedLocationTypeId = 0;
-  this.selectedLocationId = 0;
+    this.locationTypes = [];
+    this.locations = [];
+    this.selectedLocationTypeId = 0;
+    this.selectedLocationId = 0;
 
-  if (this.selectedCompanyId == 0) {
-    return;
-  }
+    if (this.selectedCompanyId == 0) {
+      return;
+    }
 
-  this.logisticsService
-    .getLocationTypes(this.selectedCompanyId)
-    .subscribe({
+    this.logisticsService
+      .getLocationTypes(this.selectedCompanyId)
+      .subscribe({
 
-      next: (res) => {
+        next: (res) => {
 
-        this.locationTypes = res;
+          this.locationTypes = res;
 
-        if (loadGrid) {
-          this.loadTransferLogs();
+          if (loadGrid) {
+            this.loadTransferLogs();
+          }
+
+        },
+
+        error: (err) => {
+          console.error(err);
         }
 
-      },
+      });
 
-      error: (err) => {
-        console.error(err);
-      }
-
-    });
-
-}
+  }
 
   onLocationTypeChange(): void {
 
@@ -559,7 +571,7 @@ onCompanyChange(loadGrid: boolean = false): void {
             .map((item: any): TransferStockLogDetail => ({
 
 
-              
+
               transferOrderId: item.transferOrderId ?? 0,
 
               transitID: item.transitID,
@@ -1039,19 +1051,34 @@ onCompanyChange(loadGrid: boolean = false): void {
       return '';
     }
 
-    const current = this.deliveryLifecycles.find(
-      x => x.statusName === this.selectedStatus
+    // Find current status from Master
+    const current = this.allLifecycles.find(
+      x => x.statusName?.trim() === this.selectedStatus.trim()
     );
 
-    if (!current || !current.nextStatusCode) {
+    if (!current) {
       return '';
     }
 
-    const next = this.deliveryLifecycles.find(
-      x => x.statusCode === current.nextStatusCode
+    // Find next status from Master
+    const next = this.allLifecycles.find(
+      x => x.statusCode?.trim() === current.nextStatusCode?.trim()
     );
 
-    return next ? next.statusName : '';
+    if (!next) {
+      return '';
+    }
+
+    // Check whether role has access to next status
+    const hasPermission = this.roleLifecycles.some(
+      x => x.statusCode?.trim() === next.statusCode?.trim()
+    );
+
+    if (!hasPermission) {
+      return '';
+    }
+
+    return next.statusName;
 
   }
 
@@ -1090,297 +1117,297 @@ onCompanyChange(loadGrid: boolean = false): void {
 
   }
 
-private buildRequest(
-  order: TransferStockLogDetail,
-  nextLifecycle: DeliveryLifecycle,
-  extra: Partial<DeliveryOrderTransaction> = {}
-): DeliveryOrderTransaction {
+  private buildRequest(
+    order: TransferStockLogDetail,
+    nextLifecycle: DeliveryLifecycle,
+    extra: Partial<DeliveryOrderTransaction> = {}
+  ): DeliveryOrderTransaction {
 
-  const selectedCompany = this.companies.find(
-    c => c.compId === this.selectedCompanyId
-  );
+    const selectedCompany = this.companies.find(
+      c => c.compId === this.selectedCompanyId
+    );
 
-  const companyId =
-    order.companyId && order.companyId > 0
-      ? order.companyId
-      : this.selectedCompanyId;
+    const companyId =
+      order.companyId && order.companyId > 0
+        ? order.companyId
+        : this.selectedCompanyId;
 
-  const companyName =
-    order.companyName && order.companyName.trim() !== ''
-      ? order.companyName
-      : (selectedCompany?.compName ?? '');
+    const companyName =
+      order.companyName && order.companyName.trim() !== ''
+        ? order.companyName
+        : (selectedCompany?.compName ?? '');
 
-  console.log('==============================');
-  console.log('BUILD REQUEST');
-  console.log('Selected CompanyId :', this.selectedCompanyId);
-  console.log('Order CompanyId    :', order.companyId);
-  console.log('Final CompanyId    :', companyId);
-  console.log('Selected Company   :', selectedCompany?.compName);
-  console.log('Order CompanyName  :', order.companyName);
-  console.log('Final CompanyName  :', companyName);
-  console.log('==============================');
+    console.log('==============================');
+    console.log('BUILD REQUEST');
+    console.log('Selected CompanyId :', this.selectedCompanyId);
+    console.log('Order CompanyId    :', order.companyId);
+    console.log('Final CompanyId    :', companyId);
+    console.log('Selected Company   :', selectedCompany?.compName);
+    console.log('Order CompanyName  :', order.companyName);
+    console.log('Final CompanyName  :', companyName);
+    console.log('==============================');
 
-  return {
+    return {
 
-    // Company
-    companyId: companyId,
-    companyName: companyName,
+      // Company
+      companyId: companyId,
+      companyName: companyName,
 
-    transferOrderId: order.transferOrderId ?? 0,
+      transferOrderId: order.transferOrderId ?? 0,
 
-    transitID: order.transitID,
-    deliveryNoteNo: order.deliveryNoteNo ?? '',
+      transitID: order.transitID,
+      deliveryNoteNo: order.deliveryNoteNo ?? '',
 
-    transferOutDate: order.transferOutDate,
-    transferOutTime: order.transferOutTime,
+      transferOutDate: order.transferOutDate,
+      transferOutTime: order.transferOutTime,
 
-    sourceLocationId: order.sourceLocationId,
-    sourceLocationName: order.sourceLocationName ?? '',
-    sourceLocationTypeId:
-      order.sourceLocationTypeId ||
-      order.locationTypeId ||
-      this.selectedLocationTypeId ||
-      0,
-    sourceLocationTypeName:
-      order.sourceLocationTypeName ||
-      order.locationTypeName ||
-      '',
+      sourceLocationId: order.sourceLocationId,
+      sourceLocationName: order.sourceLocationName ?? '',
+      sourceLocationTypeId:
+        order.sourceLocationTypeId ||
+        order.locationTypeId ||
+        this.selectedLocationTypeId ||
+        0,
+      sourceLocationTypeName:
+        order.sourceLocationTypeName ||
+        order.locationTypeName ||
+        '',
 
-    destinationLocationId: order.destinationLocationId,
-    destinationLocationName: order.destinationLocationName ?? '',
-    destinationLocationTypeId:
-      order.destinationLocationTypeId ||
-      order.locationTypeId ||
-      this.selectedLocationTypeId ||
-      0,
-    destinationLocationTypeName:
-      order.destinationLocationTypeName ||
-      order.locationTypeName ||
-      '',
+      destinationLocationId: order.destinationLocationId,
+      destinationLocationName: order.destinationLocationName ?? '',
+      destinationLocationTypeId:
+        order.destinationLocationTypeId ||
+        order.locationTypeId ||
+        this.selectedLocationTypeId ||
+        0,
+      destinationLocationTypeName:
+        order.destinationLocationTypeName ||
+        order.locationTypeName ||
+        '',
 
-    itemCode: order.itemCode ?? '',
-    itemName: order.itemName ?? '',
-    imei: order.imei ?? '',
+      itemCode: order.itemCode ?? '',
+      itemName: order.itemName ?? '',
+      imei: order.imei ?? '',
 
-    transferQty: order.transferQty ?? 0,
+      transferQty: order.transferQty ?? 0,
 
-    // Lifecycle
-    lifecycleId: nextLifecycle.lifecycleId,
-    lifecycleSequenceNo: nextLifecycle.sequenceNo,
-    lifecycleCode: nextLifecycle.statusCode,
-    lifecycleName: nextLifecycle.statusName,
+      // Lifecycle
+      lifecycleId: nextLifecycle.lifecycleId,
+      lifecycleSequenceNo: nextLifecycle.sequenceNo,
+      lifecycleCode: nextLifecycle.statusCode,
+      lifecycleName: nextLifecycle.statusName,
 
-    // Transfer Mode
-    transferModeId: extra.transferModeId ?? order.transferModeId ?? 0,
-    transferModeName: extra.transferModeName ?? order.transferModeName ?? '',
+      // Transfer Mode
+      transferModeId: extra.transferModeId ?? order.transferModeId ?? 0,
+      transferModeName: extra.transferModeName ?? order.transferModeName ?? '',
 
-    // Transfer Out
-    transferOutById: order.transferOutById,
-    transferOutByName: order.transferOutByName,
+      // Transfer Out
+      transferOutById: order.transferOutById,
+      transferOutByName: order.transferOutByName,
 
-    // Assigned User
-    assignedUserId: extra.assignedUserId ?? order.assignedUserId ?? 0,
-    assignedUserName: extra.assignedUserName ?? order.assignedUserName ?? '',
+      // Assigned User
+      assignedUserId: extra.assignedUserId ?? order.assignedUserId ?? 0,
+      assignedUserName: extra.assignedUserName ?? order.assignedUserName ?? '',
 
-    // Assigned By
-    assignedById: this.loggedInUserId,
-    assignedByName: this.loggedInUserName,
-    assignedDate: new Date().toISOString(),
+      // Assigned By
+      assignedById: this.loggedInUserId,
+      assignedByName: this.loggedInUserName,
+      assignedDate: new Date().toISOString(),
 
-    // Courier
-    courierId: extra.courierId ?? order.courierId ?? 0,
-    courierName: extra.courierName ?? order.courierName ?? '',
-    awbBillNo: extra.awbBillNo ?? order.awbBillNo ?? '',
+      // Courier
+      courierId: extra.courierId ?? order.courierId ?? 0,
+      courierName: extra.courierName ?? order.courierName ?? '',
+      awbBillNo: extra.awbBillNo ?? order.awbBillNo ?? '',
 
-    // Vehicle
-    vehicleNo: extra.vehicleNo ?? order.vehicleNo ?? '',
+      // Vehicle
+      vehicleNo: extra.vehicleNo ?? order.vehicleNo ?? '',
 
-    // Others
-    otherPartyName: extra.otherPartyName ?? order.otherPartyName ?? '',
-    otherPartyType: extra.otherPartyType ?? order.otherPartyType ?? '',
+      // Others
+      otherPartyName: extra.otherPartyName ?? order.otherPartyName ?? '',
+      otherPartyType: extra.otherPartyType ?? order.otherPartyType ?? '',
 
-    transferInTime: order.transferInTime,
+      transferInTime: order.transferInTime,
 
-    inwardDoneById: order.inwardDoneById ?? 0,
-    inwardDoneByName: order.inwardDoneByName ?? '',
+      inwardDoneById: order.inwardDoneById ?? 0,
+      inwardDoneByName: order.inwardDoneByName ?? '',
 
-    transferDuration: order.transferDuration ?? '',
-    remarks: extra.remarks ?? order.remarks ?? '',
+      transferDuration: order.transferDuration ?? '',
+      remarks: extra.remarks ?? order.remarks ?? '',
 
-    isActive: true,
+      isActive: true,
 
-    // Audit
-    createdBy: order.createdBy || this.loggedInUserId,
-    createdByName: order.createdByName || this.loggedInUserName,
-    createdDate: order.createdDate,
+      // Audit
+      createdBy: order.createdBy || this.loggedInUserId,
+      createdByName: order.createdByName || this.loggedInUserName,
+      createdDate: order.createdDate,
 
-    modifiedBy: this.loggedInUserId,
-    modifiedByName: this.loggedInUserName,
-    modifiedDate: new Date().toISOString(),
+      modifiedBy: this.loggedInUserId,
+      modifiedByName: this.loggedInUserName,
+      modifiedDate: new Date().toISOString(),
 
-    pickupManifestId: order.pickupManifestId,
-    pickupManifestNo: order.pickupManifestNo,
+      pickupManifestId: order.pickupManifestId,
+      pickupManifestNo: order.pickupManifestNo,
 
-    locationTypeId: order.locationTypeId,
-    locationTypeName: order.locationTypeName
-  };
-}
-canSelect(group: GroupedTransferLog): boolean {
+      locationTypeId: order.locationTypeId,
+      locationTypeName: order.locationTypeName
+    };
+  }
+  canSelect(group: GroupedTransferLog): boolean {
 
-  const allowedStatuses = [
-    'Open',
-    'Pickup Ready',
-    'Pickup Assigned'
-  ];
+    const allowedStatuses = [
+      'Open',
+      'Pickup Ready',
+      'Pickup Assigned'
+    ];
 
-  return allowedStatuses.includes(
-    (group.logisticsStatus ?? '').trim()
-  );
-}
-processSelectedOrders(): void {
+    return allowedStatuses.includes(
+      (group.logisticsStatus ?? '').trim()
+    );
+  }
+  processSelectedOrders(): void {
 
-  // ==========================================
-  // Step 1 : Check Selection
-  // ==========================================
-  if (this.selectedGroups.length === 0) {
+    // ==========================================
+    // Step 1 : Check Selection
+    // ==========================================
+    if (this.selectedGroups.length === 0) {
 
-    alert('Please select at least one order.');
-    return;
+      alert('Please select at least one order.');
+      return;
+
+    }
+
+    // Allow only these statuses on this page
+    const allowedStatuses = [
+      'Open',
+      'Pickup Ready',
+    ];
+
+    const invalidSelection = this.selectedGroups.some(
+      x => !allowedStatuses.includes((x.logisticsStatus ?? '').trim())
+    );
+
+    if (invalidSelection) {
+
+      alert('Only Open, Pickup Ready and Pickup Assigned orders can be processed from this page.');
+      return;
+
+    }
+
+    // ==========================================
+    // Step 2 : Check Same Logistics Status
+    // ==========================================
+    if (!this.isSameStatus) {
+
+      alert('Please select orders with the same Logistics Status.');
+      return;
+
+    }
+
+    // ==========================================
+    // Step 3 : Find Current Lifecycle
+    // ==========================================
+    const currentLifecycle = this.allLifecycles.find(
+      x => x.statusName === this.selectedStatus
+    );
+
+    if (!currentLifecycle) {
+
+      alert('Current lifecycle not found.');
+      return;
+
+    }
+
+    // ==========================================
+    // Step 4 : Check Next Status Configured
+    // ==========================================
+    if (
+      !currentLifecycle.nextStatusCode ||
+      currentLifecycle.nextStatusCode.trim() === ''
+    ) {
+
+      alert(`No next status is configured for '${currentLifecycle.statusName}'.`);
+      return;
+
+    }
+
+    // ==========================================
+    // Step 5 : Find Next Lifecycle
+    // ==========================================
+    const nextLifecycle = this.allLifecycles.find(
+      x => x.statusCode === currentLifecycle.nextStatusCode
+    );
+
+    if (!nextLifecycle) {
+
+      alert(`Next lifecycle '${currentLifecycle.nextStatusCode}' is not available for your role.`);
+      return;
+
+    }
+
+    // ==========================================
+    // Step 6 : Pickup Assignment Required
+    // ==========================================
+    if (nextLifecycle.sequenceNo === this.PICKUP_ASSIGNED_SEQUENCE_NO) {
+
+      this.pendingNextLifecycle = nextLifecycle;
+      this.openPickupAssignModal();
+      return;
+
+    }
+
+    // ==========================================
+    // Step 7 : Normal Status Update
+    // ==========================================
+    this.saveWithLifecycle(nextLifecycle);
 
   }
-
-  // Allow only these statuses on this page
-  const allowedStatuses = [
-    'Open',
-    'Pickup Ready',
-  ];
-
-  const invalidSelection = this.selectedGroups.some(
-    x => !allowedStatuses.includes((x.logisticsStatus ?? '').trim())
-  );
-
-  if (invalidSelection) {
-
-    alert('Only Open, Pickup Ready and Pickup Assigned orders can be processed from this page.');
-    return;
-
-  }
-
-  // ==========================================
-  // Step 2 : Check Same Logistics Status
-  // ==========================================
-  if (!this.isSameStatus) {
-
-    alert('Please select orders with the same Logistics Status.');
-    return;
-
-  }
-
-  // ==========================================
-  // Step 3 : Find Current Lifecycle
-  // ==========================================
-  const currentLifecycle = this.deliveryLifecycles.find(
-    x => x.statusName === this.selectedStatus
-  );
-
-  if (!currentLifecycle) {
-
-    alert('Current lifecycle not found.');
-    return;
-
-  }
-
-  // ==========================================
-  // Step 4 : Check Next Status Configured
-  // ==========================================
-  if (
-    !currentLifecycle.nextStatusCode ||
-    currentLifecycle.nextStatusCode.trim() === ''
-  ) {
-
-    alert(`No next status is configured for '${currentLifecycle.statusName}'.`);
-    return;
-
-  }
-
-  // ==========================================
-  // Step 5 : Find Next Lifecycle
-  // ==========================================
-  const nextLifecycle = this.deliveryLifecycles.find(
-    x => x.statusCode === currentLifecycle.nextStatusCode
-  );
-
-  if (!nextLifecycle) {
-
-    alert(`Next lifecycle '${currentLifecycle.nextStatusCode}' is not available for your role.`);
-    return;
-
-  }
-
-  // ==========================================
-  // Step 6 : Pickup Assignment Required
-  // ==========================================
-  if (nextLifecycle.sequenceNo === this.PICKUP_ASSIGNED_SEQUENCE_NO) {
-
-    this.pendingNextLifecycle = nextLifecycle;
-    this.openPickupAssignModal();
-    return;
-
-  }
-
-  // ==========================================
-  // Step 7 : Normal Status Update
-  // ==========================================
-  this.saveWithLifecycle(nextLifecycle);
-
-}
   // ===== Manifest creation (grouped by source location) =====
 
-private buildManifest(
-  order: TransferStockLogDetail,
-  nextLifecycle: DeliveryLifecycle,
-  manifestNo: string,
-  extra: Partial<DeliveryOrderTransaction> = {}
-): TransferManifest {
+  private buildManifest(
+    order: TransferStockLogDetail,
+    nextLifecycle: DeliveryLifecycle,
+    manifestNo: string,
+    extra: Partial<DeliveryOrderTransaction> = {}
+  ): TransferManifest {
 
-  return {
+    return {
 
-    manifestId: 0,
+      manifestId: 0,
 
-    manifestNo: manifestNo,
+      manifestNo: manifestNo,
 
-    transferOrderId: order.transferOrderId ?? 0,
+      transferOrderId: order.transferOrderId ?? 0,
 
-    assignedUserId: extra.assignedUserId ?? order.assignedUserId ?? 0,
-    assignedUserName: extra.assignedUserName ?? order.assignedUserName ?? '',
+      assignedUserId: extra.assignedUserId ?? order.assignedUserId ?? 0,
+      assignedUserName: extra.assignedUserName ?? order.assignedUserName ?? '',
 
-    receiverUserId: 0,
-    receiverUserName: '',
+      receiverUserId: 0,
+      receiverUserName: '',
 
-    otp: '',
+      otp: '',
 
-    lifecycleId: nextLifecycle.lifecycleId,
-    lifecycleSequenceNo: nextLifecycle.sequenceNo,
-    lifecycleCode: nextLifecycle.statusCode,
-    lifecycleName: nextLifecycle.statusName,
+      lifecycleId: nextLifecycle.lifecycleId,
+      lifecycleSequenceNo: nextLifecycle.sequenceNo,
+      lifecycleCode: nextLifecycle.statusCode,
+      lifecycleName: nextLifecycle.statusName,
 
-    manifestDate: new Date(),
-    status: nextLifecycle.statusName,
+      manifestDate: new Date(),
+      status: nextLifecycle.statusName,
 
-    // Audit
-    createdBy: this.loggedInUserId,
-    createdByName: this.loggedInUserName,
-    createdDate: new Date(),
+      // Audit
+      createdBy: this.loggedInUserId,
+      createdByName: this.loggedInUserName,
+      createdDate: new Date(),
 
-    modifiedBy: this.loggedInUserId,
-    modifiedByName: this.loggedInUserName,
-    modifiedDate: new Date(),
+      modifiedBy: this.loggedInUserId,
+      modifiedByName: this.loggedInUserName,
+      modifiedDate: new Date(),
 
-    assignedById: this.loggedInUserId,
-    assignedByName: this.loggedInUserName,
-    assignedDate: new Date()
-  };
-}
+      assignedById: this.loggedInUserId,
+      assignedByName: this.loggedInUserName,
+      assignedDate: new Date()
+    };
+  }
   // Saves ONE source-location group:
   //   - first order goes with blank ManifestNo -> backend generates a new number
   //   - remaining orders in the same group reuse that generated number
@@ -1701,10 +1728,12 @@ private buildManifest(
 
   getLifecycleColor(status: string): string {
 
-    const lifecycle = this.deliveryLifecycles.find(
+    const lifecycle = this.allLifecycles.find(
       x => x.statusName === status
     );
 
     return lifecycle?.colorCode ?? '#6B7280';
   }
+
+
 }

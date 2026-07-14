@@ -214,19 +214,31 @@ export class TransferOrderWorkbench implements OnInit {
     private userDataService: UserDataService
   ) { }
 
-  ngOnInit(): void {
-    this.loggedInUserId = this.userDataService.getUserId();
-    this.loggedInUserName = this.userDataService.getUserName(); // if available
-    this.loadCompanies();
-    this.loadDeliveryLifecycles();
-    this.loadTransferModes();
-    this.loadUsers();
-    this.loadCouriers();
+ngOnInit(): void {
 
-    this.pickupLoadMode = 'DIRECT';
-    this.pickupTransferModeId = 1;
+  // Default Date Range - Last 7 Days
+  this.fromDate = this.getLastWeekDate();
+  this.toDate = this.today();
 
-  }
+  this.loggedInUserId = this.userDataService.getUserId();
+  this.loggedInUserName = this.userDataService.getUserName();
+
+  this.loadCompanies();
+  this.loadDeliveryLifecycles();
+  this.loadTransferModes();
+  this.loadUsers();
+  this.loadCouriers();
+
+  this.pickupLoadMode = 'DIRECT';
+  this.pickupTransferModeId = 1;
+}
+
+private getLastWeekDate(): string {
+  const date = new Date();
+  date.setDate(date.getDate() - 7);
+  return date.toISOString().split('T')[0];
+}
+
 
   private today(): string {
     return new Date().toISOString().split('T')[0];
@@ -323,39 +335,51 @@ export class TransferOrderWorkbench implements OnInit {
   // ===== Master data loading =====
   loadCompanies(): void {
 
-    const userId = this.userDataService.getUserId();
+  const userId = this.userDataService.getUserId();
 
-    if (userId === 0) {
-      console.error('Invalid User Id');
-      return;
-    }
+  if (userId === 0) {
+    console.error('Invalid User Id');
+    return;
+  }
 
-    this.logisticsService.getUserCompanies(userId).subscribe({
+  this.logisticsService.getUserCompanies(userId).subscribe({
 
+    next: (res) => {
 
-      next: (res) => {
+      this.companies = res;
 
-        this.companies = res;
+      // Default Company 20, otherwise 19
+      const defaultCompany =
+        this.companies.find(x => x.compId === 20) ||
+        this.companies.find(x => x.compId === 19);
 
-        // Auto-select if only one company is available
-        if (this.companies.length === 1) {
+      if (defaultCompany) {
+        this.selectedCompanyId = defaultCompany.compId;
+      }
+      else if (this.companies.length === 1) {
+        this.selectedCompanyId = this.companies[0].compId;
+      }
 
-          this.selectedCompanyId = this.companies[0].compId;
-          this.onCompanyChange();
+      if (this.selectedCompanyId > 0) {
 
-        }
+        this.onCompanyChange();
 
-      },
-
-      error: (err) => {
-
-        console.error('Failed to load user companies:', err);
+        // Auto Search after form load
+        setTimeout(() => {
+          this.loadTransferLogs();
+        }, 300);
 
       }
 
-    });
+    },
 
-  }
+    error: (err) => {
+      console.error('Failed to load user companies:', err);
+    }
+
+  });
+
+}
   loadUsers(): void {
 
     this.logisticsService.getCompanyUserLifecycleAccess().subscribe({
@@ -423,34 +447,38 @@ export class TransferOrderWorkbench implements OnInit {
     });
   }
 
-  onCompanyChange(): void {
+onCompanyChange(loadGrid: boolean = false): void {
 
-    this.locationTypes = [];
-    this.locations = [];
-    this.selectedLocationTypeId = 0;
-    this.selectedLocationId = 0;
-    this.validationMessage = '';
+  this.locationTypes = [];
+  this.locations = [];
+  this.selectedLocationTypeId = 0;
+  this.selectedLocationId = 0;
 
-    if (this.selectedCompanyId == 0) {
-      return;
-    }
-
-    const cached = this.locationTypeCache.get(this.selectedCompanyId);
-    if (cached) {
-      this.locationTypes = cached;
-      return;
-    }
-
-    this.logisticsService
-      .getLocationTypes(this.selectedCompanyId)
-      .subscribe({
-        next: (res) => {
-          this.locationTypeCache.set(this.selectedCompanyId, res);
-          this.locationTypes = res;
-        },
-        error: (err) => console.error('Failed to load location types:', err)
-      });
+  if (this.selectedCompanyId == 0) {
+    return;
   }
+
+  this.logisticsService
+    .getLocationTypes(this.selectedCompanyId)
+    .subscribe({
+
+      next: (res) => {
+
+        this.locationTypes = res;
+
+        if (loadGrid) {
+          this.loadTransferLogs();
+        }
+
+      },
+
+      error: (err) => {
+        console.error(err);
+      }
+
+    });
+
+}
 
   onLocationTypeChange(): void {
 

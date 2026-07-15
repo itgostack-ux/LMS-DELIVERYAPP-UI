@@ -15,13 +15,39 @@ import {
 import { AuthService } from '../../service/auth';
 
 /**
- * The API returns ONE ROW PER ITEM (IMEI / item code). Several rows can share the
- * same transitID. The driver works on TRANSITS, not items, so every row in the UI
- * below is a TRANSIT and every action fans out to all item rows behind it.
+ * The API returns ONE ROW PER ITEM (IMEI / item code). Several rows share the same
+ * transitID. The driver works on TRANSITS, so every row in the UI is a TRANSIT and
+ * every action fans out to all item rows behind it.
+ *
+ * TWO VIEWS, driven by the active status tab:
+ *
+ *   PICKUP  (next step is NOT the final step)
+ *     Manifest -> Destination -> Transit -> ONE common Pickup button per manifest
+ *     (multi-select only, no per-row button)
+ *
+ *   DELIVERY (next step IS the final step)
+ *     Destination -> Manifest -> Transit -> common Deliver button per destination
+ *     (plus a per-transit Deliver button, so a location can be delivered one transit
+ *      at a time)
  */
+/**
+ * One row per ITEM CODE inside a transit. The API sends one row per IMEI with
+ * transferQty often 0, so an IMEI counts as one unit and the units are rolled up
+ * here. IMEI itself is not shown to the driver.
+ */
+interface ItemLine {
+  itemCode: string;
+  itemName: string;
+  qty: number;
+  lifecycleCode: string;
+  lifecycleName: string;
+}
+
 interface TransitGroup {
-  transitKey: string;          // manifestNo::transitID  (stable id for selection)
+  transitKey: string;              // manifestNo::transitID
   transitID: number;
+
+  manifestId: number;
   manifestNo: string;
 
   deliveryNoteNo: string;
@@ -33,26 +59,34 @@ interface TransitGroup {
   destinationLocationId: number;
   destinationLocationName: string;
 
-  itemCount: number;
-  totalQty: number;
+  vehicleNo: string;
+  transferModeName: string;
+  assignedUserName: string;
+
+  itemCount: number;               // distinct item codes
+  totalQty: number;                // units (one IMEI = one unit)
 
   // Effective status = the LEAST advanced item row in the transit.
   lifecycleCode: string;
   lifecycleName: string;
-  mixed: boolean;              // true if item rows disagree (legacy data)
+  mixed: boolean;                  // item rows disagree (legacy data)
 
-  orders: TransferManifestResponse[];   // item rows behind this transit
-  expanded: boolean;                    // item detail open?
+  itemLines: ItemLine[];           // what the driver sees when a transit is expanded
+  orders: TransferManifestResponse[];
+  expanded: boolean;
 }
 
-interface DestinationGroup {
+/** Destination block inside a manifest card (PICKUP view). */
+interface DestBlock {
+  destKey: string;
   destinationLocationId: number;
   destinationLocationName: string;
   transits: TransitGroup[];
 }
 
+/** Manifest card (PICKUP view). */
 interface ManifestGroup {
-  manifestId: number;          // display only
+  manifestId: number;
   manifestNo: string;
 
   sourceLocationName: string;
@@ -61,7 +95,29 @@ interface ManifestGroup {
   assignedUserName: string;
 
   transits: TransitGroup[];
-  destinationGroups: DestinationGroup[];
+  destBlocks: DestBlock[];
+
+  expanded: boolean;
+}
+
+/** Manifest block inside a destination card (DELIVERY view). */
+interface ManifestBlock {
+  manifestId: number;
+  manifestNo: string;
+  vehicleNo: string;
+  transferModeName: string;
+  sourceLocationName: string;
+  transits: TransitGroup[];
+}
+
+/** Destination card (DELIVERY view). */
+interface DeliveryGroup {
+  destKey: string;
+  destinationLocationId: number;
+  destinationLocationName: string;
+
+  transits: TransitGroup[];
+  manifestBlocks: ManifestBlock[];
 
   expanded: boolean;
 }
@@ -70,16 +126,15 @@ interface StatusBreakdown {
   code: string;
   name: string;
   color: string;
-  count: number;               // TRANSIT count, not item count
+  count: number;                   // TRANSIT count
 }
+
+type ViewMode = 'pickup' | 'delivery' | 'readonly';
 
 @Component({
   selector: 'app-driver-console',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule
-  ],
+  imports: [CommonModule, FormsModule],
   templateUrl: './driver-console.html',
   styleUrl: './driver-console.css',
 })
@@ -91,25 +146,31 @@ export class DriverConsole implements OnInit {
 
   // ===== Filters =====
   locationFilter = '';
-  statusFilter = 'ALL';
+  statusFilter = '';                 // set to the first tab once lifecycles load
 
   locationList: string[] = [];
-  deliveryLifecycles: DeliveryLifecycle[] = [];
 
+  // ===== Lifecycle masters =====
+  allLifecycles: DeliveryLifecycle[] = [];    // full workflow
+  roleLifecycles: DeliveryLifecycle[] = [];   // what this role may set
+
+  // ===== Data =====
   deliveryOrders: TransferManifestResponse[] = [];
-  manifestGroups: ManifestGroup[] = [];
-  filteredManifestGroups: ManifestGroup[] = [];
+  allTransits: TransitGroup[] = [];           // every transit assigned to this driver
+
+  pickupGroups: ManifestGroup[] = [];         // Manifest -> Destination -> Transit
+  deliveryGroups: DeliveryGroup[] = [];       // Destination -> Manifest -> Transit
 
   loading = false;
   saving = false;
   savingTransitKey: string | null = null;
-
   errorMessage = '';
 
   // ===== Selection: keyed on TRANSIT, never on an item row =====
   selectedTransitKeys = new Set<string>();
 
   private expandedManifestNos = new Set<string>();
+  private expandedDestKeys = new Set<string>();
   private expandedTransitKeys = new Set<string>();
 
   // ===== OTP modal state (final lifecycle step) =====
@@ -128,19 +189,15 @@ export class DriverConsole implements OnInit {
   selectedReceiverName = '';
   selectedReceiverEmail = '';
 
-  // Receiver / OTP recorded PER TRANSIT, so a manifest can be delivered in parts.
+  // Receiver / OTP recorded PER TRANSIT, so a destination can be delivered in parts.
   private otpByTransitKey = new Map<string, string>();
   private receiverByTransitKey = new Map<string, { id: number; name: string }>();
 
   // Pending delivery details for the OTP flow.
-  private pendingGroup!: ManifestGroup;
   private pendingTransits: TransitGroup[] = [];
   private pendingLifecycle!: DeliveryLifecycle;
-  // Complete workflow from DeliveryLifecycleMaster
-  allLifecycles: DeliveryLifecycle[] = [];
+  pendingDestinationName = '';
 
-  // Logged-in role permissions
-  roleLifecycles: DeliveryLifecycle[] = [];
   constructor(
     private logisticsService: LogisticsService,
     private userDataService: UserDataService,
@@ -161,12 +218,13 @@ export class DriverConsole implements OnInit {
     }
   }
 
-  // ===== Lifecycle master load =====
+  // ==========================================================================
+  // Masters
+  // ==========================================================================
 
   private loadDeliveryLifecycles(loadManifestsAfter: boolean): void {
 
     const userId = this.userDataService.getUserId();
-
     if (userId === 0) {
       this.errorMessage = 'Invalid user. Please log in again.';
       return;
@@ -174,7 +232,6 @@ export class DriverConsole implements OnInit {
 
     this.loading = true;
 
-    // Load User Role
     this.logisticsService.getRoleslifecycle(userId).subscribe({
 
       next: (roles) => {
@@ -187,7 +244,6 @@ export class DriverConsole implements OnInit {
 
         const roleId = roles[0].roleID;
 
-        // Load ALL Lifecycle Master
         this.logisticsService.getDeliveryLifecycles().subscribe({
 
           next: (allLifeCycles) => {
@@ -196,9 +252,6 @@ export class DriverConsole implements OnInit {
               .filter(x => x.isActive)
               .sort((a, b) => a.sequenceNo - b.sequenceNo);
 
-            console.log('All Lifecycles :', this.allLifecycles);
-
-            // Load Role Based Lifecycle
             this.logisticsService.getRoleBasedLifecycles(roleId).subscribe({
 
               next: (roleLifeCycles) => {
@@ -207,14 +260,11 @@ export class DriverConsole implements OnInit {
                   .filter(x => x.isActive)
                   .sort((a, b) => a.sequenceNo - b.sequenceNo);
 
-                console.log('Role Lifecycles :', this.roleLifecycles);
-
                 if (loadManifestsAfter) {
                   this.loadAssignedManifests();
                 } else {
                   this.loading = false;
                 }
-
               },
 
               error: (err: any) => {
@@ -222,9 +272,7 @@ export class DriverConsole implements OnInit {
                 this.loading = false;
                 this.errorMessage = 'Failed to load role lifecycles.';
               }
-
             });
-
           },
 
           error: (err: any) => {
@@ -232,9 +280,7 @@ export class DriverConsole implements OnInit {
             this.loading = false;
             this.errorMessage = 'Failed to load lifecycle master.';
           }
-
         });
-
       },
 
       error: (err: any) => {
@@ -242,23 +288,23 @@ export class DriverConsole implements OnInit {
         this.loading = false;
         this.errorMessage = 'Failed to load user roles.';
       }
-
     });
-
   }
 
   refresh(): void {
     if (this.driverId === 0) {
       return;
     }
-    if (this.deliveryLifecycles.length === 0) {
+    if (this.allLifecycles.length === 0) {
       this.loadDeliveryLifecycles(true);
     } else {
       this.loadAssignedManifests();
     }
   }
 
-  // ===== Manifest load =====
+  // ==========================================================================
+  // Load + build
+  // ==========================================================================
 
   loadAssignedManifests(): void {
 
@@ -281,15 +327,13 @@ export class DriverConsole implements OnInit {
         this.deliveryOrders = rows.filter(x => x.assignedUserId === userId);
 
         this.locationList = [
-          ...new Set(
-            this.deliveryOrders
-              .map(x => x.sourceLocationName)
-              .filter(x => !!x)
-          )
+          ...new Set(this.deliveryOrders.map(x => x.sourceLocationName).filter(x => !!x))
         ].sort();
 
-        this.manifestGroups = this.groupByManifest(this.deliveryOrders);
-        this.applyGroupFilters();
+        this.allTransits = this.buildTransits(this.deliveryOrders);
+
+        this.ensureStatusFilter();
+        this.applyFilters();
 
         this.loading = false;
       },
@@ -297,84 +341,41 @@ export class DriverConsole implements OnInit {
       error: (err) => {
         console.error(err);
         this.deliveryOrders = [];
-        this.manifestGroups = [];
-        this.filteredManifestGroups = [];
+        this.allTransits = [];
+        this.pickupGroups = [];
+        this.deliveryGroups = [];
         this.loading = false;
         this.errorMessage = 'Failed to load assigned manifests.';
       }
-
     });
-
   }
 
-  // manifestNo -> transitID -> item rows
-  private groupByManifest(rows: TransferManifestResponse[]): ManifestGroup[] {
+  /** Collapse item rows into TRANSITS (manifestNo + transitID). */
+  private buildTransits(rows: TransferManifestResponse[]): TransitGroup[] {
 
     const map = new Map<string, TransferManifestResponse[]>();
 
     for (const row of rows) {
-      const key = row.manifestNo || `#${row.manifestId}`;
+      const manifestNo = row.manifestNo || `#${row.manifestId}`;
+      const key = `${manifestNo}::${Number(row.transitID) || 0}`;
       const list = map.get(key) ?? [];
       list.push(row);
       map.set(key, list);
     }
 
     return [...map.entries()]
-      .map(([manifestNo, orders]) => {
-
-        const first = orders[0];
-        const transits = this.buildTransits(manifestNo, orders);
-
-        return {
-          manifestId: first.manifestId,
-          manifestNo,
-          sourceLocationName: first.sourceLocationName,
-          transferModeName: first.transferModeName,
-          vehicleNo: first.vehicleNo,
-          assignedUserName: first.assignedUserName,
-          transits,
-          destinationGroups: this.groupByDestination(transits),
-          expanded: this.expandedManifestNos.has(manifestNo)
-        } as ManifestGroup;
-
-      })
-      .sort((a, b) => {
-        const aAct = this.manifestHasAnyActionable(a) ? 0 : 1;
-        const bAct = this.manifestHasAnyActionable(b) ? 0 : 1;
-        if (aAct !== bAct) {
-          return aAct - bAct;
-        }
-        return b.manifestNo.localeCompare(a.manifestNo);
-      });
-
-  }
-
-  /** Collapse the item rows of one manifest into TRANSITS. */
-  private buildTransits(
-    manifestNo: string,
-    rows: TransferManifestResponse[]
-  ): TransitGroup[] {
-
-    const map = new Map<number, TransferManifestResponse[]>();
-
-    for (const row of rows) {
-      const id = Number(row.transitID) || 0;
-      const list = map.get(id) ?? [];
-      list.push(row);
-      map.set(id, list);
-    }
-
-    return [...map.entries()]
-      .map(([transitID, orders]) => {
+      .map(([transitKey, orders]) => {
 
         const base = this.leastAdvancedOrder(orders);
         const codes = new Set(orders.map(o => o.lifecycleCode));
-        const transitKey = `${manifestNo}::${transitID}`;
+        const itemLines = this.buildItemLines(orders);
 
         return {
           transitKey,
-          transitID,
-          manifestNo,
+          transitID: Number(base.transitID) || 0,
+
+          manifestId: base.manifestId,
+          manifestNo: base.manifestNo || `#${base.manifestId}`,
 
           deliveryNoteNo: base.deliveryNoteNo ?? '',
           companyId: base.companyId ?? 0,
@@ -385,51 +386,71 @@ export class DriverConsole implements OnInit {
           destinationLocationId: base.destinationLocationId ?? 0,
           destinationLocationName: base.destinationLocationName ?? '—',
 
-          itemCount: orders.length,
-          totalQty: orders.reduce((sum, o) => sum + (o.transferQty ?? 0), 0),
+          vehicleNo: base.vehicleNo ?? '',
+          transferModeName: base.transferModeName ?? '',
+          assignedUserName: base.assignedUserName ?? '',
+
+          itemCount: itemLines.length,
+          totalQty: itemLines.reduce((sum, l) => sum + l.qty, 0),
 
           lifecycleCode: base.lifecycleCode,
           lifecycleName:
             this.findLifecycle(base.lifecycleCode)?.statusName ?? base.lifecycleName,
           mixed: codes.size > 1,
 
+          itemLines,
           orders,
           expanded: this.expandedTransitKeys.has(transitKey)
         } as TransitGroup;
-
       })
       .sort((a, b) => a.transitID - b.transitID);
-
   }
 
-  private groupByDestination(transits: TransitGroup[]): DestinationGroup[] {
+  /** One IMEI row = one unit, unless the API actually sent a quantity. */
+  private unitsOf(order: TransferManifestResponse): number {
+    const qty = Number(order.transferQty);
+    return qty > 0 ? qty : 1;
+  }
 
-    const map = new Map<string, DestinationGroup>();
+  /** Roll the IMEI rows up into ONE ROW PER ITEM CODE, with the units counted. */
+  private buildItemLines(orders: TransferManifestResponse[]): ItemLine[] {
 
-    for (const transit of transits) {
-      const key = `${transit.destinationLocationId}|${transit.destinationLocationName}`;
+    const map = new Map<string, ItemLine>();
+
+    for (const order of orders) {
+
+      const itemCode = order.itemCode ?? '';
+      const itemName = order.itemName ?? '';
+      const key = `${itemCode}|${itemName}`;
+
       const existing = map.get(key);
+
       if (existing) {
-        existing.transits.push(transit);
+        existing.qty += this.unitsOf(order);
+
+        // Keep the least advanced status of the item code.
+        if (this.sequenceOf(order.lifecycleCode) < this.sequenceOf(existing.lifecycleCode)) {
+          existing.lifecycleCode = order.lifecycleCode;
+          existing.lifecycleName =
+            this.findLifecycle(order.lifecycleCode)?.statusName ?? order.lifecycleName;
+        }
       } else {
         map.set(key, {
-          destinationLocationId: transit.destinationLocationId,
-          destinationLocationName: transit.destinationLocationName,
-          transits: [transit]
+          itemCode,
+          itemName,
+          qty: this.unitsOf(order),
+          lifecycleCode: order.lifecycleCode,
+          lifecycleName:
+            this.findLifecycle(order.lifecycleCode)?.statusName ?? order.lifecycleName
         });
       }
     }
 
-    return [...map.values()].sort((a, b) =>
-      a.destinationLocationName.localeCompare(b.destinationLocationName)
-    );
-
+    return [...map.values()].sort((a, b) => a.itemCode.localeCompare(b.itemCode));
   }
 
   /** The item row that is furthest behind — it drives the transit's status. */
-  private leastAdvancedOrder(
-    orders: TransferManifestResponse[]
-  ): TransferManifestResponse {
+  private leastAdvancedOrder(orders: TransferManifestResponse[]): TransferManifestResponse {
     return orders.reduce((slowest, current) =>
       this.sequenceOf(current.lifecycleCode) < this.sequenceOf(slowest.lifecycleCode)
         ? current
@@ -441,85 +462,222 @@ export class DriverConsole implements OnInit {
     return this.findLifecycle(statusCode)?.sequenceNo ?? Number.MAX_SAFE_INTEGER;
   }
 
-  // ===== Filters (status filter works at TRANSIT level) =====
+  // ==========================================================================
+  // Filters + tabs
+  // ==========================================================================
 
-  get visibleGroups(): ManifestGroup[] {
-    return this.filteredManifestGroups;
+  /** Transits left after the location filter (drives the tab counts). */
+  private get locationTransits(): TransitGroup[] {
+    if (!this.locationFilter) {
+      return this.allTransits;
+    }
+    return this.allTransits.filter(t => t.sourceLocationName === this.locationFilter);
   }
 
-  applyGroupFilters(): void {
-
-    const result: ManifestGroup[] = [];
-
-    for (const group of this.manifestGroups) {
-
-      if (this.locationFilter && group.sourceLocationName !== this.locationFilter) {
-        continue;
-      }
-
-      const transits = this.statusFilter === 'ALL'
-        ? group.transits
-        : group.transits.filter(t => t.lifecycleCode === this.statusFilter);
-
-      if (transits.length === 0) {
-        continue;
-      }
-
-      result.push({
-        ...group,
-        transits,
-        destinationGroups: this.groupByDestination(transits),
-        expanded: this.expandedManifestNos.has(group.manifestNo)
-      });
-
+  private ensureStatusFilter(): void {
+    const tabs = this.statusTabs;
+    if (tabs.length === 0) {
+      return;
     }
-
-    this.filteredManifestGroups = result;
+    if (this.statusFilter && tabs.some(t => t.code === this.statusFilter)) {
+      return;
+    }
+    this.statusFilter = (tabs.find(t => t.count > 0) ?? tabs[0]).code;
   }
 
   applyFilters(): void {
-    this.applyGroupFilters();
+
+    const transits = this.locationTransits
+      .filter(t => !this.statusFilter || t.lifecycleCode === this.statusFilter);
+
+    this.pickupGroups = this.groupByManifest(transits);
+    this.deliveryGroups = this.groupByDestination(transits);
   }
 
   setStatusFilter(code: string): void {
+    if (this.statusFilter === code) {
+      return;
+    }
     this.statusFilter = code;
-    this.applyGroupFilters();
+    this.selectedTransitKeys.clear();   // never carry a selection across statuses
+    this.applyFilters();
   }
 
-  get totalTransitCount(): number {
-    return this.manifestGroups.reduce((sum, g) => sum + g.transits.length, 0);
+  onLocationChange(): void {
+    this.selectedTransitKeys.clear();
+    this.ensureStatusFilter();
+    this.applyFilters();
   }
 
-  /** One tab per lifecycle status that has transits under it. */
+  /** One tab per lifecycle status (Open / Pickup Ready are not driver states). */
   get statusTabs(): { code: string; name: string; count: number }[] {
 
     const counts = new Map<string, number>();
-
-    for (const g of this.manifestGroups) {
-      for (const t of g.transits) {
-        counts.set(
-          t.lifecycleCode,
-          (counts.get(t.lifecycleCode) ?? 0) + 1
-        );
-      }
+    for (const t of this.locationTransits) {
+      counts.set(t.lifecycleCode, (counts.get(t.lifecycleCode) ?? 0) + 1);
     }
 
     return this.allLifecycles
-      .filter(l => l.isActive)
+      .filter(l =>
+        l.isActive &&
+        l.statusName !== 'Open' &&
+        l.statusName !== 'Pickup Ready'
+      )
       .sort((a, b) => a.sequenceNo - b.sequenceNo)
       .map(l => ({
         code: l.statusCode,
         name: l.statusName,
         count: counts.get(l.statusCode) ?? 0
       }));
-
   }
 
-  // ===== Header chips (transit counts) =====
+  /**
+   * The whole layout hangs off the active tab:
+   *   next step exists and is NOT final  -> pickup  (Manifest -> Destination -> Transit)
+   *   next step exists and IS final      -> delivery(Destination -> Manifest -> Transit)
+   *   no next step (Delivered)           -> read only
+   */
+  get viewMode(): ViewMode {
+    const next = this.nextLifecycleOf(this.statusFilter);
+    if (!next || !this.roleCanSet(next)) {
+      return 'readonly';
+    }
+    return this.isFinalStep(next) ? 'delivery' : 'pickup';
+  }
 
-  statusBreakdown(group: ManifestGroup): StatusBreakdown[] {
+  get hasRows(): boolean {
+    return this.viewMode === 'delivery'
+      ? this.deliveryGroups.length > 0
+      : this.pickupGroups.length > 0;
+  }
+
+  get activeStatusName(): string {
+    return this.findLifecycle(this.statusFilter)?.statusName ?? 'this status';
+  }
+
+  get nextStepName(): string {
+    return this.getNextStatusName(this.statusFilter);
+  }
+
+  // ==========================================================================
+  // Grouping
+  // ==========================================================================
+
+  /** PICKUP: Manifest -> Destination -> Transit */
+  private groupByManifest(transits: TransitGroup[]): ManifestGroup[] {
+
+    const map = new Map<string, TransitGroup[]>();
+
+    for (const t of transits) {
+      const list = map.get(t.manifestNo) ?? [];
+      list.push(t);
+      map.set(t.manifestNo, list);
+    }
+
+    return [...map.entries()]
+      .map(([manifestNo, list]) => {
+        const first = list[0];
+        return {
+          manifestId: first.manifestId,
+          manifestNo,
+          sourceLocationName: first.sourceLocationName,
+          transferModeName: first.transferModeName,
+          vehicleNo: first.vehicleNo,
+          assignedUserName: first.assignedUserName,
+          transits: list,
+          destBlocks: this.buildDestBlocks(list),
+          expanded: this.expandedManifestNos.has(manifestNo)
+        } as ManifestGroup;
+      })
+      .sort((a, b) => b.manifestNo.localeCompare(a.manifestNo));
+  }
+
+  private buildDestBlocks(transits: TransitGroup[]): DestBlock[] {
+
+    const map = new Map<string, DestBlock>();
+
+    for (const t of transits) {
+      const destKey = `${t.destinationLocationId}|${t.destinationLocationName}`;
+      const existing = map.get(destKey);
+      if (existing) {
+        existing.transits.push(t);
+      } else {
+        map.set(destKey, {
+          destKey,
+          destinationLocationId: t.destinationLocationId,
+          destinationLocationName: t.destinationLocationName,
+          transits: [t]
+        });
+      }
+    }
+
+    return [...map.values()]
+      .sort((a, b) => a.destinationLocationName.localeCompare(b.destinationLocationName));
+  }
+
+  /** DELIVERY: Destination -> Manifest -> Transit */
+  private groupByDestination(transits: TransitGroup[]): DeliveryGroup[] {
+
+    const map = new Map<string, DeliveryGroup>();
+
+    for (const t of transits) {
+      const destKey = `${t.destinationLocationId}|${t.destinationLocationName}`;
+      const existing = map.get(destKey);
+      if (existing) {
+        existing.transits.push(t);
+      } else {
+        map.set(destKey, {
+          destKey,
+          destinationLocationId: t.destinationLocationId,
+          destinationLocationName: t.destinationLocationName,
+          transits: [t],
+          manifestBlocks: [],
+          expanded: this.expandedDestKeys.has(destKey)
+        });
+      }
+    }
+
+    const groups = [...map.values()];
+
+    for (const group of groups) {
+      group.manifestBlocks = this.buildManifestBlocks(group.transits);
+    }
+
+    return groups.sort((a, b) =>
+      a.destinationLocationName.localeCompare(b.destinationLocationName)
+    );
+  }
+
+  private buildManifestBlocks(transits: TransitGroup[]): ManifestBlock[] {
+
+    const map = new Map<string, ManifestBlock>();
+
+    for (const t of transits) {
+      const existing = map.get(t.manifestNo);
+      if (existing) {
+        existing.transits.push(t);
+      } else {
+        map.set(t.manifestNo, {
+          manifestId: t.manifestId,
+          manifestNo: t.manifestNo,
+          vehicleNo: t.vehicleNo,
+          transferModeName: t.transferModeName,
+          sourceLocationName: t.sourceLocationName,
+          transits: [t]
+        });
+      }
+    }
+
+    return [...map.values()].sort((a, b) => b.manifestNo.localeCompare(a.manifestNo));
+  }
+
+  // ==========================================================================
+  // Header chips
+  // ==========================================================================
+
+  statusBreakdown(transits: TransitGroup[]): StatusBreakdown[] {
     const counts = new Map<string, number>();
-    for (const t of group.transits) {
+    for (const t of transits) {
       counts.set(t.lifecycleCode, (counts.get(t.lifecycleCode) ?? 0) + 1);
     }
     return [...counts.entries()].map(([code, count]) => ({
@@ -530,7 +688,9 @@ export class DriverConsole implements OnInit {
     }));
   }
 
-  // ===== Transit selection =====
+  // ==========================================================================
+  // Selection (transit level)
+  // ==========================================================================
 
   isTransitCheckable(transit: TransitGroup): boolean {
     return this.hasNextStatus(transit.lifecycleCode);
@@ -551,17 +711,25 @@ export class DriverConsole implements OnInit {
     }
   }
 
-  private checkableTransits(dest: DestinationGroup): TransitGroup[] {
-    return dest.transits.filter(t => this.isTransitCheckable(t));
+  checkableOf(transits: TransitGroup[]): TransitGroup[] {
+    return transits.filter(t => this.isTransitCheckable(t));
   }
 
-  allCheckedInDest(dest: DestinationGroup): boolean {
-    const checkable = this.checkableTransits(dest);
+  checkedOf(transits: TransitGroup[]): TransitGroup[] {
+    return transits.filter(t => this.isChecked(t));
+  }
+
+  checkedCount(transits: TransitGroup[]): number {
+    return this.checkedOf(transits).length;
+  }
+
+  allChecked(transits: TransitGroup[]): boolean {
+    const checkable = this.checkableOf(transits);
     return checkable.length > 0 && checkable.every(t => this.isChecked(t));
   }
 
-  toggleAllInDest(dest: DestinationGroup, checked: boolean): void {
-    for (const t of this.checkableTransits(dest)) {
+  toggleAll(transits: TransitGroup[], checked: boolean): void {
+    for (const t of this.checkableOf(transits)) {
       if (checked) {
         this.selectedTransitKeys.add(t.transitKey);
       } else {
@@ -570,40 +738,29 @@ export class DriverConsole implements OnInit {
     }
   }
 
-  checkedTransitsInDest(dest: DestinationGroup): TransitGroup[] {
-    return dest.transits.filter(t => this.isChecked(t));
+  hasActionable(transits: TransitGroup[]): boolean {
+    return transits.some(t => this.isTransitCheckable(t));
   }
 
-  checkedCountInDest(dest: DestinationGroup): number {
-    return this.checkedTransitsInDest(dest).length;
-  }
+  // ==========================================================================
+  // Expand / collapse
+  // ==========================================================================
 
-  destHasActionable(dest: DestinationGroup): boolean {
-    return dest.transits.some(t => this.isTransitCheckable(t));
-  }
-
-  /** Button label = next step of the ticked transits. */
-  destActionLabel(dest: DestinationGroup): string {
-    const checked = this.checkedTransitsInDest(dest);
-    const basis = checked.length > 0 ? checked : this.checkableTransits(dest);
-    if (basis.length === 0) {
-      return 'Mark';
-    }
-    return this.getNextStatusName(basis[0].lifecycleCode);
-  }
-
-  manifestHasAnyActionable(group: ManifestGroup): boolean {
-    return group.transits.some(t => this.isTransitCheckable(t));
-  }
-
-  // ===== Expand / collapse =====
-
-  toggleGroup(group: ManifestGroup): void {
+  toggleManifest(group: ManifestGroup): void {
     group.expanded = !group.expanded;
     if (group.expanded) {
       this.expandedManifestNos.add(group.manifestNo);
     } else {
       this.expandedManifestNos.delete(group.manifestNo);
+    }
+  }
+
+  toggleDestination(group: DeliveryGroup): void {
+    group.expanded = !group.expanded;
+    if (group.expanded) {
+      this.expandedDestKeys.add(group.destKey);
+    } else {
+      this.expandedDestKeys.delete(group.destKey);
     }
   }
 
@@ -617,13 +774,12 @@ export class DriverConsole implements OnInit {
     }
   }
 
-  // ===== Lifecycle helpers =====
+  // ==========================================================================
+  // Lifecycle helpers
+  // ==========================================================================
+
   private findLifecycle(statusCode: string): DeliveryLifecycle | undefined {
-
-    return this.allLifecycles.find(
-      x => x.statusCode === statusCode
-    );
-
+    return this.allLifecycles.find(x => x.statusCode === statusCode);
   }
 
   private nextLifecycleOf(currentStatusCode: string): DeliveryLifecycle | undefined {
@@ -638,79 +794,190 @@ export class DriverConsole implements OnInit {
     return !lifecycle.nextStatusCode;
   }
 
+  private roleCanSet(lifecycle: DeliveryLifecycle): boolean {
+    return this.roleLifecycles.some(x => x.statusCode === lifecycle.statusCode);
+  }
+
   getNextStatusName(currentStatusCode: string): string {
     return this.nextLifecycleOf(currentStatusCode)?.statusName ?? 'No Next Status';
   }
 
   hasNextStatus(currentStatusCode: string): boolean {
-
     const next = this.nextLifecycleOf(currentStatusCode);
-
-    if (!next) {
-      return false;
-    }
-
-    // Allow action only if the logged-in role has access
-    return this.roleLifecycles.some(
-      x => x.statusCode === next.statusCode
-    );
-
+    return !!next && this.roleCanSet(next);
   }
 
   getStatusColor(statusCode: string): string {
     return this.findLifecycle(statusCode)?.colorCode || '#6B7280';
   }
 
-  // ===== Advance action: TRANSIT LEVEL =====
+  /** Next step shared by a selection; null (with an alert) if the selection is mixed. */
+  private nextForSelection(transits: TransitGroup[]): DeliveryLifecycle | null {
 
-  processCheckedTransits(group: ManifestGroup, dest: DestinationGroup): void {
+    if (transits.length === 0) {
+      alert('Select at least one transit.');
+      return null;
+    }
 
-    const checked = this.checkedTransitsInDest(dest);
+    const statuses = [...new Set(transits.map(t => t.lifecycleCode))];
+    if (statuses.length > 1) {
+      alert('Select transits that are at the same status.');
+      return null;
+    }
+
+    const next = this.nextLifecycleOf(statuses[0]);
+    if (!next) {
+      alert('Next lifecycle step not found.');
+      return null;
+    }
+    if (!this.roleCanSet(next)) {
+      alert('Your role cannot move these transits to ' + next.statusName + '.');
+      return null;
+    }
+
+    return next;
+  }
+
+  // ==========================================================================
+  // PICKUP — ONE common button for everything ticked (across all manifests)
+  // ==========================================================================
+
+  /** Every ticked transit currently on screen. */
+  get selectedTransits(): TransitGroup[] {
+    return this.pickupGroups
+      .flatMap(g => g.transits)
+      .filter(t => this.selectedTransitKeys.has(t.transitKey));
+  }
+
+  get selectedCount(): number {
+    return this.selectedTransits.length;
+  }
+
+  /** Bar shows as soon as at least ONE transit is ticked. */
+  get showPickupBar(): boolean {
+    return this.viewMode === 'pickup' && this.selectedCount > 0;
+  }
+
+  get selectedManifestCount(): number {
+    return new Set(this.selectedTransits.map(t => t.manifestNo)).size;
+  }
+
+  pickupActionLabel(): string {
+    const selected = this.selectedTransits;
+    if (selected.length === 0) {
+      return this.nextStepName;
+    }
+    return this.getNextStatusName(selected[0].lifecycleCode);
+  }
+
+  clearSelection(): void {
+    this.selectedTransitKeys.clear();
+  }
+
+  /** Common Pickup button: advances every ticked transit, whatever manifest it is on. */
+  pickupSelected(): void {
+
+    const checked = this.selectedTransits;
     if (checked.length === 0) {
-      alert('Please select at least one transit.');
+      alert('Tick the transits you picked up.');
       return;
     }
 
-    const statuses = new Set(checked.map(t => t.lifecycleCode));
-    if (statuses.size > 1) {
-      alert('Please select transits that are at the same status.');
+    const next = this.nextForSelection(checked);
+    if (!next) {
       return;
     }
 
-    const nextLifecycle = this.nextLifecycleOf([...statuses][0]);
-    if (!nextLifecycle) {
+    if (this.isFinalStep(next)) {
+      // Defensive: a final step must go through the delivery view / OTP.
+      this.openDeliveryOtpModal(checked, next);
+      return;
+    }
+
+    this.updateTransits(checked, next);
+  }
+
+  /** Row button: advances THIS transit only, no ticking needed. */
+  pickupSingleTransit(transit: TransitGroup, event?: Event): void {
+
+    event?.stopPropagation();
+
+    const next = this.nextLifecycleOf(transit.lifecycleCode);
+    if (!next || !this.roleCanSet(next)) {
       alert('Next lifecycle step not found.');
       return;
     }
 
-    if (this.isFinalStep(nextLifecycle)) {
-      this.openDeliveryOtpModal(group, checked, nextLifecycle);
+    if (this.isFinalStep(next)) {
+      this.openDeliveryOtpModal([transit], next);
       return;
     }
 
-    this.updateTransits(group, checked, nextLifecycle);
+    this.updateTransits([transit], next);
   }
 
-  /** Row button: advances THIS transit (and every item row inside it). */
-  processSingleTransit(group: ManifestGroup, transit: TransitGroup): void {
+  // ==========================================================================
+  // DELIVERY — common button per destination + per-transit button
+  // ==========================================================================
 
-    const nextLifecycle = this.nextLifecycleOf(transit.lifecycleCode);
-    if (!nextLifecycle) {
+  deliverActionLabel(group: DeliveryGroup): string {
+    const basis = this.checkedOf(group.transits).length > 0
+      ? this.checkedOf(group.transits)
+      : this.checkableOf(group.transits);
+    if (basis.length === 0) {
+      return 'Update';
+    }
+    return this.getNextStatusName(basis[0].lifecycleCode);
+  }
+
+  /** Common Deliver button for ONE destination (all ticked transits of that location). */
+  deliverSelected(group: DeliveryGroup): void {
+
+    const checked = this.checkedOf(group.transits);
+    if (checked.length === 0) {
+      alert('Select the transits you are delivering at ' + group.destinationLocationName + '.');
+      return;
+    }
+
+    const next = this.nextForSelection(checked);
+    if (!next) {
+      return;
+    }
+
+    this.pendingDestinationName = group.destinationLocationName;
+
+    if (this.isFinalStep(next)) {
+      this.openDeliveryOtpModal(checked, next);
+      return;
+    }
+
+    this.updateTransits(checked, next);
+  }
+
+  /** Per-transit Deliver button — one transit of a location at a time. */
+  deliverSingleTransit(transit: TransitGroup): void {
+
+    const next = this.nextLifecycleOf(transit.lifecycleCode);
+    if (!next || !this.roleCanSet(next)) {
       alert('Next lifecycle step not found.');
       return;
     }
 
-    if (this.isFinalStep(nextLifecycle)) {
-      this.openDeliveryOtpModal(group, [transit], nextLifecycle);
+    this.pendingDestinationName = transit.destinationLocationName;
+
+    if (this.isFinalStep(next)) {
+      this.openDeliveryOtpModal([transit], next);
       return;
     }
 
-    this.updateTransits(group, [transit], nextLifecycle);
+    this.updateTransits([transit], next);
   }
 
-  // ===== Save: one transaction + one manifest row per ITEM of each TRANSIT =====
+  // ==========================================================================
+  // Save: one transaction + one manifest row per ITEM of each TRANSIT
+  // ==========================================================================
+
   private updateTransits(
-    group: ManifestGroup,
     transitsToAdvance: TransitGroup[],
     nextLifecycle: DeliveryLifecycle
   ): void {
@@ -734,10 +1001,9 @@ export class DriverConsole implements OnInit {
 
         requests.push(
           this.logisticsService.saveTransferManifest(
-            this.buildManifestRequest(group, transit, order, nextLifecycle)
+            this.buildManifestRequest(transit, order, nextLifecycle)
           )
         );
-
       }
     }
 
@@ -755,8 +1021,11 @@ export class DriverConsole implements OnInit {
         this.saving = false;
         this.savingTransitKey = null;
         this.clearPending();
+
         const ids = transitsToAdvance.map(t => t.transitID).join(', ');
         alert(`Transit ${ids} marked as ${nextLifecycle.statusName}.`);
+
+        this.selectedTransitKeys.clear();
         this.loadAssignedManifests();
       },
       error: (err: any) => {
@@ -767,15 +1036,15 @@ export class DriverConsole implements OnInit {
         if (err?.error?.errors) {
           console.error('Validation errors:', err.error.errors);
         }
-        alert('Failed to update one or more transits. Please try again.');
+        alert('Update failed. Nothing was changed for some transits — try again.');
         this.loadAssignedManifests();
       }
     });
-
   }
 
   private clearPending(): void {
     this.pendingTransits = [];
+    this.pendingDestinationName = '';
   }
 
   private toIsoString(value: Date | string | null | undefined): string {
@@ -853,13 +1122,8 @@ export class DriverConsole implements OnInit {
         ? now
         : (this.toIsoString(order.transferInTime) || undefined),
 
-      inwardDoneById: isFinal
-        ? this.driverId
-        : (order.inwardDoneById ?? 0),
-
-      inwardDoneByName: isFinal
-        ? this.driverName
-        : (order.inwardDoneByName ?? ''),
+      inwardDoneById: isFinal ? this.driverId : (order.inwardDoneById ?? 0),
+      inwardDoneByName: isFinal ? this.driverName : (order.inwardDoneByName ?? ''),
 
       transferDuration: order.transferDuration ?? '',
       remarks: order.remarks ?? '',
@@ -878,7 +1142,6 @@ export class DriverConsole implements OnInit {
 
   /** Manifest row for one item row; receiver / OTP come from the TRANSIT maps. */
   private buildManifestRequest(
-    group: ManifestGroup,
     transit: TransitGroup,
     forOrder: TransferManifestResponse,
     nextLifecycle: DeliveryLifecycle
@@ -889,7 +1152,7 @@ export class DriverConsole implements OnInit {
 
     return {
       manifestId: forOrder.manifestId,
-      manifestNo: group.manifestNo,
+      manifestNo: transit.manifestNo,
       transferOrderId: forOrder.transferOrderId,
 
       assignedUserId: forOrder.assignedUserId ?? this.driverId,
@@ -920,10 +1183,11 @@ export class DriverConsole implements OnInit {
       assignedByName: this.driverName,
       assignedDate: new Date()
     };
-
   }
 
-  // ===== OTP flow (final step, scoped to the ticked transits) =====
+  // ==========================================================================
+  // OTP flow (final step, scoped to the ticked transits of ONE destination)
+  // ==========================================================================
 
   get pendingTransitIds(): string {
     return this.pendingTransits.map(t => t.transitID).join(', ');
@@ -937,15 +1201,25 @@ export class DriverConsole implements OnInit {
     return this.pendingTransits.reduce((sum, t) => sum + t.itemCount, 0);
   }
 
+  get pendingManifestNos(): string {
+    return [...new Set(this.pendingTransits.map(t => t.manifestNo))].join(', ');
+  }
+
   private openDeliveryOtpModal(
-    group: ManifestGroup,
     transits: TransitGroup[],
     nextLifecycle: DeliveryLifecycle
   ): void {
 
-    this.pendingGroup = group;
+    // A delivery is location based: one receiver signs for one destination.
+    const destinations = [...new Set(transits.map(t => t.destinationLocationId))];
+    if (destinations.length > 1) {
+      alert('Select transits going to the same destination.');
+      return;
+    }
+
     this.pendingTransits = transits;
     this.pendingLifecycle = nextLifecycle;
+    this.pendingDestinationName = transits[0].destinationLocationName;
 
     this.otpInput = '';
     this.otpError = '';
@@ -978,7 +1252,7 @@ export class DriverConsole implements OnInit {
         },
         error: (err) => {
           console.error('Receiver Users API Error:', err);
-          alert('Unable to load receiver users.');
+          alert('Receiver list could not be loaded for this location.');
         }
       });
   }
@@ -1004,7 +1278,6 @@ export class DriverConsole implements OnInit {
         error: (err) => console.error('Failed to load user email', err)
       });
     }
-
   }
 
   filterUsers(): void {
@@ -1022,7 +1295,7 @@ export class DriverConsole implements OnInit {
   sendOtp(): void {
 
     if (this.selectedReceiverId === 0) {
-      alert('Please select Receiver.');
+      alert('Select the receiver first.');
       return;
     }
 
@@ -1033,16 +1306,15 @@ export class DriverConsole implements OnInit {
     }
 
     if (!this.selectedReceiverEmail) {
-      alert('Receiver email is not available.');
+      alert('This receiver has no email address on file.');
       return;
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     this.generatedOtp = otp;
-
     this.sendingOtp = true;
 
-    // Remember receiver + OTP per transit, then persist the manifest rows at their
+    // Store receiver + OTP per transit, then persist the manifest rows at their
     // CURRENT status (status only moves on Verify & Deliver).
     const requests: Observable<any>[] = [];
 
@@ -1060,7 +1332,7 @@ export class DriverConsole implements OnInit {
 
         requests.push(
           this.logisticsService.saveTransferManifest(
-            this.buildManifestRequest(this.pendingGroup, transit, order, currentLifecycle)
+            this.buildManifestRequest(transit, order, currentLifecycle)
           )
         );
       }
@@ -1074,12 +1346,13 @@ export class DriverConsole implements OnInit {
       Your Delivery Verification OTP is:
       <h2 style="color:#2563EB">${otp}</h2>
       <table cellpadding="5">
-        <tr><td><b>Manifest No</b></td><td>${this.pendingGroup.manifestNo}</td></tr>
+        <tr><td><b>Destination</b></td><td>${this.pendingDestinationName}</td></tr>
+        <tr><td><b>Manifest No</b></td><td>${this.pendingManifestNos}</td></tr>
         <tr><td><b>Transit ID(s)</b></td><td>${this.pendingTransitIds}</td></tr>
         <tr><td><b>Driver</b></td><td>${this.driverName}</td></tr>
       </table>
       <br>
-      Please share this OTP with the delivery executive to complete your delivery.
+      Share this OTP with the delivery executive to complete your delivery.
       <br><br>
       Regards,<br>
       Logistics Management System
@@ -1096,28 +1369,26 @@ export class DriverConsole implements OnInit {
             this.sendingOtp = false;
             this.otpSent = true;
             this.otpError = '';
-            alert('OTP sent successfully.');
+            alert('OTP sent.');
           },
           error: (err) => {
             this.sendingOtp = false;
             console.error(err);
-            alert('Failed to send OTP email.');
+            alert('The OTP email did not go out. Try again.');
           }
         });
-
       },
       error: (err) => {
         this.sendingOtp = false;
         console.error(err);
-        alert('Failed to save OTP.');
+        alert('The OTP could not be saved. Try again.');
       }
     });
-
   }
 
   confirmOtp(): void {
 
-    if (!this.pendingGroup || !this.pendingLifecycle || this.pendingTransits.length === 0) {
+    if (!this.pendingLifecycle || this.pendingTransits.length === 0) {
       this.cancelOtp();
       return;
     }
@@ -1135,14 +1406,14 @@ export class DriverConsole implements OnInit {
 
     const expected = (this.generatedOtp || '').trim();
     if (!expected || entered !== expected) {
-      this.otpError = 'Invalid OTP. Check with the receiver and try again.';
+      this.otpError = 'That OTP does not match. Check with the receiver and try again.';
       return;
     }
 
     this.otpError = '';
     this.showOtpModal = false;
 
-    this.updateTransits(this.pendingGroup, this.pendingTransits, this.pendingLifecycle);
+    this.updateTransits(this.pendingTransits, this.pendingLifecycle);
   }
 
   cancelOtp(): void {
@@ -1151,7 +1422,6 @@ export class DriverConsole implements OnInit {
     this.otpError = '';
     this.otpSent = false;
     this.receiverSearch = '';
-    this.pendingTransits = [];
+    this.clearPending();
   }
-
 }

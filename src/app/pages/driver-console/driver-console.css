@@ -1039,3 +1039,322 @@ tbody tr.row-selected:hover {
   }
 
 }
+
+/* ===== APPEND TO driver-console.css =====
+   Only the classes introduced by the pickup / delivery split. Everything else in
+   your stylesheet still applies unchanged. */
+
+/* Line under the tabs explaining how the list is grouped */
+.flow-note {
+  margin: -6px 0 14px;
+  padding: 9px 14px;
+  font-size: 12.5px;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid #2563eb;
+  border-radius: 8px;
+}
+
+/* Left side of the common-button footer */
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sel-note {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #15803d;
+}
+
+.sel-note.muted {
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+/* Vehicle / source line next to a manifest number in the delivery view */
+.manifest-meta {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* The destination card header reuses .manifest-title, keep the pin aligned */
+.manifest-title .dest-pin {
+  font-size: 14px;
+  line-height: 1;
+}
+
+@media (max-width: 640px) {
+
+  .status-action-row .footer-left {
+    justify-content: flex-start;
+  }
+
+  .sel-note {
+    font-size: 12px;
+  }
+
+}
+
+/* ===== APPEND TO driver-console.css =====
+   Only the classes introduced by the pickup / delivery split. Everything else in
+   your stylesheet still applies unchanged. */
+
+/* Line under the tabs explaining how the list is grouped */
+.flow-note {
+  margin: -6px 0 14px;
+  padding: 9px 14px;
+  font-size: 12.5px;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid #2563eb;
+  border-radius: 8px;
+}
+
+/* Left side of the common-button footer */
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sel-note {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #15803d;
+}
+
+.sel-note.muted {
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+/* Vehicle / source line next to a manifest number in the delivery view */
+.manifest-meta {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* The destination card header reuses .manifest-title, keep the pin aligned */
+.manifest-title .dest-pin {
+  font-size: 14px;
+  line-height: 1;
+}
+
+@media (max-width: 640px) {
+
+  .status-action-row .footer-left {
+    justify-content: flex-start;
+  }
+
+  .sel-note {
+    font-size: 12px;
+  }
+
+}
+
+/* ===== Common pickup bar (Pickup Assigned tab) =====
+   Sticks to the bottom of the viewport the moment one transit is ticked, and
+   drives every ticked transit across every manifest. */
+
+.bulk-bar {
+  position: sticky;
+  bottom: 12px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding: 12px 18px;
+  background: #0f172a;
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.28);
+}
+
+.bulk-info {
+  font-size: 13.5px;
+  color: #fff;
+}
+
+.bulk-info b {
+  font-size: 15px;
+}
+
+.bulk-sub {
+  margin-left: 8px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bulk-bar .btn-secondary {
+  background: transparent;
+  border-color: #475569;
+  color: #cbd5e1;
+}
+
+.bulk-bar .btn-secondary:hover:not(:disabled) {
+  background: #1e293b;
+}
+
+@media (max-width: 640px) {
+
+  .bulk-bar {
+    bottom: 0;
+    border-radius: 12px 12px 0 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .bulk-actions {
+    width: 100%;
+  }
+
+  .bulk-actions button {
+    flex: 1 1 auto;
+  }
+
+}
+
+/* ===== APPEND TO driver-console.css =====
+   Only the classes introduced by the pickup / delivery split. Everything else in
+   your stylesheet still applies unchanged. */
+
+/* Line under the tabs explaining how the list is grouped */
+.flow-note {
+  margin: -6px 0 14px;
+  padding: 9px 14px;
+  font-size: 12.5px;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid #2563eb;
+  border-radius: 8px;
+}
+
+/* Left side of the common-button footer */
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sel-note {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #15803d;
+}
+
+.sel-note.muted {
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+/* Vehicle / source line next to a manifest number in the delivery view */
+.manifest-meta {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* The destination card header reuses .manifest-title, keep the pin aligned */
+.manifest-title .dest-pin {
+  font-size: 14px;
+  line-height: 1;
+}
+
+@media (max-width: 640px) {
+
+  .status-action-row .footer-left {
+    justify-content: flex-start;
+  }
+
+  .sel-note {
+    font-size: 12px;
+  }
+
+}
+
+/* ===== Common pickup bar (Pickup Assigned tab) =====
+   Sits on TOP of the manifest list and sticks there while the driver scrolls.
+   Appears from the first tick and drives every ticked transit, across manifests.
+   The per-row button in the table is the second, single-transit path. */
+
+.bulk-bar {
+  position: sticky;
+  top: 8px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 12px 18px;
+  background: #0f172a;
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.28);
+}
+
+.bulk-info {
+  font-size: 13.5px;
+  color: #fff;
+}
+
+.bulk-info b {
+  font-size: 15px;
+}
+
+.bulk-sub {
+  margin-left: 8px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bulk-bar .btn-secondary {
+  background: transparent;
+  border-color: #475569;
+  color: #cbd5e1;
+}
+
+.bulk-bar .btn-secondary:hover:not(:disabled) {
+  background: #1e293b;
+}
+
+@media (max-width: 640px) {
+
+  .bulk-bar {
+    top: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .bulk-actions {
+    width: 100%;
+  }
+
+  .bulk-actions button {
+    flex: 1 1 auto;
+  }
+
+}

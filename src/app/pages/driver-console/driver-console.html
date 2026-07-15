@@ -10,14 +10,12 @@
 
             <div class="field">
                 <label>Driver Name</label>
-                <div class="driver-readonly">
-                    {{ driverName || '—' }}
-                </div>
+                <div class="driver-readonly">{{ driverName || '—' }}</div>
             </div>
 
             <div class="field">
                 <label>Location</label>
-                <select class="form-select" [(ngModel)]="locationFilter" (change)="applyFilters()">
+                <select class="form-select" [(ngModel)]="locationFilter" (change)="onLocationChange()">
                     <option value="">All Locations</option>
                     <option *ngFor="let loc of locationList" [value]="loc">{{ loc }}</option>
                 </select>
@@ -30,13 +28,8 @@
         </div>
     </div>
 
-    <!-- ===== Status tabs (TRANSIT counts) ===== -->
-    <div class="status-tabs" *ngIf="!loading && manifestGroups.length > 0">
-
-        <button class="tab" [class.active]="statusFilter === 'ALL'" (click)="setStatusFilter('ALL')">
-            All
-            <span class="tab-count">{{ totalTransitCount }}</span>
-        </button>
+    <!-- ===== Status tabs: the active tab decides the whole layout ===== -->
+    <div class="status-tabs" *ngIf="!loading && allTransits.length > 0">
 
         <button class="tab" *ngFor="let tab of statusTabs" [class.active]="statusFilter === tab.code"
             [style.--tab-color]="getStatusColor(tab.code)" (click)="setStatusFilter(tab.code)">
@@ -47,6 +40,18 @@
 
     </div>
 
+    <!-- Tells the driver how the list below is organised -->
+    <div class="flow-note" *ngIf="!loading && hasRows && viewMode !== 'readonly'">
+        <ng-container *ngIf="viewMode === 'pickup'">
+            Grouped by manifest, then destination. Tick the transits you loaded — one
+            <b>{{ nextStepName }}</b> button covers everything you ticked.
+        </ng-container>
+        <ng-container *ngIf="viewMode === 'delivery'">
+            Grouped by destination, then manifest. Deliver a whole location at once, or one
+            transit at a time.
+        </ng-container>
+    </div>
+
     <div *ngIf="loading" class="loading">
         <span class="spinner"></span> Loading assigned manifests...
     </div>
@@ -55,23 +60,58 @@
         {{ errorMessage }}
     </div>
 
-    <div *ngIf="!loading && driverId != 0 && manifestGroups.length === 0 && !errorMessage" class="empty-hint">
+    <div *ngIf="!loading && driverId != 0 && allTransits.length === 0 && !errorMessage" class="empty-hint">
         No manifests assigned to you.
     </div>
 
-    <div *ngIf="!loading && manifestGroups.length > 0 && visibleGroups.length === 0" class="empty-hint">
-        No transits under this status.
+    <div *ngIf="!loading && allTransits.length > 0 && !hasRows" class="empty-hint">
+        Nothing sitting at {{ activeStatusName }}.
     </div>
 
-    <!-- ===== Manifest cards. Grouping only — every action is per TRANSIT ===== -->
-    <div class="manifest-list" *ngIf="!loading">
 
-        <div class="card manifest-card" *ngFor="let group of visibleGroups" [class.expanded]="group.expanded">
+    <!-- ======================================================================
+         PICKUP VIEW
+         Manifest -> Destination -> Transit
+         TWO WAYS TO ADVANCE:
+           1. Common button on top  -> every ticked transit, across manifests
+           2. Row button            -> that one transit, no ticking needed
+    ======================================================================= -->
 
-            <!-- Header -->
-            <div class="manifest-header clickable" (click)="toggleGroup(group)">
+    <!-- 1. COMMON PICKUP BUTTON — sits on top, appears from the first tick -->
+    <div class="bulk-bar" *ngIf="showPickupBar">
+
+        <div class="bulk-info">
+            <b>{{ selectedCount }}</b> transit(s) selected
+            <span class="bulk-sub">across {{ selectedManifestCount }} manifest(s)</span>
+        </div>
+
+        <div class="bulk-actions">
+            <button class="btn-secondary" [disabled]="saving" (click)="clearSelection()">
+                Clear
+            </button>
+            <button class="btn-action" [disabled]="saving" (click)="pickupSelected()">
+                {{ saving
+                ? 'Saving...'
+                : 'Mark ' + pickupActionLabel() + ' (' + selectedCount + ')' }}
+            </button>
+        </div>
+
+    </div>
+
+    <div class="manifest-list" *ngIf="!loading && viewMode !== 'delivery'">
+
+        <div class="card manifest-card" *ngFor="let group of pickupGroups" [class.expanded]="group.expanded">
+
+            <div class="manifest-header clickable" (click)="toggleManifest(group)">
 
                 <div class="manifest-head-left">
+
+                    <!-- Card level check-all: ticks every transit in this manifest -->
+                    <label class="card-check" *ngIf="hasActionable(group.transits)"
+                        (click)="$event.stopPropagation()">
+                        <input type="checkbox" [checked]="allChecked(group.transits)"
+                            (change)="toggleAll(group.transits, $any($event.target).checked)">
+                    </label>
 
                     <span class="chevron" [class.open]="group.expanded">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -83,7 +123,7 @@
                     <div class="manifest-head-text">
                         <div class="manifest-title">
                             {{ group.manifestNo }}
-                            <span class="status-badge" *ngFor="let s of statusBreakdown(group)"
+                            <span class="status-badge" *ngFor="let s of statusBreakdown(group.transits)"
                                 [style.background]="s.color">
                                 {{ s.count }} {{ s.name }}
                             </span>
@@ -93,6 +133,10 @@
                             <span *ngIf="group.sourceLocationName"> &middot; {{ group.sourceLocationName }}</span>
                             <span *ngIf="group.transferModeName"> &middot; {{ group.transferModeName }}</span>
                             <span *ngIf="group.vehicleNo"> &middot; Vehicle {{ group.vehicleNo }}</span>
+                            <span> &middot; {{ group.destBlocks.length }} destination(s)</span>
+                            <span *ngIf="checkedCount(group.transits) > 0">
+                                &middot; <b>{{ checkedCount(group.transits) }} selected</b>
+                            </span>
                         </div>
                     </div>
 
@@ -104,32 +148,20 @@
 
             </div>
 
-            <!-- Body: one block per DESTINATION, one row per TRANSIT -->
             <ng-container *ngIf="group.expanded">
 
-                <div class="dest-group" *ngFor="let dest of group.destinationGroups">
+                <!-- One block per DESTINATION inside the manifest -->
+                <div class="dest-group" *ngFor="let dest of group.destBlocks">
 
                     <div class="dest-header">
-
                         <div class="dest-title">
                             <span class="dest-pin">📍</span>
                             <b>{{ dest.destinationLocationName }}</b>
                             <span class="dest-count">{{ dest.transits.length }} transit(s)</span>
-                            <span class="dest-selected" *ngIf="checkedCountInDest(dest) > 0">
-                                {{ checkedCountInDest(dest) }} selected
+                            <span class="dest-selected" *ngIf="checkedCount(dest.transits) > 0">
+                                {{ checkedCount(dest.transits) }} selected
                             </span>
                         </div>
-
-                        <!-- Acts ONLY on the ticked transits of this destination -->
-                        <div class="dest-actions" *ngIf="destHasActionable(dest)">
-                            <button class="btn-action" [disabled]="saving || checkedCountInDest(dest) === 0"
-                                (click)="processCheckedTransits(group, dest)">
-                                {{ saving
-                                ? 'Saving...'
-                                : 'Mark ' + destActionLabel(dest) + ' (' + checkedCountInDest(dest) + ')' }}
-                            </button>
-                        </div>
-
                     </div>
 
                     <div class="table-wrap">
@@ -138,22 +170,22 @@
                             <thead>
                                 <tr>
                                     <th class="col-check">
-                                        <input type="checkbox" *ngIf="destHasActionable(dest)"
-                                            [checked]="allCheckedInDest(dest)"
-                                            (change)="toggleAllInDest(dest, $any($event.target).checked)">
+                                        <input type="checkbox" *ngIf="hasActionable(dest.transits)"
+                                            [checked]="allChecked(dest.transits)"
+                                            (change)="toggleAll(dest.transits, $any($event.target).checked)">
                                     </th>
                                     <th>Transit ID</th>
                                     <th>Company</th>
                                     <th>Delivery Note</th>
                                     <th>Source</th>
                                     <th>Destination</th>
+                                    <th>Items</th>
                                     <th>Status</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
 
                             <tbody>
-
                                 <ng-container *ngFor="let transit of dest.transits">
 
                                     <!-- ONE ROW = ONE TRANSIT -->
@@ -166,12 +198,19 @@
                                         </td>
 
                                         <td class="mono">{{ transit.transitID }}</td>
-
-
                                         <td>{{ transit.companyName }}</td>
                                         <td>{{ transit.deliveryNoteNo }}</td>
                                         <td>{{ transit.sourceLocationName }}</td>
                                         <td>{{ transit.destinationLocationName }}</td>
+
+                                        <td>
+                                            <button type="button" class="items-toggle"
+                                                (click)="toggleTransitItems(transit, $event)">
+                                                <span class="items-caret" [class.open]="transit.expanded">▶</span>
+                                                {{ transit.itemCount }} item(s)
+                                                <span class="items-qty">· {{ transit.totalQty }} unit(s)</span>
+                                            </button>
+                                        </td>
 
                                         <td>
                                             <span class="status-badge-sm"
@@ -179,41 +218,61 @@
                                                 {{ transit.lifecycleName }}
                                             </span>
                                             <span class="mixed-tag" *ngIf="transit.mixed"
-                                                title="Item rows of this transit are not on the same status. The next update will bring them all in line.">
+                                                title="Item rows of this transit are not on the same status. The next update brings them in line.">
                                                 mixed
                                             </span>
                                         </td>
 
-                                        <!-- Advances THIS transit and all its item rows -->
+                                        <!-- 2. ROW BUTTON: this transit only -->
                                         <td>
                                             <button class="btn-row" *ngIf="isTransitCheckable(transit)"
-                                                [disabled]="saving" (click)="processSingleTransit(group, transit)">
+                                                [disabled]="saving" (click)="pickupSingleTransit(transit, $event)">
                                                 {{ savingTransitKey === transit.transitKey
                                                 ? 'Saving...'
                                                 : getNextStatusName(transit.lifecycleCode) }}
                                             </button>
-                                            <!--
-                                            <span class="done-tag" *ngIf="!isTransitCheckable(transit)">Completed</span>-->
                                         </td>
 
                                     </tr>
 
+                                    <!-- Item detail -->
                                     <tr class="items-row" *ngIf="transit.expanded">
                                         <td></td>
                                         <td colspan="8">
-
+                                            <!-- One row per ITEM CODE. IMEI rows are rolled up into Qty. -->
+                                            <table class="items-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Item Code</th>
+                                                        <th>Item Name</th>
+                                                        <th class="num">Qty</th>
+                                                        <th>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr *ngFor="let line of transit.itemLines">
+                                                        <td class="mono">{{ line.itemCode }}</td>
+                                                        <td class="item-name">{{ line.itemName }}</td>
+                                                        <td class="num">{{ line.qty }}</td>
+                                                        <td>
+                                                            <span class="status-badge-sm"
+                                                                [style.background]="getStatusColor(line.lifecycleCode)">
+                                                                {{ line.lifecycleName }}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
                                         </td>
                                     </tr>
 
                                 </ng-container>
-
                             </tbody>
 
                         </table>
                     </div>
 
                 </div>
-                >
 
             </ng-container>
 
@@ -221,17 +280,223 @@
 
     </div>
 
-    <!-- ===== Delivery OTP Modal (final step, ticked transits only) ===== -->
+
+    <!-- ======================================================================
+         DELIVERY VIEW
+         Destination -> Manifest -> Transit -> common Deliver button per location
+         Plus a per-transit Deliver button (one transit at a time).
+    ======================================================================= -->
+    <div class="manifest-list" *ngIf="!loading && viewMode === 'delivery'">
+
+        <div class="card manifest-card" *ngFor="let dest of deliveryGroups" [class.expanded]="dest.expanded">
+
+            <div class="manifest-header clickable" (click)="toggleDestination(dest)">
+
+                <div class="manifest-head-left">
+
+                    <!-- Card level check-all: ticks every transit at this destination -->
+                    <label class="card-check" *ngIf="hasActionable(dest.transits)"
+                        (click)="$event.stopPropagation()">
+                        <input type="checkbox" [checked]="allChecked(dest.transits)"
+                            (change)="toggleAll(dest.transits, $any($event.target).checked)">
+                    </label>
+
+                    <span class="chevron" [class.open]="dest.expanded">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <polyline points="9 6 15 12 9 18" />
+                        </svg>
+                    </span>
+
+                    <div class="manifest-head-text">
+                        <div class="manifest-title">
+                            <span class="dest-pin">📍</span>
+                            {{ dest.destinationLocationName }}
+                            <span class="status-badge" *ngFor="let s of statusBreakdown(dest.transits)"
+                                [style.background]="s.color">
+                                {{ s.count }} {{ s.name }}
+                            </span>
+                        </div>
+                        <div class="manifest-sub">
+                            {{ dest.manifestBlocks.length }} manifest(s)
+                            <span *ngIf="checkedCount(dest.transits) > 0">
+                                &middot; <b>{{ checkedCount(dest.transits) }} selected</b>
+                            </span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="manifest-count">
+                    {{ dest.transits.length }} transit(s)
+                </div>
+
+            </div>
+
+            <ng-container *ngIf="dest.expanded">
+
+                <!-- One block per MANIFEST inside the destination -->
+                <div class="dest-group" *ngFor="let mf of dest.manifestBlocks">
+
+                    <div class="dest-header">
+                        <div class="dest-title">
+                            <b>{{ mf.manifestNo }}</b>
+                            <span class="dest-count">{{ mf.transits.length }} transit(s)</span>
+                            <span class="manifest-meta">
+                                <span *ngIf="mf.sourceLocationName">{{ mf.sourceLocationName }}</span>
+                                <span *ngIf="mf.vehicleNo"> &middot; Vehicle {{ mf.vehicleNo }}</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table>
+
+                            <thead>
+                                <tr>
+                                    <th class="col-check">
+                                        <input type="checkbox" *ngIf="hasActionable(mf.transits)"
+                                            [checked]="allChecked(mf.transits)"
+                                            (change)="toggleAll(mf.transits, $any($event.target).checked)">
+                                    </th>
+                                    <th>Transit ID</th>
+                                    <th>Company</th>
+                                    <th>Delivery Note</th>
+                                    <th>Source</th>
+                                    <th>Items</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <ng-container *ngFor="let transit of mf.transits">
+
+                                    <tr [class.row-selected]="isChecked(transit)">
+
+                                        <td class="col-check">
+                                            <input type="checkbox" *ngIf="isTransitCheckable(transit)"
+                                                [checked]="isChecked(transit)" (change)="toggleTransit(transit)">
+                                            <span class="done-tick" *ngIf="!isTransitCheckable(transit)">✓</span>
+                                        </td>
+
+                                        <td class="mono">{{ transit.transitID }}</td>
+                                        <td>{{ transit.companyName }}</td>
+                                        <td>{{ transit.deliveryNoteNo }}</td>
+                                        <td>{{ transit.sourceLocationName }}</td>
+
+                                        <td>
+                                            <button type="button" class="items-toggle"
+                                                (click)="toggleTransitItems(transit, $event)">
+                                                <span class="items-caret" [class.open]="transit.expanded">▶</span>
+                                                {{ transit.itemCount }} item(s)
+                                                <span class="items-qty">· {{ transit.totalQty }} unit(s)</span>
+                                            </button>
+                                        </td>
+
+                                        <td>
+                                            <span class="status-badge-sm"
+                                                [style.background]="getStatusColor(transit.lifecycleCode)">
+                                                {{ transit.lifecycleName }}
+                                            </span>
+                                            <span class="mixed-tag" *ngIf="transit.mixed"
+                                                title="Item rows of this transit are not on the same status. The next update brings them in line.">
+                                                mixed
+                                            </span>
+                                        </td>
+
+                                        <!-- Deliver THIS transit only (OTP for this location) -->
+                                        <td>
+                                            <button class="btn-row" *ngIf="isTransitCheckable(transit)"
+                                                [disabled]="saving" (click)="deliverSingleTransit(transit)">
+                                                {{ savingTransitKey === transit.transitKey
+                                                ? 'Saving...'
+                                                : getNextStatusName(transit.lifecycleCode) }}
+                                            </button>
+                                        </td>
+
+                                    </tr>
+
+                                    <tr class="items-row" *ngIf="transit.expanded">
+                                        <td></td>
+                                        <td colspan="7">
+                                            <!-- One row per ITEM CODE. IMEI rows are rolled up into Qty. -->
+                                            <table class="items-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Item Code</th>
+                                                        <th>Item Name</th>
+                                                        <th class="num">Qty</th>
+                                                        <th>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr *ngFor="let line of transit.itemLines">
+                                                        <td class="mono">{{ line.itemCode }}</td>
+                                                        <td class="item-name">{{ line.itemName }}</td>
+                                                        <td class="num">{{ line.qty }}</td>
+                                                        <td>
+                                                            <span class="status-badge-sm"
+                                                                [style.background]="getStatusColor(line.lifecycleCode)">
+                                                                {{ line.lifecycleName }}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </td>
+                                    </tr>
+
+                                </ng-container>
+                            </tbody>
+
+                        </table>
+                    </div>
+
+                </div>
+
+                <!-- COMMON DELIVER BUTTON: one per DESTINATION, across its manifests -->
+                <div class="manifest-footer" *ngIf="hasActionable(dest.transits)">
+                    <div class="status-action-row">
+
+                        <div class="footer-left">
+                            <span class="sel-note" *ngIf="checkedCount(dest.transits) > 0">
+                                {{ checkedCount(dest.transits) }} transit(s) at {{ dest.destinationLocationName }}
+                            </span>
+                            <span class="sel-note muted" *ngIf="checkedCount(dest.transits) === 0">
+                                Tick transits to deliver this location in one OTP
+                            </span>
+                        </div>
+
+                        <button class="btn-action" [disabled]="saving || checkedCount(dest.transits) === 0"
+                            (click)="deliverSelected(dest)">
+                            {{ saving
+                            ? 'Saving...'
+                            : deliverActionLabel(dest) + ' (' + checkedCount(dest.transits) + ')' }}
+                        </button>
+
+                    </div>
+                </div>
+
+            </ng-container>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===== Delivery OTP Modal (final step, ticked transits of one location) ===== -->
     <div class="modal-overlay" *ngIf="showOtpModal">
         <div class="modal-box">
 
             <h3>Delivery OTP Verification</h3>
 
             <p class="modal-text">
-                Delivering <b>{{ pendingTransitCount }}</b> transit(s):
-                <b class="mono">{{ pendingTransitIds }}</b>
-                ({{ pendingItemCount }} item rows).
-                Select the receiver, send the OTP, then enter the OTP they share with you.
+                Delivering <b>{{ pendingTransitCount }}</b> transit(s)
+                (<b class="mono">{{ pendingTransitIds }}</b>, {{ pendingItemCount }} item rows)
+                to <b>{{ pendingDestinationName }}</b>.<br>
+                Manifest: {{ pendingManifestNos }}.<br>
+                Pick the receiver, send the OTP, then enter the OTP they read back to you.
             </p>
 
             <div class="mb-3">
@@ -280,4 +545,4 @@
         </div>
     </div>
 
-</div>
+</div>                      

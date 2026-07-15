@@ -107,8 +107,7 @@
                 <div class="manifest-head-left">
 
                     <!-- Card level check-all: ticks every transit in this manifest -->
-                    <label class="card-check" *ngIf="hasActionable(group.transits)"
-                        (click)="$event.stopPropagation()">
+                    <label class="card-check" *ngIf="hasActionable(group.transits)" (click)="$event.stopPropagation()">
                         <input type="checkbox" [checked]="allChecked(group.transits)"
                             (change)="toggleAll(group.transits, $any($event.target).checked)">
                     </label>
@@ -295,8 +294,7 @@
                 <div class="manifest-head-left">
 
                     <!-- Card level check-all: ticks every transit at this destination -->
-                    <label class="card-check" *ngIf="hasActionable(dest.transits)"
-                        (click)="$event.stopPropagation()">
+                    <label class="card-check" *ngIf="hasActionable(dest.transits)" (click)="$event.stopPropagation()">
                         <input type="checkbox" [checked]="allChecked(dest.transits)"
                             (change)="toggleAll(dest.transits, $any($event.target).checked)">
                     </label>
@@ -502,8 +500,6 @@
             <div class="mb-3">
                 <label class="form-label">Receiver</label>
 
-                <input type="text" class="form-control mb-2" placeholder="Search Receiver..."
-                    [(ngModel)]="receiverSearch" (input)="filterUsers()">
 
                 <select class="form-select" [(ngModel)]="selectedReceiverId" (change)="receiverChanged()">
                     <option [ngValue]="0">Select Receiver</option>
@@ -545,4 +541,4 @@
         </div>
     </div>
 
-</div>                      
+</div>

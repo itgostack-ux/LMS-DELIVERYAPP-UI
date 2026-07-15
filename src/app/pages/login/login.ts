@@ -146,5 +146,12 @@ login() {
   });
 
 }
+resendOtp() {
 
+  this.otp = "";
+  this.errorMessage = "";
+
+  this.sendOtp();
+
+}
 }

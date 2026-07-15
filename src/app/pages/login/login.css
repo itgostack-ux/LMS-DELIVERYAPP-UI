@@ -216,3 +216,25 @@ button:disabled {
 
 
 
+
+
+.resend-section {
+    margin-top: 15px;
+    text-align: center;
+}
+
+.resend-section a {
+    color: #1976d2;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.resend-section a:hover {
+    text-decoration: underline;
+}
+
+.resend-section a.disabled {
+    pointer-events: none;
+    opacity: 0.6;
+}

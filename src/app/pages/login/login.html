@@ -32,13 +32,24 @@
             [(ngModel)]="otp"
             (keyup.enter)="login()">
 
+        <!-- Get OTP -->
         <button *ngIf="!showOtp" (click)="sendOtp()" [disabled]="loading">
-            {{loading ? 'Sending...' : 'Get OTP'}}
+            {{ loading ? 'Sending...' : 'Get OTP' }}
         </button>
 
+        <!-- Login -->
         <button *ngIf="showOtp" (click)="login()" [disabled]="loading">
-            {{loading ? 'Please wait...' : 'Login'}}
+            {{ loading ? 'Please wait...' : 'Login' }}
         </button>
+
+        <!-- Resend OTP -->
+        <div *ngIf="showOtp" class="resend-section">
+            <a href="javascript:void(0)"
+               (click)="resendOtp()"
+               [class.disabled]="loading">
+                {{ loading ? 'Sending...' : 'Resend OTP' }}
+            </a>
+        </div>
 
     </div>
 

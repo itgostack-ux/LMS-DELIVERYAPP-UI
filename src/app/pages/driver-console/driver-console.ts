@@ -14,27 +14,6 @@ import {
 } from '../../services/models/common-master-model';
 import { AuthService } from '../../service/auth';
 
-/**
- * The API returns ONE ROW PER ITEM (IMEI / item code). Several rows share the same
- * transitID. The driver works on TRANSITS, so every row in the UI is a TRANSIT and
- * every action fans out to all item rows behind it.
- *
- * TWO VIEWS, driven by the active status tab:
- *
- *   PICKUP  (next step is NOT the final step)
- *     Manifest -> Destination -> Transit -> ONE common Pickup button per manifest
- *     (multi-select only, no per-row button)
- *
- *   DELIVERY (next step IS the final step)
- *     Destination -> Manifest -> Transit -> common Deliver button per destination
- *     (plus a per-transit Deliver button, so a location can be delivered one transit
- *      at a time)
- */
-/**
- * One row per ITEM CODE inside a transit. The API sends one row per IMEI with
- * transferQty often 0, so an IMEI counts as one unit and the units are rolled up
- * here. IMEI itself is not shown to the driver.
- */
 interface ItemLine {
   itemCode: string;
   itemName: string;

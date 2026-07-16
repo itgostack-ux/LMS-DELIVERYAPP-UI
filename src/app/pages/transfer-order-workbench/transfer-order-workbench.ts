@@ -3,8 +3,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, from, of, Observable } from 'rxjs';
 import { concatMap, toArray } from 'rxjs/operators';
-
 import { LogisticsService } from '../../services/logistics-service';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+
 import {
   Company,
   Location,
@@ -233,6 +235,7 @@ export class TransferOrderWorkbench implements OnInit {
     this.loadUsers();
     this.loadCouriers();
 
+    this.selectedLifecycleStatus = 'Open';
     this.pickupLoadMode = 'DIRECT';
     this.pickupTransferModeId = 1;
   }
@@ -395,52 +398,127 @@ export class TransferOrderWorkbench implements OnInit {
     });
 
   }
-loadUsers(): void {
 
-  const companyId =
-    this.selectedGroups.length > 0
-      ? this.selectedGroups[0].companyId
-      : this.selectedCompanyId;
+exportToExcel(): void {
 
-  this.logisticsService.getCompanyUserLifecycleAccess().subscribe({
+  // Export exactly what is displayed in the grid
+  const rows = this.filteredGroups;
 
-    next: (res) => {
+  const excelData = rows.map((r, index) => ({
 
-      this.users = res
-        .filter(x =>
-          x.isActive &&
-          x.companyId === companyId &&
-          x.roleName?.trim() === 'Delivery Executive'
-        )
-        .map(x => ({
-          userId: x.userId,
-          fullName: x.userName,
-          loginName: '',
-          emailId: '',
-          mobileNo: ''
-        }));
+    'S.No': index + 1,
+    'Transit ID': r.transitID,
 
-      console.log(this.users);
+    'Transfer Date': r.transferOutDate
+      ? new Date(r.transferOutDate).toLocaleDateString('en-GB')
+      : '',
 
-    },
+    'Transfer Out Time': r.transferOutTime
+      ? new Date(r.transferOutTime).toLocaleString('en-GB')
+      : '',
 
-    error: err => {
-      console.error(err);
-    }
+    'IPOS Status': r.transferStatus,
+    'Logistics Status': r.logisticsStatus,
+    'Source': r.sourceBranch,
+    'Destination': r.destinationBranch,
+    'Delivery Note': r.deliveryNoteNo,
+    'Transfer Qty': r.transferQty,
+    'Accepted Qty': r.acceptedQty,
+    'Pending Qty': r.pendingQty,
+    'Transferred By': r.transferOutByName,
 
-  });
+    'Transfer In Time': r.transferInTime
+      ? new Date(r.transferInTime).toLocaleString('en-GB')
+      : '',
 
+    'Received By': r.inwardDoneByName,
+    'Duration': r.transferDuration
+
+  }));
+
+  const worksheet: XLSX.WorkSheet =
+    XLSX.utils.json_to_sheet(excelData);
+
+  // Auto-fit column widths
+  worksheet['!cols'] = [
+    { wch: 8 },   // S.No
+    { wch: 12 },  // Transit ID
+    { wch: 15 },  // Transfer Date
+    { wch: 22 },  // Transfer Out Time
+    { wch: 15 },  // IPOS Status
+    { wch: 18 },  // Logistics Status
+    { wch: 18 },  // Source
+    { wch: 18 },  // Destination
+    { wch: 28 },  // Delivery Note
+    { wch: 12 },  // Transfer Qty
+    { wch: 12 },  // Accepted Qty
+    { wch: 12 },  // Pending Qty
+    { wch: 22 },  // Transferred By
+    { wch: 22 },  // Transfer In Time
+    { wch: 22 },  // Received By
+    { wch: 15 }   // Duration
+  ];
+
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    'Transfer Orders'
+  );
+
+  XLSX.writeFile(
+    workbook,
+    `Transfer_Order_Report_${new Date().toISOString().slice(0, 10)}.xlsx`
+  );
 }
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+
+  loadUsers(): void {
+
+    const companyId =
+      this.selectedGroups.length > 0
+        ? this.selectedGroups[0].companyId
+        : this.selectedCompanyId;
+
+    this.logisticsService.getCompanyUserLifecycleAccess().subscribe({
+
+      next: (res) => {
+
+        this.users = res
+          .filter(x =>
+            x.isActive &&
+            x.companyId === companyId &&
+            x.roleName?.trim() === 'Delivery Executive'
+          )
+          .map(x => ({
+            userId: x.userId,
+            fullName: x.userName,
+            loginName: '',
+            emailId: '',
+            mobileNo: ''
+          }));
+
+        console.log(this.users);
+
+      },
+
+      error: err => {
+        console.error(err);
+      }
+
+    });
+
+  }
+
+
+
+
+
+
+
+
+
+
   loadTransferModes(): void {
     this.logisticsService.getTransferModes().subscribe({
       next: (res) => {
@@ -883,21 +961,19 @@ loadUsers(): void {
   // Grouped rows after the client-side Logistics Status filter is applied
   get filteredGroups(): GroupedTransferLog[] {
 
-    // Initial Search
-    if (!this.selectedLifecycleStatus) {
+  // All Statuses
+  if (
+      !this.selectedLifecycleStatus ||
+      this.selectedLifecycleStatus === 'All'
+     ) {
 
-      return this.groupedLogs.filter(
-        x => x.logisticsStatus !== 'Delivered'
-      );
-
-    }
-
-    // Dropdown filter
-    return this.groupedLogs.filter(
-      x => x.logisticsStatus === this.selectedLifecycleStatus
-    );
-
+    return this.groupedLogs;
   }
+
+  return this.groupedLogs.filter(
+      x => x.logisticsStatus === this.selectedLifecycleStatus
+  );
+}
   // ===== Column sorting (operates on grouped rows) =====
 
   sortBy(column: keyof GroupedTransferLog): void {
@@ -1648,39 +1724,39 @@ loadUsers(): void {
 
   // ===== Pickup Assignment modal =====
 
-openPickupAssignModal(): void {
+  openPickupAssignModal(): void {
 
-  // Validation
-  if (this.selectedGroups.length === 0) {
-    alert('Please select at least one order.');
-    return;
+    // Validation
+    if (this.selectedGroups.length === 0) {
+      alert('Please select at least one order.');
+      return;
+    }
+
+    // Load drivers for selected company
+    this.loadUsers();
+
+    this.showPickupModal = true;
+
+    this.pickupValidationMessage = '';
+
+    // Reset all modal fields
+    this.pickupDriverId = 0;
+    this.pickupCourierId = 0;
+    this.pickupVehicleNo = '';
+    this.pickupAwbNo = '';
+    this.pickupOtherPartyName = '';
+    this.pickupTransportType = '';
+    this.pickupRemarks = '';
+
+    const direct = this.transferModes.find(
+      x => x.transferModeCode === 'DIRECT'
+    );
+
+    if (direct) {
+      this.setTransferMode(direct);
+    }
+
   }
-
-  // Load drivers for selected company
-  this.loadUsers();
-
-  this.showPickupModal = true;
-
-  this.pickupValidationMessage = '';
-
-  // Reset all modal fields
-  this.pickupDriverId = 0;
-  this.pickupCourierId = 0;
-  this.pickupVehicleNo = '';
-  this.pickupAwbNo = '';
-  this.pickupOtherPartyName = '';
-  this.pickupTransportType = '';
-  this.pickupRemarks = '';
-
-  const direct = this.transferModes.find(
-    x => x.transferModeCode === 'DIRECT'
-  );
-
-  if (direct) {
-    this.setTransferMode(direct);
-  }
-
-}
 
   closePickupModal(): void {
     this.showPickupModal = false;

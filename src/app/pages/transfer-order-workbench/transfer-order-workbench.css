@@ -653,3 +653,62 @@ tr.detail-row td{
     font-size:13px;
     font-weight:600;
 }
+
+/* Export Button Container */
+.export-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+/* Common Export Button */
+.btn-export {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 18px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .25s ease;
+    color: #fff;
+}
+
+/* Excel Button */
+.btn-excel {
+    background: #16a34a;
+}
+
+.btn-excel:hover {
+    background: #15803d;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(22,163,74,.25);
+}
+
+/* PDF Button */
+.btn-pdf {
+    background: #dc2626;
+}
+
+.btn-pdf:hover {
+    background: #b91c1c;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(220,38,38,.25);
+}
+
+/* Disabled */
+.btn-export:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Icon */
+.btn-export svg {
+    width: 16px;
+    height: 16px;
+}

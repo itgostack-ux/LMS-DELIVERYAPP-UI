@@ -130,7 +130,7 @@ export class TransferOrderWorkbench implements OnInit {
   // Frontend-only grouping of transferLogs, one row per TransitID.
   // This is what the grid, sorting, pagination and selection operate on.
   groupedLogs: GroupedTransferLog[] = [];
-
+  statusTabs: any[] = [];
   loading = false;
   saving = false;
 
@@ -208,6 +208,7 @@ export class TransferOrderWorkbench implements OnInit {
   users: User[] = [];
   couriers: Courier[] = [];
 
+  selectedDateRange = 'LAST7';
   // SequenceNo at which pickup assignment happens (PICKUP_ASSIGNED) —
   // this is also the step where manifests get created, grouped by
   // source location. Kept as one constant so both places that need it
@@ -221,7 +222,8 @@ export class TransferOrderWorkbench implements OnInit {
   ) { }
 
   ngOnInit(): void {
-
+    this.selectedDateRange = 'LAST7';
+    this.onDateRangeChange();
     // Default Date Range - Last 7 Days
     this.fromDate = this.getLastWeekDate();
     this.toDate = this.today();
@@ -235,7 +237,8 @@ export class TransferOrderWorkbench implements OnInit {
     this.loadUsers();
     this.loadCouriers();
 
-    this.selectedLifecycleStatus = 'Open';
+    // 'All Statuses' selected by default so the full list shows on load.
+    this.selectedLifecycleStatus = 'All Statuses';
     this.pickupLoadMode = 'DIRECT';
     this.pickupTransferModeId = 1;
   }
@@ -263,11 +266,20 @@ export class TransferOrderWorkbench implements OnInit {
     // Load ALL lifecycle master
     this.logisticsService.getDeliveryLifecycles().subscribe({
 
+
       next: (allLifeCycles) => {
 
         this.allLifecycles = allLifeCycles
           .filter(x => x.isActive)
           .sort((a, b) => a.sequenceNo - b.sequenceNo);
+
+        // Populate deliveryLifecycles so the status tabs, isManifestNext
+        // and lifecycleStatusOptions all have data to work with.
+        this.deliveryLifecycles = this.allLifecycles;
+
+        // Build the tabs now — counts start at 0 until the grid loads,
+        // then get refreshed inside loadTransferLogs().
+        this.buildStatusTabs();
 
         console.log('All Lifecycles :', this.allLifecycles);
 
@@ -366,28 +378,23 @@ export class TransferOrderWorkbench implements OnInit {
 
         this.companies = res;
 
-        // Default Company 20, otherwise 19
-        const defaultCompany =
-          this.companies.find(x => x.compId === 20) ||
-          this.companies.find(x => x.compId === 19);
+        // Reset selection
+        this.selectedCompanyId = 0;
 
-        if (defaultCompany) {
-          this.selectedCompanyId = defaultCompany.compId;
-        }
-        else if (this.companies.length === 1) {
+        // Auto select only when user has a single company
+        if (this.companies.length === 1) {
           this.selectedCompanyId = this.companies[0].compId;
-        }
-
-        if (this.selectedCompanyId > 0) {
 
           this.onCompanyChange();
 
-          // Auto Search after form load
           setTimeout(() => {
             this.loadTransferLogs();
           }, 300);
-
         }
+
+        // If user has 2 or more companies,
+        // keep "Select Company" selected.
+        // User must choose manually.
 
       },
 
@@ -398,80 +405,79 @@ export class TransferOrderWorkbench implements OnInit {
     });
 
   }
+  exportToExcel(): void {
 
-exportToExcel(): void {
+    // Export exactly what is displayed in the grid
+    const rows = this.filteredGroups;
 
-  // Export exactly what is displayed in the grid
-  const rows = this.filteredGroups;
+    const excelData = rows.map((r, index) => ({
 
-  const excelData = rows.map((r, index) => ({
+      'S.No': index + 1,
+      'Transit ID': r.transitID,
 
-    'S.No': index + 1,
-    'Transit ID': r.transitID,
+      'Transfer Date': r.transferOutDate
+        ? new Date(r.transferOutDate).toLocaleDateString('en-GB')
+        : '',
 
-    'Transfer Date': r.transferOutDate
-      ? new Date(r.transferOutDate).toLocaleDateString('en-GB')
-      : '',
+      'Transfer Out Time': r.transferOutTime
+        ? new Date(r.transferOutTime).toLocaleString('en-GB')
+        : '',
 
-    'Transfer Out Time': r.transferOutTime
-      ? new Date(r.transferOutTime).toLocaleString('en-GB')
-      : '',
+      'IPOS Status': r.transferStatus,
+      'Logistics Status': r.logisticsStatus,
+      'Source': r.sourceBranch,
+      'Destination': r.destinationBranch,
+      'Delivery Note': r.deliveryNoteNo,
+      'Transfer Qty': r.transferQty,
+      'Accepted Qty': r.acceptedQty,
+      'Pending Qty': r.pendingQty,
+      'Transferred By': r.transferOutByName,
 
-    'IPOS Status': r.transferStatus,
-    'Logistics Status': r.logisticsStatus,
-    'Source': r.sourceBranch,
-    'Destination': r.destinationBranch,
-    'Delivery Note': r.deliveryNoteNo,
-    'Transfer Qty': r.transferQty,
-    'Accepted Qty': r.acceptedQty,
-    'Pending Qty': r.pendingQty,
-    'Transferred By': r.transferOutByName,
+      'Transfer In Time': r.transferInTime
+        ? new Date(r.transferInTime).toLocaleString('en-GB')
+        : '',
 
-    'Transfer In Time': r.transferInTime
-      ? new Date(r.transferInTime).toLocaleString('en-GB')
-      : '',
+      'Received By': r.inwardDoneByName,
+      'Duration': r.transferDuration
 
-    'Received By': r.inwardDoneByName,
-    'Duration': r.transferDuration
+    }));
 
-  }));
+    const worksheet: XLSX.WorkSheet =
+      XLSX.utils.json_to_sheet(excelData);
 
-  const worksheet: XLSX.WorkSheet =
-    XLSX.utils.json_to_sheet(excelData);
+    // Auto-fit column widths
+    worksheet['!cols'] = [
+      { wch: 8 },   // S.No
+      { wch: 12 },  // Transit ID
+      { wch: 15 },  // Transfer Date
+      { wch: 22 },  // Transfer Out Time
+      { wch: 15 },  // IPOS Status
+      { wch: 18 },  // Logistics Status
+      { wch: 18 },  // Source
+      { wch: 18 },  // Destination
+      { wch: 28 },  // Delivery Note
+      { wch: 12 },  // Transfer Qty
+      { wch: 12 },  // Accepted Qty
+      { wch: 12 },  // Pending Qty
+      { wch: 22 },  // Transferred By
+      { wch: 22 },  // Transfer In Time
+      { wch: 22 },  // Received By
+      { wch: 15 }   // Duration
+    ];
 
-  // Auto-fit column widths
-  worksheet['!cols'] = [
-    { wch: 8 },   // S.No
-    { wch: 12 },  // Transit ID
-    { wch: 15 },  // Transfer Date
-    { wch: 22 },  // Transfer Out Time
-    { wch: 15 },  // IPOS Status
-    { wch: 18 },  // Logistics Status
-    { wch: 18 },  // Source
-    { wch: 18 },  // Destination
-    { wch: 28 },  // Delivery Note
-    { wch: 12 },  // Transfer Qty
-    { wch: 12 },  // Accepted Qty
-    { wch: 12 },  // Pending Qty
-    { wch: 22 },  // Transferred By
-    { wch: 22 },  // Transfer In Time
-    { wch: 22 },  // Received By
-    { wch: 15 }   // Duration
-  ];
+    const workbook = XLSX.utils.book_new();
 
-  const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      'Transfer Orders'
+    );
 
-  XLSX.utils.book_append_sheet(
-    workbook,
-    worksheet,
-    'Transfer Orders'
-  );
-
-  XLSX.writeFile(
-    workbook,
-    `Transfer_Order_Report_${new Date().toISOString().slice(0, 10)}.xlsx`
-  );
-}
+    XLSX.writeFile(
+      workbook,
+      `Transfer_Order_Report_${new Date().toISOString().slice(0, 10)}.xlsx`
+    );
+  }
 
   loadUsers(): void {
 
@@ -623,7 +629,7 @@ exportToExcel(): void {
 
   // ===== Selection =====
 
-  // Only rows with a logistics status (In Transit) are selectable;
+  // Only rows with a logistics status (In TransitReceived) are selectable;
   // Received rows have blank status and are excluded from the workflow.
   // Operates on the GROUPED rows currently on the page.
   toggleSelectAll(): void {
@@ -768,6 +774,9 @@ exportToExcel(): void {
           // Frontend-only grouping by TransitID, purely for display.
           this.groupedLogs = this.buildGroupedLogs(this.transferLogs);
 
+          // Rebuild tab counts scoped to the current company + date range.
+          this.buildStatusTabs();
+
           this.currentPage = 1;
           this.loading = false;
 
@@ -779,6 +788,10 @@ exportToExcel(): void {
 
           this.transferLogs = [];
           this.groupedLogs = [];
+
+          // Reset the tab counts too, so stale numbers don't linger.
+          this.buildStatusTabs();
+
           this.currentPage = 1;
           this.loading = false;
 
@@ -831,13 +844,13 @@ exportToExcel(): void {
       if (acceptedQty === transferQty) {
 
         transferStatus = 'Received';
-        logisticsStatus = 'Delivered';
+        logisticsStatus = '';
 
       }
       else if (acceptedQty > 0) {
 
         transferStatus = `Partial (${acceptedQty}/${transferQty})`;
-        logisticsStatus = 'Delivered';
+        logisticsStatus = '';
 
       }
       else {
@@ -961,19 +974,18 @@ exportToExcel(): void {
   // Grouped rows after the client-side Logistics Status filter is applied
   get filteredGroups(): GroupedTransferLog[] {
 
-  // All Statuses
-  if (
+    if (
       !this.selectedLifecycleStatus ||
-      this.selectedLifecycleStatus === 'All'
-     ) {
+      this.selectedLifecycleStatus === 'All Statuses'
+    ) {
+      return this.groupedLogs;
+    }
 
-    return this.groupedLogs;
-  }
-
-  return this.groupedLogs.filter(
+    return this.groupedLogs.filter(
       x => x.logisticsStatus === this.selectedLifecycleStatus
-  );
-}
+    );
+
+  }
   // ===== Column sorting (operates on grouped rows) =====
 
   sortBy(column: keyof GroupedTransferLog): void {
@@ -1872,4 +1884,92 @@ exportToExcel(): void {
   }
 
 
+  // ===== Status tabs =====
+
+  // Builds the tab list: an "All Statuses" tab plus one tab per active
+  // lifecycle, each with its own color and a count scoped to whatever is
+  // currently loaded in groupedLogs (i.e. the selected company + date range).
+  buildStatusTabs(): void {
+
+    this.statusTabs = [];
+
+    // Default Tab
+    this.statusTabs.push({
+      statusName: 'All Statuses',
+      color: '#2563EB',
+      count: this.groupedLogs.length
+    });
+
+    this.deliveryLifecycles
+      .filter(x => x.isActive)
+      .sort((a, b) => a.sequenceNo - b.sequenceNo)
+      .forEach(x => {
+
+        this.statusTabs.push({
+          statusName: x.statusName,
+          color: x.colorCode,
+          count: this.groupedLogs.filter(g => g.logisticsStatus === x.statusName).length
+        });
+
+      });
+
+  }
+
+  // Click handler for a status tab: selects the tab, resets to page 1
+  // and clears any (possibly hidden) selection so nothing stays checked
+  // behind a filter.
+  selectStatusTab(statusName: string): void {
+
+    this.selectedLifecycleStatus = statusName;
+    this.currentPage = 1;
+    this.clearSelection();
+
+  }
+  onDateRangeChange(): void {
+
+    const today = new Date();
+    let from = new Date(today);
+
+    switch (this.selectedDateRange) {
+
+      case 'TODAY':
+        from = new Date(today);
+        break;
+
+      case 'LAST7':
+        from.setDate(today.getDate() - 7);
+        break;
+
+      case 'LAST30':
+        from.setDate(today.getDate() - 30);
+        break;
+
+      case 'LAST3MONTH':
+        from.setMonth(today.getMonth() - 3);
+        break;
+
+      case 'LAST6MONTH':
+        from.setMonth(today.getMonth() - 6);
+        break;
+
+      case 'LAST1YEAR':
+        from.setFullYear(today.getFullYear() - 1);
+        break;
+
+      case 'CUSTOM':
+        return;
+    }
+
+    this.fromDate = this.formatDate(from);
+    this.toDate = this.formatDate(today);
+  }
+
+  private formatDate(date: Date): string {
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+  }
 }

@@ -556,6 +556,32 @@ openTransit(transitId: number): void {
     this.selectedTransitId = null;
     this.selectedTransitRows = [];
   }
+
+  getStatusCount(status: string): number {
+
+  return this.groupedLogs.filter(x =>
+      x.currentStatus === status
+  ).length;
+
+}
+
+setTodayDate(): void {
+
+  const today = new Date();
+
+  const yyyy = today.getFullYear();
+
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+
+  const dd = String(today.getDate()).padStart(2, '0');
+
+  const currentDate = `${yyyy}-${mm}-${dd}`;
+
+  this.fromDate = currentDate;
+
+  this.toDate = currentDate;
+
+}
 applyFilter(): void {
 
   this.filteredLogs = this.groupedLogs.filter(x => {

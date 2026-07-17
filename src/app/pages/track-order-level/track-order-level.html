@@ -1,9 +1,11 @@
 <div class="container-fluid">
 
   <h3>Delivery Order Timeline Report</h3>
-
-  <div *ngIf="loading">
-    Loading...
+  <div class="loading-overlay" *ngIf="loading">
+    <div class="loader-box">
+      <div class="loader"></div>
+      <div class="loading-text">Loading Transit Report...</div>
+    </div>
   </div>
 
   <div class="alert alert-danger" *ngIf="errorMessage">
@@ -51,7 +53,7 @@
           </option>
         </select>
       </div>
-
+      <!--
       <div>
         <label class="form-label">Order Status</label>
         <select class="form-select" [(ngModel)]="selectedStatus">
@@ -60,7 +62,7 @@
           <option value="In Progress">In Progress</option>
           <option value="Completed">Completed</option>
         </select>
-      </div>
+      </div>-->
 
       <div class="filter-buttons">
 
@@ -86,33 +88,38 @@
 
   <div class="status-tabs">
 
-    <button class="status-tab" [class.active]="selectedStatus === ''" (click)="filterByStatus('')">
-      All
-    </button>
+    <div class="status-tab" [class.active]="selectedStatus==''" (click)="filterByStatus('')">
+      <div class="title">All</div>
+      <div class="count">{{ groupedLogs.length }}</div>
+    </div>
 
-    <button class="status-tab open" [class.active]="selectedStatus === 'Open'" (click)="filterByStatus('Open')">
-      Open
-    </button>
+    <div class="status-tab open" [class.active]="selectedStatus=='Open'" (click)="filterByStatus('Open')">
+      <div class="title">Open</div>
+      <div class="count">{{ getStatusCount('Open') }}</div>
+    </div>
 
-    <button class="status-tab ready" [class.active]="selectedStatus === 'Pickup Ready'"
+    <div class="status-tab ready" [class.active]="selectedStatus=='Pickup Ready'"
       (click)="filterByStatus('Pickup Ready')">
-      Pickup Ready
-    </button>
+      <div class="title">Pickup Ready</div>
+      <div class="count">{{ getStatusCount('Pickup Ready') }}</div>
+    </div>
 
-    <button class="status-tab assigned" [class.active]="selectedStatus === 'Pickup Assigned'"
+    <div class="status-tab assigned" [class.active]="selectedStatus=='Pickup Assigned'"
       (click)="filterByStatus('Pickup Assigned')">
-      Pickup Assigned
-    </button>
+      <div class="title">Pickup Assigned</div>
+      <div class="count">{{ getStatusCount('Pickup Assigned') }}</div>
+    </div>
 
-    <button class="status-tab picked" [class.active]="selectedStatus === 'Picked Up'"
-      (click)="filterByStatus('Picked Up')">
-      Picked Up
-    </button>
+    <div class="status-tab picked" [class.active]="selectedStatus=='Picked Up'" (click)="filterByStatus('Picked Up')">
+      <div class="title">Picked Up</div>
+      <div class="count">{{ getStatusCount('Picked Up') }}</div>
+    </div>
 
-    <button class="status-tab delivered" [class.active]="selectedStatus === 'Delivered'"
+    <div class="status-tab delivered" [class.active]="selectedStatus=='Delivered'"
       (click)="filterByStatus('Delivered')">
-      Delivered
-    </button>
+      <div class="title">Delivered</div>
+      <div class="count">{{ getStatusCount('Delivered') }}</div>
+    </div>
 
   </div>
 
@@ -164,7 +171,7 @@
 
           <th>Duration</th>
           <th>Receiver Name</th>
-          <th>Order Status</th>
+          <!--  <th>Order Status</th>-->
           <th>Current Status</th>
 
         </tr>
@@ -221,6 +228,7 @@
 
           <td>{{ transit.transferDuration }}</td>
           <td>{{ transit.receiverUserName || '-' }}</td>
+          <!--
           <td>
 
             <span class="status-badge" [ngClass]="{
@@ -233,7 +241,7 @@
 
             </span>
 
-          </td>
+          </td>-->
           <td>
             <span class="status-badge current-status-badge" [style.color]="transit.colorCode"
               [style.border-color]="transit.colorCode"

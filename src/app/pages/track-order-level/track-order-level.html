@@ -134,6 +134,7 @@
           <th>Total Qty</th>
           <th>Accepted Qty</th>
           <th>Pending Qty</th>
+          <th>Transfer Out By</th>
           <th>Transfer Out</th>
           <th>Transfer In</th>
           <th>Duration</th>
@@ -165,8 +166,11 @@
           <td class="qty-cell">{{group.totalQty}}</td>
           <td class="qty-cell accepted">{{group.acceptedQty}}</td>
           <td class="qty-cell pending">{{group.pendingQty}}</td>
+          <td>{{ group.transferOutByName || '-' }}</td>
           <td>{{group.transferOutTime | date:'dd/MM/yyyy HH:mm'}}</td>
           <td>{{group.transferInTime | date:'dd/MM/yyyy HH:mm'}}</td>
+
+
           <td>{{group.transferDuration}}</td>
 
           <td *ngFor="let p of group.timeline"

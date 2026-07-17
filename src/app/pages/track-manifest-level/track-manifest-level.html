@@ -215,7 +215,6 @@
               <th>Picked Up</th>
               <th>Delivered</th>
               <th>Manifest Status</th>
-              <th>Order Status</th>
             </tr>
           </thead>
 
@@ -294,11 +293,7 @@
                     {{ g.manifestStatus || '-' }}
                   </span>
                 </td>
-                <td>
-                  <span class="status-pill" [ngClass]="statusClass(g.orderStatus)">
-                    {{ g.orderStatus || '-' }}
-                  </span>
-                </td>
+               
 
               </tr>
 

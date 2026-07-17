@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import jsPDF from 'jspdf';
+import * as XLSX from 'xlsx';
 
 import { LogisticsService } from '../../services/logistics-service';
 import { UserDataService } from '../../service/user-data-service';
@@ -89,7 +90,7 @@ export interface TransitGroup {
   transferOutTime?: Date;
   transferInTime?: Date;
   transferDuration?: string;
-
+  transferOutByName: string;
   totalItems: number;           // number of IMEIs
   totalQty: number;             // each IMEI = 1 qty
   acceptedQty: number;
@@ -155,6 +156,9 @@ export class TrackOrderLevel implements OnInit {
   }
 
   ngOnInit(): void {
+
+    this.fromDate = this.getToday();
+    this.toDate = this.getToday();
     this.loadReport();
   }
 
@@ -171,6 +175,8 @@ export class TrackOrderLevel implements OnInit {
         this.rows = data ?? [];
         this.statusColumns = this.buildStatusColumns(this.rows);
         this.groupedLogs = this.buildGroupedLogs(this.rows);
+        console.log('API Response', data);
+
         this.loading = false;
       },
       error: (err: any) => {
@@ -259,7 +265,9 @@ export class TrackOrderLevel implements OnInit {
 
         const cells: { [k: string]: StatusCell } = {};
         for (const s of statuses) {
+
           const seq = s.sequenceNo ?? 0;
+
           let state: 'done' | 'current' | 'pending';
           if (seq < currentSeq) state = 'done';
           else if (seq === currentSeq) state = 'current';
@@ -268,23 +276,43 @@ export class TrackOrderLevel implements OnInit {
           cells[s.statusCode] = {
             state,
             reached: state !== 'pending',
+
             orderStatus:
-              state === 'current' ? 'Current' :
-                state === 'done' ? 'Completed' : 'Pending',
+              state === 'current'
+                ? 'Current'
+                : state === 'done'
+                  ? 'Completed'
+                  : 'Pending',
             startTime:
-              s.orderStatusStartTime ??
-              (s.statusCode === 'OPEN' ? s.createdDate : undefined),
-            endTime: s.orderStatusEndTime,
-            durationMinutes: s.orderDurationMinutes ?? undefined,
+              s.statusCode === 'OPEN'
+                ? (s.transferOutTime ?? s.createdDate)
+                : (s.orderStatusStartTime ?? undefined),
+
+            endTime:
+              s.statusCode === 'OPEN'
+                ? undefined
+                : (s.orderStatusEndTime ?? undefined),
+
             personName:
-              s.orderChangedByName ||
-              s.orderCreatedByName ||
-              s.createdByName ||
-              s.transferOutByName ||
-              s.assignedByName ||
-              '',
+              s.statusCode === 'OPEN'
+                ? (s.transferOutByName || '')
+                : (
+                  s.orderChangedByName ||
+                  s.orderCreatedByName ||
+                  s.createdByName ||
+                  s.assignedByName ||
+                  ''
+                ),
           };
         }
+
+
+
+
+
+
+
+
 
         const deliveredReached = statuses.some(
           s => s.statusCode === 'DELIVERED' && (cells[s.statusCode]?.reached)
@@ -397,6 +425,7 @@ export class TrackOrderLevel implements OnInit {
         transferOutTime: h.transferOutTime,
         transferInTime: h.transferInTime,
         transferDuration: this.calcDuration(h.transferOutTime, h.transferInTime),
+        transferOutByName: h.transferOutByName ?? '',
 
         totalItems,
         totalQty,
@@ -408,8 +437,13 @@ export class TrackOrderLevel implements OnInit {
       });
     }
 
-    return groups.sort((a, b) => a.transitID.localeCompare(b.transitID));
+    return groups.sort((a, b) => Number(b.transitID) - Number(a.transitID));
+
   }
+
+
+
+
 
   private isReached(r: DeliveryOrderTimeline): boolean {
     const os = (r.orderStatus ?? '').trim().toLowerCase();
@@ -417,13 +451,24 @@ export class TrackOrderLevel implements OnInit {
   }
 
   private pickCurrentRow(hist: DeliveryOrderTimeline[]): DeliveryOrderTimeline {
-    const explicit = hist.find(r => (r.orderStatus ?? '').trim().toLowerCase() === 'current');
-    if (explicit) return explicit;
 
-    const reached = hist.filter(r => this.isReached(r));
-    if (reached.length) return reached[reached.length - 1];
+    if (!hist.length) {
+      throw new Error('No lifecycle rows');
+    }
 
-    return hist[0] ?? hist[hist.length - 1];
+    const rows = [...hist].sort((a, b) =>
+      (a.sequenceNo ?? 0) - (b.sequenceNo ?? 0)
+    );
+
+    const current = rows.find(x =>
+      (x.orderStatus ?? '').toUpperCase() === 'CURRENT'
+    );
+
+    if (current) {
+      return current;
+    }
+
+    return rows[rows.length - 1];
   }
 
   private calcDuration(out?: Date, inn?: Date): string {
@@ -673,125 +718,7 @@ export class TrackOrderLevel implements OnInit {
   //  Export – Excel (one row per TRANSIT)
   // ============================================================
 
-  exportToExcel(): void {
 
-    const stages = this.statusColumns;
-
-    const formatDate = (d?: Date): string => {
-      if (!d) return '';
-      const date = new Date(d);
-      return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
-    };
-
-    const formatTime = (d?: Date): string => {
-      if (!d) return '';
-      const date = new Date(d);
-      let hours = date.getHours();
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      const seconds = String(date.getSeconds()).padStart(2, '0');
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      hours = hours % 12;
-      hours = hours ? hours : 12;
-      return `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
-    };
-
-    const headers = [
-      'S.No',
-      'Transit ID',
-      'Transfer Order',
-      'Delivery Note',
-      'Company',
-      'Source',
-      'Destination',
-      'Transfer Mode',
-      'Assigned User',
-      'Courier',
-      'Vehicle',
-      'Lifecycle',
-      'Status',
-      'Total Items',
-      'Total Qty',
-      'Accepted Qty',
-      'Pending Qty',
-      'Transfer Out Date',
-      'Transfer Out Time',
-      'Transfer In Date',
-      'Transfer In Time',
-      'Duration',
-
-      ...stages.flatMap(s => [
-        `${s.name} User`,
-        `${s.name} Start Date`,
-        `${s.name} Start Time`,
-        `${s.name} End Date`,
-        `${s.name} End Time`
-      ])
-    ];
-
-    const dataRows: any[][] = this.filteredGroups.map((g, i) => {
-
-      const base = [
-        i + 1,
-        g.transitID,
-        g.transferOrderId,
-        g.deliveryNoteNo,
-        g.companyName,
-        g.sourceLocationName,
-        g.destinationLocationName,
-        g.transferModeName,
-        g.assignedUserName,
-        g.courierName,
-        g.vehicleNo,
-        g.lifecycleName,
-        g.transferStatus,
-        g.totalItems,
-        g.totalQty,
-        g.acceptedQty,
-        g.pendingQty,
-        formatDate(g.transferOutTime),
-        formatTime(g.transferOutTime),
-        formatDate(g.transferInTime),
-        formatTime(g.transferInTime),
-        g.transferDuration
-      ];
-
-      const statusCells = stages.flatMap(stage => {
-        const p = g.timeline.find(x => x.code === stage.code);
-        return [
-          p?.personName ?? '',
-          formatDate(p?.startTime),
-          formatTime(p?.startTime),
-          formatDate(p?.endTime),
-          formatTime(p?.endTime)
-        ];
-      });
-
-      return [...base, ...statusCells];
-
-    });
-
-    const csv = [headers, ...dataRows]
-      .map(row =>
-        row
-          .map(value => `"${String(value ?? '').replace(/"/g, '""')}"`)
-          .join(',')
-      )
-      .join('\n');
-
-    const blob = new Blob(
-      ['\uFEFF' + csv],
-      { type: 'text/csv;charset=utf-8;' }
-    );
-
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `transit-level-report-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-
-    URL.revokeObjectURL(url);
-  }
 
   // ============================================================
   //  Export – PDF (transit-level summary)
@@ -872,5 +799,164 @@ export class TrackOrderLevel implements OnInit {
     });
 
     doc.save(`transit-level-report-${new Date().toISOString().slice(0, 10)}.pdf`);
+  }
+
+
+
+
+
+
+
+
+
+  exportToExcel(): void {
+
+    const stages = this.statusColumns;
+
+    const formatDate = (d?: Date): string => {
+      if (!d) return '';
+      const date = new Date(d);
+      return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+    };
+
+    const formatTime = (d?: Date): string => {
+      if (!d) return '';
+      const date = new Date(d);
+      let hours = date.getHours();
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      return `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
+    };
+
+    const headers = [
+      'S.No',
+      'Transit ID',
+      'Transfer Order',
+      'Delivery Note',
+      'Company',
+      'Source',
+      'Destination',
+      'Transfer Mode',
+      'Assigned User',
+      'Courier',
+      'Vehicle',
+      'Lifecycle',
+      'Status',
+      'Total Items',
+      'Total Qty',
+      'Accepted Qty',
+      'Pending Qty',
+      'Transfer Out Date',
+      'Transfer Out Time',
+      'Transfer In Date',
+      'Transfer In Time',
+      'Duration',
+
+      ...stages.flatMap(s => [
+        `${s.name} User`,
+        `${s.name} Start Date`,
+        `${s.name} Start Time`,
+        `${s.name} End Date`,
+        `${s.name} End Time`
+      ])
+    ];
+
+    const rows = this.filteredGroups.map((g, i) => {
+
+      const base = [
+        i + 1,
+        g.transitID,
+        g.transferOrderId,
+        g.deliveryNoteNo,
+        g.companyName,
+        g.sourceLocationName,
+        g.destinationLocationName,
+        g.transferModeName,
+        g.assignedUserName,
+        g.courierName,
+        g.vehicleNo,
+        g.lifecycleName,
+        g.transferStatus,
+        g.totalItems,
+        g.totalQty,
+        g.acceptedQty,
+        g.pendingQty,
+        formatDate(g.transferOutTime),
+        formatTime(g.transferOutTime),
+        formatDate(g.transferInTime),
+        formatTime(g.transferInTime),
+        g.transferDuration
+      ];
+
+      const statusCells = stages.flatMap(stage => {
+
+        const p = g.timeline.find(x => x.code === stage.code);
+
+        if (stage.code === 'OPEN') {
+          return [
+            p?.personName ?? '',
+            formatDate(p?.startTime),
+            formatTime(p?.startTime),
+            '',
+            ''
+          ];
+        }
+
+        return [
+          p?.personName ?? '',
+          '',
+          '',
+          formatDate(p?.endTime),
+          formatTime(p?.endTime)
+        ];
+      });
+
+      return [...base, ...statusCells];
+    });
+
+    // Create worksheet
+    const worksheet: XLSX.WorkSheet = XLSX.utils.aoa_to_sheet([
+      headers,
+      ...rows
+    ]);
+
+    // Auto column width
+    const colWidths = headers.map((header, colIndex) => {
+      const maxLength = Math.max(
+        header.length,
+        ...rows.map(r => String(r[colIndex] ?? '').length)
+      );
+
+      return {
+        wch: Math.min(maxLength + 3, 40)
+      };
+    });
+
+    worksheet['!cols'] = colWidths;
+
+    // Create workbook
+    const workbook: XLSX.WorkBook = {
+      Sheets: {
+        'Transit Report': worksheet
+      },
+      SheetNames: ['Transit Report']
+    };
+
+    // Save Excel file
+    XLSX.writeFile(
+      workbook,
+      `transit-level-report-${new Date().toISOString().slice(0, 10)}.xlsx`
+    );
+  }
+
+  private getToday(): string {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

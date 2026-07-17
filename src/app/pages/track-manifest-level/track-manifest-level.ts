@@ -91,6 +91,11 @@ export class TrackManifestLevel implements OnInit {
   userId = 0;
   userName = '';
 
+  // Default the date range to TODAY (onDateRangeChange fills fromDate/toDate).
+  selectedDateRange = 'TODAY';
+  selectedSummary = 'ALL';
+  fromDate = '';
+  toDate = '';
   rows: DeliveryOrderTimeline[] = [];
   lifecycles: DeliveryLifecycle[] = [];
 
@@ -105,6 +110,12 @@ export class TrackManifestLevel implements OnInit {
   companyFilter = 'ALL';
   sourceFilter = 'ALL';
   destinationFilter = 'ALL';
+
+  // Tab / KPI-card selection (Created | In Progress | Completed | ALL)
+  selectedTab = 'ALL';
+
+  // Expandable manifest rows -> show order-level details
+  expandedManifests = new Set<string>();
 
   loading = false;
   errorMessage = '';
@@ -121,6 +132,8 @@ export class TrackManifestLevel implements OnInit {
   }
 
   ngOnInit(): void {
+    // Pre-fill fromDate/toDate for the default range (TODAY) before first load.
+    this.onDateRangeChange();
     this.loadReport();
   }
 
@@ -149,6 +162,28 @@ export class TrackManifestLevel implements OnInit {
         this.errorMessage = 'Failed to load report. Please try again.';
       }
     });
+  }
+
+  // ============================================================
+  //  Tab / KPI-card selection & row expansion
+  // ============================================================
+
+  /** KPI cards and the tab bar share one state. Click the active one again to clear to ALL. */
+  selectTab(tab: string): void {
+    this.selectedTab = this.selectedTab === tab ? 'ALL' : tab;
+  }
+
+  toggleManifest(manifestNo: string, event?: Event): void {
+    event?.stopPropagation();
+    if (this.expandedManifests.has(manifestNo)) {
+      this.expandedManifests.delete(manifestNo);
+    } else {
+      this.expandedManifests.add(manifestNo);
+    }
+  }
+
+  isManifestExpanded(manifestNo: string): boolean {
+    return this.expandedManifests.has(manifestNo);
   }
 
   // ============================================================
@@ -257,7 +292,9 @@ export class TrackManifestLevel implements OnInit {
         companyName: meta.companyName ?? '',
         itemName: meta.itemName ?? meta.itemCode ?? '',
         itemCode: meta.itemCode ?? '',
-        qty: meta.transferQty ?? 0,
+        // IMEI-serialized stock: each order == one IMEI == one unit. Use the real
+        // transferQty when it exists, otherwise assume 1 per order (never 0).
+        qty: (hist.find(r => r.transferQty)?.transferQty) || 1,
         source: meta.sourceLocationName ?? '',
         destination: meta.destinationLocationName ?? '',
         assignedUser: meta.assignedUserName ?? '',
@@ -331,16 +368,19 @@ export class TrackManifestLevel implements OnInit {
     this.companyFilter = 'ALL';
     this.sourceFilter = 'ALL';
     this.destinationFilter = 'ALL';
-  }
 
+    this.fromDate = '';
+    this.toDate = '';
+  }
   get hasActiveFilters(): boolean {
     return this.searchText.trim() !== '' ||
       this.manifestStatusFilter !== 'ALL' ||
       this.companyFilter !== 'ALL' ||
       this.sourceFilter !== 'ALL' ||
-      this.destinationFilter !== 'ALL';
+      this.destinationFilter !== 'ALL' ||
+      !!this.fromDate ||
+      !!this.toDate;
   }
-
   /** Order cards after company/source/destination/search filters (manifest status is applied at group level). */
   private get filteredOrderCards(): OrderCard[] {
     const search = this.searchText.trim().toLowerCase();
@@ -362,102 +402,192 @@ export class TrackManifestLevel implements OnInit {
   // ============================================================
   //  Manifest grouping (the heart of this report)
   // ============================================================
-get manifestGroups(): ManifestGroup[] {
+  get manifestGroups(): ManifestGroup[] {
 
-  const map = new Map<string, ManifestGroup>();
-  const lastIndex = this.lifecycleStages.length - 1;
+    const map = new Map<string, ManifestGroup>();
+    const lastIndex = this.lifecycleStages.length - 1;
 
-  for (const c of this.filteredOrderCards) {
+    // Build Manifest Groups
+    for (const c of this.filteredOrderCards) {
 
-    const key = c.manifestNo;
-    if (!key) continue;
+      const key = c.manifestNo;
+      if (!key) continue;
 
-    let g = map.get(key);
+      let g = map.get(key);
 
-    if (!g) {
+      if (!g) {
 
-      const mRow = this.rows.find(r => r.manifestNo === key);
+        const mRow = this.rows.find(r => r.manifestNo === key);
 
-      g = {
+        g = {
+          manifestNo: key,
 
-        manifestNo: key,
+          manifestDate: mRow?.manifestDate
+            ? new Date(mRow.manifestDate)
+            : null,
 
-        manifestDate: mRow?.manifestDate
-          ? new Date(mRow.manifestDate)
-          : null,
+          manifestStatus: mRow?.manifestStatus ?? '-',
+          orderStatus: mRow?.orderStatus ?? '-',
 
-        // API values
-        manifestStatus: mRow?.manifestStatus ?? '-',
-        orderStatus: mRow?.orderStatus ?? '-',
+          companyName: c.companyName,
 
-        companyName: c.companyName,
+          assignedUser: mRow?.manifestAssignedUserName ?? c.assignedUser,
 
-        assignedUser: mRow?.manifestAssignedUserName ?? c.assignedUser,
+          receiverUser: mRow?.receiverUserName ?? '-',
 
-        receiverUser: mRow?.receiverUserName ?? '-',
+          sources: '',
+          destinations: '',
 
-        sources: '',
-        destinations: '',
+          transferModeName: mRow?.transferModeName ?? '-',
 
-        transferModeName: mRow?.transferModeName ?? '-',
+          orders: [],
 
-        orders: [],
+          totalQty: 0,
+          delivered: 0,
+          progress: 0,
 
-        totalQty: 0,
-        delivered: 0,
-        progress: 0,
+          stageData: []
+        };
 
-        stageData: []
-      };
+        map.set(key, g);
+      }
 
-      map.set(key, g);
+      g.orders.push(c);
+      g.totalQty += c.qty;
+
+      const latest = c.history[c.history.length - 1];
+
+      if (latest?.manifestStatus) {
+        g.manifestStatus = latest.manifestStatus;
+      }
+
+      if (latest?.orderStatus) {
+        g.orderStatus = latest.orderStatus;
+      }
+
+      if (lastIndex >= 0 && c.stageIndex >= lastIndex) {
+        g.delivered++;
+      }
     }
 
-    g.orders.push(c);
-    g.totalQty += c.qty;
+    let groups = [...map.values()];
 
-    // Update latest status from history if available
-    const latest = c.history[c.history.length - 1];
+    //=========================================================
+    // Manifest Status Filter
+    //=========================================================
 
-    if (latest?.manifestStatus) {
-      g.manifestStatus = latest.manifestStatus;
+    if (this.manifestStatusFilter !== 'ALL') {
+      groups = groups.filter(g => g.manifestStatus === this.manifestStatusFilter);
     }
 
-    if (latest?.orderStatus) {
-      g.orderStatus = latest.orderStatus;
+    //=========================================================
+    // Dashboard Summary Card Filter
+    //=========================================================
+
+    if (this.selectedSummary !== 'ALL') {
+
+      groups = groups.filter(g => {
+
+        const status = (g.manifestStatus || '').trim().toUpperCase();
+
+        switch (this.selectedSummary) {
+
+          case 'Created':
+            return status === 'CREATED';
+
+          case 'In Progress':
+            return status === 'IN PROGRESS';
+
+          case 'Completed':
+            return status === 'COMPLETED';
+
+          default:
+            return true;
+        }
+
+      });
+
     }
 
-    if (lastIndex >= 0 && c.stageIndex >= lastIndex) {
-      g.delivered++;
+    //=========================================================
+    // Manifest Date Filter
+    //=========================================================
+
+    if (this.fromDate) {
+
+      const from = new Date(this.fromDate);
+      from.setHours(0, 0, 0, 0);
+
+      groups = groups.filter(g =>
+        g.manifestDate &&
+        new Date(g.manifestDate) >= from
+      );
     }
+
+    if (this.toDate) {
+
+      const to = new Date(this.toDate);
+      to.setHours(23, 59, 59, 999);
+
+      groups = groups.filter(g =>
+        g.manifestDate &&
+        new Date(g.manifestDate) <= to
+      );
+    }
+
+    //=========================================================
+    // Build Summary Information
+    //=========================================================
+
+    for (const g of groups) {
+
+      const avg =
+        g.orders.reduce((sum, order) => sum + Math.max(order.stageIndex, 0), 0) /
+        (g.orders.length || 1);
+
+      g.progress =
+        lastIndex > 0
+          ? Math.round((avg / lastIndex) * 100)
+          : (g.delivered ? 100 : 0);
+
+      g.sources = [
+        ...new Set(
+          g.orders
+            .map(o => o.source)
+            .filter(Boolean)
+        )
+      ].join(', ');
+
+      g.destinations = [
+        ...new Set(
+          g.orders
+            .map(o => o.destination)
+            .filter(Boolean)
+        )
+      ].join(', ');
+
+      g.stageData = this.buildManifestStageData(g.manifestNo);
+    }
+
+    //=========================================================
+    // Sort Latest Manifest First
+    //=========================================================
+
+    return groups.sort((a, b) => {
+
+      const d1 = a.manifestDate
+        ? new Date(a.manifestDate).getTime()
+        : 0;
+
+      const d2 = b.manifestDate
+        ? new Date(b.manifestDate).getTime()
+        : 0;
+
+      return d2 - d1;
+
+    });
+
   }
-
-  let groups = [...map.values()];
-
-  if (this.manifestStatusFilter !== 'ALL') {
-    groups = groups.filter(g => g.manifestStatus === this.manifestStatusFilter);
-  }
-
-  for (const g of groups) {
-
-    const avg =
-      g.orders.reduce((s, o) => s + Math.max(o.stageIndex, 0), 0) /
-      (g.orders.length || 1);
-
-    g.progress =
-      lastIndex > 0
-        ? Math.round((avg / lastIndex) * 100)
-        : (g.delivered ? 100 : 0);
-
-    g.sources = [...new Set(g.orders.map(o => o.source).filter(Boolean))].join(', ');
-
-    g.destinations = [...new Set(g.orders.map(o => o.destination).filter(Boolean))].join(', ');
-
-    g.stageData = this.buildManifestStageData(g.manifestNo);
-  }
-
-  return groups.sort((a, b) => a.manifestNo.localeCompare(b.manifestNo));
-}
   getManifestStageTime(group: ManifestGroup, statusCode: string): Date | null {
     const stage = group.stageData.find(s => s.code === statusCode);
     return stage?.time ?? null;
@@ -830,36 +960,151 @@ get manifestGroups(): ManifestGroup[] {
     return stage ? stage.name : '-';
   }
 
+  /**
+   * Maps any status label (manifest / order / lifecycle name) to a colour class
+   * so each distinct status renders in its own colour. Matching is keyword-based
+   * so slight wording differences ("Picked Up" / "PickedUp") still resolve.
+   */
+  statusClass(value: string | null | undefined): string {
+    const s = (value || '').trim().toLowerCase();
+    if (!s || s === '-') return 'st-none';
+    if (s.includes('deliver')) return 'st-delivered';
+    if (s.includes('complet')) return 'st-completed';
+    if (s.includes('picked')) return 'st-picked';
+    if (s.includes('assigned')) return 'st-assigned';
+    if (s.includes('ready')) return 'st-ready';
+    if (s.includes('progress')) return 'st-progress';
+    if (s.includes('cancel')) return 'st-cancelled';
+    if (s.includes('created')) return 'st-created';
+    if (s.includes('pending')) return 'st-pending';
+    if (s.includes('open')) return 'st-open';
+    return 'st-default';
+  }
+
   getManifestCount(status: string): number {
-  return this.manifestGroups.filter(
-    x => this.getCurrentStageName(x).toUpperCase().replace(/ /g, '_') === status
-  ).length;
-}
+    return this.manifestGroups.filter(
+      x => this.getCurrentStageName(x).toUpperCase().replace(/ /g, '_') === status
+    ).length;
+  }
 
-getManifestInProgressCount(): number {
+  getManifestInProgressCount(): number {
 
-  return this.manifestGroups.filter(g => {
+    return this.manifestGroups.filter(g => {
 
-    const s = this.getCurrentStageName(g).toUpperCase();
+      const s = this.getCurrentStageName(g).toUpperCase();
 
-    return s !== 'OPEN' &&
-           s !== 'DELIVERED';
+      return s !== 'OPEN' &&
+        s !== 'DELIVERED';
 
-  }).length;
+    }).length;
 
-}
+  }
+  get createdManifestCount(): number {
 
-get createdManifestCount(): number {
-  return this.manifestGroups.length;
-}
+    return this.manifestGroups.filter(g =>
+      this.getManifestStageTime(g, 'PICKUP_ASSIGNED') &&
+      !this.getManifestStageTime(g, 'PICKED_UP')
+    ).length;
 
-get completedManifestCount(): number {
-  return this.manifestGroups.filter(g => {
-    return this.getCurrentStageName(g).toUpperCase() === 'DELIVERED';
-  }).length;
-}
+  }
 
-get inProgressManifestCount(): number {
-  return this.createdManifestCount - this.completedManifestCount;
-}
+  get inProgressManifestCount(): number {
+
+    return this.manifestGroups.filter(g =>
+      this.getManifestStageTime(g, 'PICKED_UP') &&
+      !this.getManifestStageTime(g, 'DELIVERED')
+    ).length;
+
+  }
+
+  get completedManifestCount(): number {
+
+    return this.manifestGroups.filter(g =>
+      this.getManifestStageTime(g, 'DELIVERED')
+    ).length;
+
+  }
+  onDateRangeChange(): void {
+
+    const today = new Date();
+    const from = new Date(today);
+
+    switch (this.selectedDateRange) {
+
+      case 'TODAY':
+        break;
+
+      case 'LAST7':
+        from.setDate(today.getDate() - 6);
+        break;
+
+      case 'LAST30':
+        from.setDate(today.getDate() - 29);
+        break;
+
+      case 'LAST3MONTH':
+        from.setMonth(today.getMonth() - 3);
+        break;
+
+      case 'LAST6MONTH':
+        from.setMonth(today.getMonth() - 6);
+        break;
+
+      case 'LAST1YEAR':
+        from.setFullYear(today.getFullYear() - 1);
+        break;
+
+      case 'CUSTOM':
+        return; // Allow manual selection
+    }
+
+    this.fromDate = this.formatDate(from);
+    this.toDate = this.formatDate(today);
+  }
+
+  private formatDate(date: Date): string {
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+  }
+
+  filterSummary(status: string): void {
+
+    if (this.selectedSummary === status) {
+      this.selectedSummary = 'ALL';
+    } else {
+      this.selectedSummary = status;
+    }
+
+  }
+
+  get filteredManifestGroups(): ManifestGroup[] {
+
+    switch (this.selectedTab) {
+
+      case 'Created':
+        return this.manifestGroups.filter(g =>
+          this.getManifestStageTime(g, 'PICKUP_ASSIGNED') &&
+          !this.getManifestStageTime(g, 'PICKED_UP')
+        );
+
+      case 'In Progress':
+        return this.manifestGroups.filter(g =>
+          this.getManifestStageTime(g, 'PICKED_UP') &&
+          !this.getManifestStageTime(g, 'DELIVERED')
+        );
+
+      case 'Completed':
+        return this.manifestGroups.filter(g =>
+          this.getManifestStageTime(g, 'DELIVERED')
+        );
+
+      default:
+        return this.manifestGroups;
+    }
+
+  }
 }

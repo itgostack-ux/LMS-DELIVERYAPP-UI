@@ -29,10 +29,12 @@
     </div>
   </div>
 
-  <!-- ===== KPI Stat Cards (Manifests / Open / Pickup Ready / Pickup Assigned / Picked Up / Delivered) ===== -->
+  <!-- ===== KPI Stat Cards — click to filter (Created / In Progress / Completed) ===== 
   <div class="dashboard-summary" *ngIf="!loading">
 
-    <div class="summary-card created">
+    <div class="summary-card created"
+         [class.active]="selectedTab === 'Created'"
+         (click)="selectTab('Created')">
       <div class="summary-left">
         <div class="summary-title">Created</div>
         <div class="summary-value">{{createdManifestCount}}</div>
@@ -42,7 +44,9 @@
       </div>
     </div>
 
-    <div class="summary-card progress">
+    <div class="summary-card progress"
+         [class.active]="selectedTab === 'In Progress'"
+         (click)="selectTab('In Progress')">
       <div class="summary-left">
         <div class="summary-title">In Progress</div>
         <div class="summary-value">{{inProgressManifestCount}}</div>
@@ -52,7 +56,9 @@
       </div>
     </div>
 
-    <div class="summary-card completed">
+    <div class="summary-card completed"
+         [class.active]="selectedTab === 'Completed'"
+         (click)="selectTab('Completed')">
       <div class="summary-left">
         <div class="summary-title">Completed</div>
         <div class="summary-value">{{completedManifestCount}}</div>
@@ -62,7 +68,7 @@
       </div>
     </div>
 
-  </div>
+  </div>-->
 
   <!-- ===== View Switcher + Filters ===== -->
   <div class="card toolbar-card">
@@ -116,6 +122,31 @@
       </div>
       <button class="btn-secondary" (click)="clearFilters()" [disabled]="!hasActiveFilters">Clear</button>
     </div>
+    <div class="field">
+      <label>Date Range</label>
+
+      <select [(ngModel)]="selectedDateRange" (change)="onDateRangeChange()">
+
+        <option value="TODAY">Today</option>
+        <option value="LAST7">Last 7 Days</option>
+        <option value="LAST30">Last 30 Days</option>
+        <option value="LAST3MONTH">Last 3 Months</option>
+        <option value="LAST6MONTH">Last 6 Months</option>
+        <option value="LAST1YEAR">Last 1 Year</option>
+        <option value="CUSTOM">Custom</option>
+
+      </select>
+    </div>
+
+    <div class="field">
+      <label>From Date</label>
+      <input type="date" [(ngModel)]="fromDate">
+    </div>
+
+    <div class="field">
+      <label>To Date</label>
+      <input type="date" [(ngModel)]="toDate">
+    </div>
   </div>
 
   <!-- ===== States ===== -->
@@ -129,14 +160,36 @@
       No manifests match your filters.
     </div>
 
-    <!-- One row per manifest only — no order-level drill-down -->
+    <!-- One row per manifest — click a row to drill into its orders -->
     <div class="card report-card" *ngIf="manifestGroups.length > 0">
 
+      <!-- Manifest Status Tabs (synced with the KPI cards) -->
+      <div class="manifest-tabs">
+
+        <button class="tab-btn" [class.active]="selectedTab === 'Created'" (click)="selectTab('Created')">
+          Created
+          <span>{{createdManifestCount}}</span>
+        </button>
+
+        <button class="tab-btn" [class.active]="selectedTab === 'In Progress'" (click)="selectTab('In Progress')">
+          In Progress
+          <span>{{inProgressManifestCount}}</span>
+        </button>
+
+        <button class="tab-btn" [class.active]="selectedTab === 'Completed'" (click)="selectTab('Completed')">
+          Completed
+          <span>{{completedManifestCount}}</span>
+        </button>
+
+        <button class="tab-btn" [class.active]="selectedTab === 'ALL'" (click)="selectedTab='ALL'">
+          All
+          <span>{{manifestGroups.length}}</span>
+        </button>
+
+      </div>
+
       <div class="report-meta">
-        <b>{{manifestGroups.length}}</b> Manifest(s)
-
-
-
+        <b>{{filteredManifestGroups.length}}</b> Manifest(s)
       </div>
 
       <div class="table-wrap">
@@ -145,6 +198,7 @@
 
           <thead>
             <tr>
+              <th class="col-toggle"></th>
               <th>S.No</th>
               <th>Manifest No</th>
               <th>Manifest Date</th>
@@ -154,10 +208,9 @@
               <th>Source</th>
               <th>Destination</th>
               <th>Transfer Mode</th>
-              <th>Status</th>
-
+              <!--
               <th>Open</th>
-              <th>Pickup Ready</th>
+              <th>Pickup Ready</th>-->
               <th>Pickup Assigned</th>
               <th>Picked Up</th>
               <th>Delivered</th>
@@ -167,79 +220,131 @@
           </thead>
 
           <tbody>
-            <tr *ngFor="let g of manifestGroups; let i=index; trackBy: trackByManifest">
+            <ng-container *ngFor="let g of filteredManifestGroups; let i=index; trackBy: trackByManifest">
 
-              <td>{{i+1}}</td>
+              <!-- ===== Manifest summary row (click to expand) ===== -->
+              <tr class="mf-row"
+                  [class.open]="isManifestExpanded(g.manifestNo)"
+                  (click)="toggleManifest(g.manifestNo)">
 
-              <td class="mono">{{g.manifestNo}}</td>
+                <td class="col-toggle">
+                  <span class="chevron" [class.rot]="isManifestExpanded(g.manifestNo)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </span>
+                </td>
 
-              <td>{{g.manifestDate | date:'dd/MM/yyyy HH:mm'}}</td>
+                <td>{{i+1}}</td>
 
-              <td>{{g.companyName}}</td>
+                <td class="mono">{{g.manifestNo}}</td>
 
-              <td>{{g.assignedUser || '-'}}</td>
+                <td>{{g.manifestDate | date:'dd/MM/yyyy HH:mm'}}</td>
 
-              <td>{{g.receiverUser || '-'}}</td>
+                <td>{{g.companyName}}</td>
 
-              <td>{{g.sources}}</td>
+                <td>{{g.assignedUser || '-'}}</td>
 
-              <td>{{g.destinations}}</td>
+                <td>{{g.receiverUser || '-'}}</td>
 
-              <td>{{g.transferModeName}}</td>
+                <td>{{g.sources}}</td>
 
-              <td>{{ getCurrentStageName(g) }}</td>
+                <td>{{g.destinations}}</td>
 
-              <!-- Each stage cell shows the time on top and who performed it underneath -->
-              <td class="stage-cell">
-                <div class="stage-cell-inner">
-                  <span class="stage-time">{{getManifestStageTime(g,'OPEN') | date:'dd/MM/yyyy HH:mm'}}</span>
-                  <span class="stage-user" *ngIf="getManifestStageUser(g,'OPEN') as u">by {{u}}</span>
-                </div>
-              </td>
+                <td>{{g.transferModeName}}</td>
 
-              <td class="stage-cell">
-                <div class="stage-cell-inner">
-                  <span class="stage-time">{{getManifestStageTime(g,'PICKUP_READY') | date:'dd/MM/yyyy HH:mm'}}</span>
-                  <span class="stage-user" *ngIf="getManifestStageUser(g,'PICKUP_READY') as u">by {{u}}</span>
-                </div>
-              </td>
+                <!-- Each stage cell shows the time on top and who performed it underneath
+                <td class="stage-cell">
+                  <div class="stage-cell-inner">
+                    <span class="stage-time">{{getManifestStageTime(g,'OPEN') | date:'dd/MM/yyyy HH:mm'}}</span>
+                    <span class="stage-user" *ngIf="getManifestStageUser(g,'OPEN') as u">by {{u}}</span>
+                  </div>
+                </td>
 
-              <td class="stage-cell">
-                <div class="stage-cell-inner">
-                  <span class="stage-time">{{getManifestStageTime(g,'PICKUP_ASSIGNED') | date:'dd/MM/yyyy
-                    HH:mm'}}</span>
-                  <span class="stage-user" *ngIf="getManifestStageUser(g,'PICKUP_ASSIGNED') as u">by {{u}}</span>
-                </div>
-              </td>
+                <td class="stage-cell">
+                  <div class="stage-cell-inner">
+                    <span class="stage-time">{{getManifestStageTime(g,'PICKUP_READY') | date:'dd/MM/yyyy HH:mm'}}</span>
+                    <span class="stage-user" *ngIf="getManifestStageUser(g,'PICKUP_READY') as u">by {{u}}</span>
+                  </div>
+                </td>-->
 
-              <td class="stage-cell">
-                <div class="stage-cell-inner">
-                  <span class="stage-time">{{getManifestStageTime(g,'PICKED_UP') | date:'dd/MM/yyyy HH:mm'}}</span>
-                  <span class="stage-user" *ngIf="getManifestStageUser(g,'PICKED_UP') as u">by {{u}}</span>
-                </div>
-              </td>
+                <td class="stage-cell">
+                  <div class="stage-cell-inner">
+                    <span class="stage-time">{{getManifestStageTime(g,'PICKUP_ASSIGNED') | date:'dd/MM/yyyy HH:mm'}}</span>
+                    <span class="stage-user" *ngIf="getManifestStageUser(g,'PICKUP_ASSIGNED') as u">by {{u}}</span>
+                  </div>
+                </td>
 
-              <td class="stage-cell">
-                <div class="stage-cell-inner">
-                  <span class="stage-time">{{getManifestStageTime(g,'DELIVERED') | date:'dd/MM/yyyy HH:mm'}}</span>
-                  <span class="stage-user" *ngIf="getManifestStageUser(g,'DELIVERED') as u">by {{u}}</span>
-                </div>
-              </td>
+                <td class="stage-cell">
+                  <div class="stage-cell-inner">
+                    <span class="stage-time">{{getManifestStageTime(g,'PICKED_UP') | date:'dd/MM/yyyy HH:mm'}}</span>
+                    <span class="stage-user" *ngIf="getManifestStageUser(g,'PICKED_UP') as u">by {{u}}</span>
+                  </div>
+                </td>
 
+                <td class="stage-cell">
+                  <div class="stage-cell-inner">
+                    <span class="stage-time">{{getManifestStageTime(g,'DELIVERED') | date:'dd/MM/yyyy HH:mm'}}</span>
+                    <span class="stage-user" *ngIf="getManifestStageUser(g,'DELIVERED') as u">by {{u}}</span>
+                  </div>
+                </td>
 
+                <td>
+                  <span class="status-pill" [ngClass]="statusClass(g.manifestStatus)">
+                    {{ g.manifestStatus || '-' }}
+                  </span>
+                </td>
+                <td>
+                  <span class="status-pill" [ngClass]="statusClass(g.orderStatus)">
+                    {{ g.orderStatus || '-' }}
+                  </span>
+                </td>
 
-              <td>{{ g.manifestStatus || '-' }}</td>
-              <td>{{ g.orderStatus || '-' }}</td>
+              </tr>
 
+              <!-- ===== Order-level drill-down (shown when the manifest row is expanded) ===== -->
+              <tr class="mf-detail-row" *ngIf="isManifestExpanded(g.manifestNo)">
+                <td class="mf-detail-cell" [attr.colspan]="15">
 
-            </tr>
+                  <div class="order-detail-panel">
 
+                    <div class="order-detail-head">
+                      Orders in <b>{{g.manifestNo}}</b>
+                      <span class="order-detail-count">{{g.orders.length}} order(s) · Qty {{g.totalQty}}</span>
+                    </div>
 
+                    <table class="order-subtable">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Transit ID</th>
+                          <th>Qty</th>
+                          <th>Source</th>
+                          <th>Destination</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr *ngFor="let o of g.orders; let oi=index; trackBy: trackByCard">
+                          <td>{{oi+1}}</td>
+                          <td class="mono">{{o.transitID ?? o.orderId}}</td>
+                          <td>{{o.qty}}</td>
+                          <td>{{o.source || '-'}}</td>
+                          <td>{{o.destination || '-'}}</td>
+                          <td>
+                            <span class="status-pill" [ngClass]="statusClass(o.currentName)">{{o.currentName}}</span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
 
+                  </div>
 
+                </td>
+              </tr>
+
+            </ng-container>
           </tbody>
-
-
 
         </table>
 

@@ -123,7 +123,8 @@ export class TrackOrderLevel implements OnInit {
   selectedTransit: TransitGroup | null = null;
 
   // Filters
-  searchText = '';
+  searchInput = '';     // what the user is typing (bound to the search box)
+  searchText = '';      // applied search term (used by filteredGroups) — set via Search button / Enter
   statusFilter = 'ALL';
   companyFilter = 'ALL';
   sourceFilter = 'ALL';
@@ -457,7 +458,13 @@ export class TrackOrderLevel implements OnInit {
     return [...set].sort((a, b) => a.localeCompare(b));
   }
 
+  /** Applies the typed search term. Triggered by the Search button or pressing Enter. */
+  applySearch(): void {
+    this.searchText = this.searchInput.trim();
+  }
+
   clearFilters(): void {
+    this.searchInput = '';
     this.searchText = '';
     this.statusFilter = 'ALL';
     this.companyFilter = 'ALL';
@@ -468,7 +475,8 @@ export class TrackOrderLevel implements OnInit {
   }
 
   get hasActiveFilters(): boolean {
-    return this.searchText.trim() !== '' ||
+    return this.searchInput.trim() !== '' ||
+      this.searchText.trim() !== '' ||
       this.statusFilter !== 'ALL' ||
       this.companyFilter !== 'ALL' ||
       this.sourceFilter !== 'ALL' ||
@@ -479,81 +487,82 @@ export class TrackOrderLevel implements OnInit {
 
   /** Single source of truth for the table, stat cards and exports. */
   get filteredGroups(): TransitGroup[] {
+    return this.groupedLogs.filter(g => this.passesFilters(g, true));
+  }
+
+  /** Shared filter logic. includeStatus=false skips the status-tab filter itself,
+   *  used to compute per-tab counts against all OTHER active filters. */
+  private passesFilters(g: TransitGroup, includeStatus: boolean): boolean {
 
     const search = this.searchText.trim().toLowerCase();
 
-    return this.groupedLogs.filter(g => {
+    if (this.companyFilter !== 'ALL' && g.companyName !== this.companyFilter) {
+      return false;
+    }
 
-      if (this.companyFilter !== 'ALL' && g.companyName !== this.companyFilter) {
+    if (this.sourceFilter !== 'ALL' && g.sourceLocationName !== this.sourceFilter) {
+      return false;
+    }
+
+    if (this.destinationFilter !== 'ALL' && g.destinationLocationName !== this.destinationFilter) {
+      return false;
+    }
+
+    // Transfer-out date range
+    if (this.fromDate || this.toDate) {
+
+      if (!g.transferOutTime) {
         return false;
       }
 
-      if (this.sourceFilter !== 'ALL' && g.sourceLocationName !== this.sourceFilter) {
-        return false;
-      }
+      const transferDate = new Date(g.transferOutTime);
 
-      if (this.destinationFilter !== 'ALL' && g.destinationLocationName !== this.destinationFilter) {
-        return false;
-      }
-
-      // Transfer-out date range
-      if (this.fromDate || this.toDate) {
-
-        if (!g.transferOutTime) {
-          return false;
-        }
-
-        const transferDate = new Date(g.transferOutTime);
-
-        if (this.fromDate) {
-          const from = new Date(this.fromDate);
-          from.setHours(0, 0, 0, 0);
-          if (transferDate < from) {
-            return false;
-          }
-        }
-
-        if (this.toDate) {
-          const to = new Date(this.toDate);
-          to.setHours(23, 59, 59, 999);
-          if (transferDate > to) {
-            return false;
-          }
-        }
-      }
-
-      // Status filter is TRANSIT-level, so the row count always matches the card count.
-      if (this.statusFilter !== 'ALL' && g.currentCode !== this.statusFilter) {
-        return false;
-      }
-
-      if (search) {
-
-        const haystack = [
-          g.transitID,
-          g.transferOrderId,
-          g.deliveryNoteNo,
-          g.companyName,
-          g.sourceLocationName,
-          g.destinationLocationName,
-          g.assignedUserName,
-          g.courierName,
-          g.vehicleNo,
-          g.lifecycleName,
-          ...g.details.map(d => `${d.itemCode} ${d.itemName} ${d.imei}`)
-        ]
-          .map(v => String(v ?? '').toLowerCase())
-          .join(' ');
-
-        if (!haystack.includes(search)) {
+      if (this.fromDate) {
+        const from = new Date(this.fromDate);
+        from.setHours(0, 0, 0, 0);
+        if (transferDate < from) {
           return false;
         }
       }
 
-      return true;
+      if (this.toDate) {
+        const to = new Date(this.toDate);
+        to.setHours(23, 59, 59, 999);
+        if (transferDate > to) {
+          return false;
+        }
+      }
+    }
 
-    });
+    // Status filter is TRANSIT-level, so the row count always matches the card count.
+    if (includeStatus && this.statusFilter !== 'ALL' && g.currentCode !== this.statusFilter) {
+      return false;
+    }
 
+    if (search) {
+
+      const haystack = [
+        g.transitID,
+        g.transferOrderId,
+        g.deliveryNoteNo,
+        g.companyName,
+        g.sourceLocationName,
+        g.destinationLocationName,
+        g.assignedUserName,
+        g.courierName,
+        g.vehicleNo,
+        g.lifecycleName,
+        ...g.details.map(d => `${d.itemCode} ${d.itemName} ${d.imei}`)
+      ]
+        .map(v => String(v ?? '').toLowerCase())
+        .join(' ');
+
+      if (!haystack.includes(search)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   // ============================================================
@@ -562,7 +571,10 @@ export class TrackOrderLevel implements OnInit {
 
   get statCards(): StatCard[] {
 
-    const groups = this.filteredGroups;
+    // KPI cards intentionally ignore the status filter (tab/dropdown) so they always
+    // show the full breakdown across all statuses. They still respect every OTHER
+    // active filter (company, source, destination, date range, search).
+    const groups = this.groupedLogs.filter(g => this.passesFilters(g, false));
 
     // How many TRANSITS are sitting at each status right now.
     const counts = new Map<string, number>();
@@ -589,6 +601,31 @@ export class TrackOrderLevel implements OnInit {
     return cards;
   }
 
+  // ============================================================
+  //  Status tabs — pill filter bar above the table (Created / In Progress / ... / All)
+  //  Independent of the KPI cards above; drives the same statusFilter used by filteredGroups.
+  // ============================================================
+
+  /** Counts for each tab, computed from every filter EXCEPT the status tab itself,
+   *  so switching tabs doesn't change the other tabs' counts. */
+  get statusTabs(): { code: string; name: string; count: number }[] {
+    const base = this.groupedLogs.filter(g => this.passesFilters(g, false));
+
+    const tabs = this.statusColumns.map(stage => ({
+      code: stage.code,
+      name: stage.name,
+      count: base.filter(g => g.currentCode === stage.code).length
+    }));
+
+    tabs.push({ code: 'ALL', name: 'All', count: base.length });
+
+    return tabs;
+  }
+
+  selectStatusTab(code: string): void {
+    this.statusFilter = code;
+  }
+
   /** IMEI / item rows behind the visible transits — shown as a sub-line, not a card. */
   get totalItems(): number {
     return this.filteredGroups.reduce((s, g) => s + g.totalItems, 0);
@@ -600,6 +637,24 @@ export class TrackOrderLevel implements OnInit {
 
   get totalTransits(): number {
     return this.filteredGroups.length;
+  }
+
+  // ---- KPI-scoped totals: mirror statCards by ignoring the status filter,
+  //      so the line under the KPI cards always matches the cards themselves. ----
+  get kpiGroups(): TransitGroup[] {
+    return this.groupedLogs.filter(g => this.passesFilters(g, false));
+  }
+
+  get kpiTotalTransits(): number {
+    return this.kpiGroups.length;
+  }
+
+  get kpiTotalItems(): number {
+    return this.kpiGroups.reduce((s, g) => s + g.totalItems, 0);
+  }
+
+  get kpiTotalQty(): number {
+    return this.kpiGroups.reduce((s, g) => s + g.totalQty, 0);
   }
 
   // ============================================================

@@ -725,61 +725,7 @@
 
 
 /* ============================================================
-   APPEND THIS to your existing track-order-level.css
-   (styles for the new IMEI-based status matrix in the popup)
-   ============================================================ */
-
-/* Current-status pill in the details table */
-.status-pill {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #fff;
-  white-space: nowrap;
-}
-
-/* Give each status cell room to breathe */
-.detail-table td { vertical-align: top; }
-
-/* Person + time + tag stacked inside each status cell */
-.cell-person {
-  font-size: 12px;
-  font-weight: 600;
-  color: #0f172a;
-  white-space: nowrap;
-}
-.cell-time {
-  font-size: 10.5px;
-  color: #64748b;
-  margin-top: 2px;
-  white-space: nowrap;
-}
-.cell-tag {
-  display: inline-block;
-  margin-top: 4px;
-  padding: 1px 7px;
-  border-radius: 6px;
-  font-size: 9.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-.cell-tag.done    { background: #dcfce7; color: #15803d; }
-.cell-tag.current { background: #dbeafe; color: #1d4ed8; }
-.cell-tag.pending { background: #f1f5f9; color: #94a3b8; }
-
-.cell-empty { color: #cbd5e1; font-weight: 600; }
-
-/* Subtle background tint per cell state */
-.detail-table td.st-done    { background: #f0fdf4 !important; }
-.detail-table td.st-current { background: #eff6ff !important; }
-
-
-/* ============================================================
-   APPEND THIS to your existing track-order-level.css
-   (styles for the new IMEI-based status matrix in the popup)
+   IMEI-based status matrix in the popup
    ============================================================ */
 
 /* Current-status pill in the details table */
@@ -838,69 +784,8 @@
 /* Subtle background tint per cell state */
 .detail-table td.st-done    { background: #f0fdf4 !important; }
 .detail-table td.st-current { background: #eff6ff !important; }
-
-
-/* ============================================================
-   APPEND THIS to your existing track-order-level.css
-   (styles for the new IMEI-based status matrix in the popup)
-   ============================================================ */
-
-/* Current-status pill in the details table */
-.status-pill {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #fff;
-  white-space: nowrap;
-}
-
-/* Give each status cell room to breathe */
-.detail-table td { vertical-align: top; }
-
-/* Person + time + tag stacked inside each status cell */
-.cell-person {
-  font-size: 12px;
-  font-weight: 600;
-  color: #0f172a;
-  white-space: nowrap;
-}
-.cell-time {
-  font-size: 10.5px;
-  color: #64748b;
-  margin-top: 2px;
-  white-space: nowrap;
-}
-.cell-person i,
-.cell-time i { color: #94a3b8; margin-right: 3px; font-size: 10px; }
-
-.cell-dur {
-  font-size: 10px;
-  font-weight: 700;
-  color: #7c3aed;
-  margin-top: 2px;
-  white-space: nowrap;
-}
-.cell-tag {
-  display: inline-block;
-  margin-top: 4px;
-  padding: 1px 7px;
-  border-radius: 6px;
-  font-size: 9.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-.cell-tag.done    { background: #dcfce7; color: #15803d; }
-.cell-tag.current { background: #dbeafe; color: #1d4ed8; }
-.cell-tag.pending { background: #f1f5f9; color: #94a3b8; }
-
-.cell-empty { color: #cbd5e1; font-weight: 600; }
-
-/* Subtle background tint per cell state */
-.detail-table td.st-done    { background: #f0fdf4 !important; }
-.detail-table td.st-current { background: #eff6ff !important; }
+td.st-done    { background: #f0fdf4 !important; }
+td.st-current { background: #eff6ff !important; }
 
 /* ===== Order-level status timeline ===== */
 .timeline-title {
@@ -998,78 +883,6 @@
   margin-top: 4px;
 }
 
-/* ============================================================
-   APPEND THIS to your existing track-order-level.css
-   (styles for the new IMEI-based status matrix in the popup)
-   ============================================================ */
-
-/* Current-status pill in the details table */
-.status-pill {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #fff;
-  white-space: nowrap;
-}
-
-/* Give each status cell room to breathe */
-.detail-table td { vertical-align: top; }
-
-/* Person + time + tag stacked inside each status cell */
-.cell-person {
-  font-size: 12px;
-  font-weight: 600;
-  color: #0f172a;
-  white-space: nowrap;
-}
-.cell-time {
-  font-size: 10.5px;
-  color: #64748b;
-  margin-top: 2px;
-  white-space: nowrap;
-}
-.cell-person i,
-.cell-time i { color: #94a3b8; margin-right: 3px; font-size: 10px; }
-
-.cell-dur {
-  font-size: 10px;
-  font-weight: 700;
-  color: #7c3aed;
-  margin-top: 2px;
-  white-space: nowrap;
-}
-.cell-tag {
-  display: inline-block;
-  margin-top: 4px;
-  padding: 1px 7px;
-  border-radius: 6px;
-  font-size: 9.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-.cell-tag.done    { background: #dcfce7; color: #15803d; }
-.cell-tag.current { background: #dbeafe; color: #1d4ed8; }
-.cell-tag.pending { background: #f1f5f9; color: #94a3b8; }
-
-.cell-empty { color: #cbd5e1; font-weight: 600; }
-
-/* Subtle background tint per cell state */
-.detail-table td.st-done    { background: #f0fdf4 !important; }
-.detail-table td.st-current { background: #eff6ff !important; }
-
-/* ===== Order-level status timeline (table form) ===== */
-.timeline-title {
-  padding: 0 18px;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: #475569;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  margin-bottom: 12px;
-}
 .tl-dot {
   display: inline-block;
   width: 9px;
@@ -1084,83 +897,6 @@
 tr.row-done    td { background: #f0fdf4 !important; }
 tr.row-current td { background: #eff6ff !important; font-weight: 600; }
 
-/* ============================================================
-   APPEND THIS to your existing track-order-level.css
-   (styles for the new IMEI-based status matrix in the popup)
-   ============================================================ */
-
-/* Current-status pill in the details table */
-.status-pill {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #fff;
-  white-space: nowrap;
-}
-
-/* Give each status cell room to breathe */
-.detail-table td { vertical-align: top; }
-
-/* Person + time + tag stacked inside each status cell */
-.cell-person {
-  font-size: 12px;
-  font-weight: 600;
-  color: #0f172a;
-  white-space: nowrap;
-}
-.cell-time {
-  font-size: 10.5px;
-  color: #64748b;
-  margin-top: 2px;
-  white-space: nowrap;
-}
-.cell-person i,
-.cell-time i { color: #94a3b8; margin-right: 3px; font-size: 10px; }
-
-.cell-dur {
-  font-size: 10px;
-  font-weight: 700;
-  color: #7c3aed;
-  margin-top: 2px;
-  white-space: nowrap;
-}
-.cell-tag {
-  display: inline-block;
-  margin-top: 4px;
-  padding: 1px 7px;
-  border-radius: 6px;
-  font-size: 9.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-.cell-tag.done    { background: #dcfce7; color: #15803d; }
-.cell-tag.current { background: #dbeafe; color: #1d4ed8; }
-.cell-tag.pending { background: #f1f5f9; color: #94a3b8; }
-
-.cell-empty { color: #cbd5e1; font-weight: 600; }
-
-/* Subtle background tint per cell state */
-td.st-done    { background: #f0fdf4 !important; }
-td.st-current { background: #eff6ff !important; }
-
-/* ===== Status timeline columns inside the MAIN transit table ===== */
-.page .table-responsive > .table { min-width: 2650px; }   /* room for the extra status columns */
-.page .table thead th.st-col { background: #1d4ed8; }      /* darker header so timeline cols stand out */
-.page .table td.st-current { font-weight: 600; }
-
-/* ===== Order-level status timeline (table form) ===== */
-.timeline-title {
-  padding: 0 18px;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: #475569;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  margin-bottom: 12px;
-}
 .detail-subtitle {
   padding: 0 18px;
   font-size: 12.5px;
@@ -1170,43 +906,30 @@ td.st-current { background: #eff6ff !important; }
   letter-spacing: 0.03em;
   margin-bottom: 12px;
 }
-.tl-dot {
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  margin-right: 7px;
-  vertical-align: middle;
-}
-.detail-table td i,
-.table td i { color: #94a3b8; margin-right: 4px; font-size: 11px; }
 
-tr.row-done    td { background: #f0fdf4 !important; }
-tr.row-current td { background: #eff6ff !important; font-weight: 600; }
+/* ===== Status timeline columns inside the MAIN transit table ===== */
+.page .table-responsive > .table { min-width: 2650px; }   /* room for the extra status columns */
+.page .table thead th.st-col { background: #1d4ed8; }      /* darker header so timeline cols stand out */
+.page .table td.st-current { font-weight: 600; }
 
-.search-container {
-    display: flex;
-    justify-content: flex-end;
-    margin: 15px 0;
-    width: 100%;
+/* ===== Search field + action buttons, now inline in the toolbar ===== */
+.field-search {
+  flex: 2 1 260px;
 }
 
-.search-box {
-    width: 350px;
+.toolbar-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex: 0 0 auto;
 }
 
-.search-box label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 6px;
-    color: #374151;
+.toolbar-actions .btn-primary,
+.toolbar-actions .btn-secondary {
+  align-self: flex-end;
 }
 
-.search-box input {
-    width: 100%;
-    height: 40px;
-    border-radius: 6px;
-}
+.btn-primary i { font-size: 12px; }
 
 
 
@@ -1342,8 +1065,18 @@ tr.row-current td { background: #eff6ff !important; font-weight: 600; }
       padding:15px;
   }
 
-  .search-box{
+  .field-search{
       width:100%;
+      flex:1 1 100%;
+  }
+
+  .toolbar-actions{
+      width:100%;
+  }
+
+  .toolbar-actions .btn-primary,
+  .toolbar-actions .btn-secondary{
+      flex:1 1 0;
   }
 
 }
@@ -1483,8 +1216,6 @@ tr.row-current td { background: #eff6ff !important; font-weight: 600; }
     border: 1px solid #1e40af;
 }
 
-/* ===== APPEND TO track-order-level.css ===== */
-
 /* Items/qty now live under the cards instead of competing with transit counts */
 .stat-meta {
   margin: -4px 0 14px 2px;
@@ -1510,4 +1241,91 @@ td .status-pill {
   font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* ============================================================
+   Status Tabs — pill filter bar above the table
+   (Created / In Progress / Completed / ... / All)
+   Independent of the KPI cards; drives statusFilter for the table only.
+   ============================================================ */
+
+.tabs-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+}
+
+.status-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px;
+}
+
+.status-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 18px;
+  border: none;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #0f172a;
+  font-size: 14.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+}
+.status-tab:hover { background: #e2e8f0; }
+
+.status-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #1d4ed8;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.status-tab.active {
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+}
+.status-tab.active .status-tab-count {
+  background: #fff;
+  color: #2563eb;
+}
+
+.tabs-divider {
+  height: 1px;
+  background: #eef2f6;
+}
+
+.tabs-count-banner {
+  padding: 12px 20px;
+  background: #eff6ff;
+  color: #64748b;
+  font-size: 14.5px;
+}
+.tabs-count-banner b {
+  color: #2563eb;
+  font-weight: 800;
+  margin-right: 4px;
+}
+
+@media (max-width: 576px) {
+  .status-tabs { padding: 14px; gap: 8px; }
+  .status-tab { padding: 9px 14px; font-size: 13px; flex: 1 1 calc(50% - 8px); justify-content: center; }
+  .tabs-count-banner { padding: 10px 14px; font-size: 13px; }
 }

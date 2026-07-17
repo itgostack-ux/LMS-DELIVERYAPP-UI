@@ -34,10 +34,8 @@
       <!-- ================= Operations Tracking ================= -->
       <li class="has-submenu" [class.open]="operationsMenuOpen">
 
-        <a href="javascript:void(0)"
-           (click)="toggleOperationsMenu($event)"
-           aria-haspopup="true"
-           [attr.aria-expanded]="operationsMenuOpen">
+        <a href="javascript:void(0)" (click)="toggleOperationsMenu($event)" aria-haspopup="true"
+          [attr.aria-expanded]="operationsMenuOpen">
 
           <div class="menu-left">
             <i class="fa-solid fa-gears"></i>
@@ -72,10 +70,8 @@
       <!-- ================= Logistics Tracking ================= -->
       <li class="has-submenu" [class.open]="logisticsMenuOpen">
 
-        <a href="javascript:void(0)"
-           (click)="toggleLogisticsMenu($event)"
-           aria-haspopup="true"
-           [attr.aria-expanded]="logisticsMenuOpen">
+        <a href="javascript:void(0)" (click)="toggleLogisticsMenu($event)" aria-haspopup="true"
+          [attr.aria-expanded]="logisticsMenuOpen">
 
           <div class="menu-left">
             <i class="fa-solid fa-location-dot"></i>
@@ -139,14 +135,12 @@
       <!-- ================= Logistics Tracking ================= -->
       <li class="has-submenu" [class.open]="logisticsMenuOpen">
 
-        <a href="javascript:void(0)"
-           (click)="toggleLogisticsMenu($event)"
-           aria-haspopup="true"
-           [attr.aria-expanded]="logisticsMenuOpen">
+        <a href="javascript:void(0)" (click)="toggleLogisticsMenu($event)" aria-haspopup="true"
+          [attr.aria-expanded]="logisticsMenuOpen">
 
           <div class="menu-left">
             <i class="fa-solid fa-location-dot"></i>
-            <span>Logistics Tracking</span>
+            <span>Logistics Report</span>
           </div>
 
           <i class="fa-solid chevron" [ngClass]="logisticsMenuOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
@@ -201,10 +195,8 @@
 
       <li class="has-submenu" [class.open]="operationsMenuOpen">
 
-        <a href="javascript:void(0)"
-           (click)="toggleOperationsMenu($event)"
-           aria-haspopup="true"
-           [attr.aria-expanded]="operationsMenuOpen">
+        <a href="javascript:void(0)" (click)="toggleOperationsMenu($event)" aria-haspopup="true"
+          [attr.aria-expanded]="operationsMenuOpen">
 
           <div class="menu-left">
             <i class="fa-solid fa-gears"></i>
@@ -239,10 +231,8 @@
       <!-- ================= Logistics Tracking ================= -->
       <li class="has-submenu" [class.open]="logisticsMenuOpen">
 
-        <a href="javascript:void(0)"
-           (click)="toggleLogisticsMenu($event)"
-           aria-haspopup="true"
-           [attr.aria-expanded]="logisticsMenuOpen">
+        <a href="javascript:void(0)" (click)="toggleLogisticsMenu($event)" aria-haspopup="true"
+          [attr.aria-expanded]="logisticsMenuOpen">
 
           <div class="menu-left">
             <i class="fa-solid fa-location-dot"></i>
@@ -275,15 +265,12 @@
       </li>
 
     </ng-container>
-
-    <ng-container *ngIf="roleName === 'Logistics Manager'">
+    <ng-container *ngIf="roleName === 'Store Manager'">
 
       <li class="has-submenu" [class.open]="operationsMenuOpen">
 
-        <a href="javascript:void(0)"
-           (click)="toggleOperationsMenu($event)"
-           aria-haspopup="true"
-           [attr.aria-expanded]="operationsMenuOpen">
+        <a href="javascript:void(0)" (click)="toggleOperationsMenu($event)" aria-haspopup="true"
+          [attr.aria-expanded]="operationsMenuOpen">
 
           <div class="menu-left">
             <i class="fa-solid fa-gears"></i>
@@ -318,10 +305,82 @@
       <!-- ================= Logistics Tracking ================= -->
       <li class="has-submenu" [class.open]="logisticsMenuOpen">
 
-        <a href="javascript:void(0)"
-           (click)="toggleLogisticsMenu($event)"
-           aria-haspopup="true"
-           [attr.aria-expanded]="logisticsMenuOpen">
+        <a href="javascript:void(0)" (click)="toggleLogisticsMenu($event)" aria-haspopup="true"
+          [attr.aria-expanded]="logisticsMenuOpen">
+
+          <div class="menu-left">
+            <i class="fa-solid fa-location-dot"></i>
+            <span>Logistics Report</span>
+          </div>
+
+          <i class="fa-solid chevron" [ngClass]="logisticsMenuOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+
+        </a>
+
+        <div class="submenu-title">Logistics Report</div>
+        <ul class="submenu">
+
+          <li routerLinkActive="active">
+            <a routerLink="/track-manifest-report" (click)="closeMenus()">
+              <i class="fa-solid fa-file-lines"></i>
+              <span>Manifest Report</span>
+            </a>
+          </li>
+
+          <li routerLinkActive="active">
+            <a routerLink="/track-order-level-report" (click)="closeMenus()">
+              <i class="fa-solid fa-box"></i>
+              <span>Order Report</span>
+            </a>
+          </li>
+
+        </ul>
+
+      </li>
+
+    </ng-container>
+    <ng-container *ngIf="roleName === 'Logistics Manager'">
+
+      <li class="has-submenu" [class.open]="operationsMenuOpen">
+
+        <a href="javascript:void(0)" (click)="toggleOperationsMenu($event)" aria-haspopup="true"
+          [attr.aria-expanded]="operationsMenuOpen">
+
+          <div class="menu-left">
+            <i class="fa-solid fa-gears"></i>
+            <span>Operations Tracking</span>
+          </div>
+
+          <i class="fa-solid chevron" [ngClass]="operationsMenuOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+
+        </a>
+
+        <div class="submenu-title">Operations Tracking</div>
+        <ul class="submenu">
+
+          <li routerLinkActive="active">
+            <a routerLink="/operations" (click)="closeMenus()">
+              <i class="fa-solid fa-file-lines"></i>
+              <span>Order Update</span>
+            </a>
+          </li>
+
+          <li routerLinkActive="active">
+            <a routerLink="/logictics-update" (click)="closeMenus()">
+              <i class="fa-solid fa-truck-fast"></i>
+              <span>Logistics Update</span>
+            </a>
+          </li>
+
+        </ul>
+
+      </li>
+
+      <!-- ================= Logistics Tracking ================= -->
+      <li class="has-submenu" [class.open]="logisticsMenuOpen">
+
+        <a href="javascript:void(0)" (click)="toggleLogisticsMenu($event)" aria-haspopup="true"
+          [attr.aria-expanded]="logisticsMenuOpen">
 
           <div class="menu-left">
             <i class="fa-solid fa-location-dot"></i>
@@ -361,7 +420,5 @@
 </div>
 
 <!-- Backdrop for tablet/mobile flyouts -->
-<div class="sidebar-backdrop"
-     [class.show]="operationsMenuOpen || logisticsMenuOpen"
-     (click)="closeMenus()">
+<div class="sidebar-backdrop" [class.show]="operationsMenuOpen || logisticsMenuOpen" (click)="closeMenus()">
 </div>

@@ -29,21 +29,6 @@
     </div>
   </div>
 
-  <!-- ===== KPI cards: every number is a TRANSIT count ===== -->
-  <div class="stat-grid" *ngIf="!loading && statCards.length > 0">
-    <div class="stat-card" *ngFor="let card of statCards" [style.--accent]="card.color">
-      <div class="stat-icon"><i [class]="card.icon"></i></div>
-      <div class="stat-info">
-        <span class="stat-label">{{ card.label }}</span>
-        <span class="stat-value">{{ card.value }}</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Items sit behind the transits, so they get a line rather than a card -->
-  <div class="stat-meta" *ngIf="!loading && filteredGroups.length > 0">
-    {{ totalTransits }} transit(s) &middot; {{ totalItems }} item(s) &middot; total qty {{ totalQty }}
-  </div>
 
   <!-- ===== Filters ===== -->
   <div class="card toolbar-card">
@@ -87,14 +72,37 @@
         <input type="date" [(ngModel)]="toDate">
       </div>
 
-      <button class="btn-secondary" (click)="clearFilters()" [disabled]="!hasActiveFilters">Clear</button>
+      <div class="field field-search">
+        <label>Search</label>
+        <input type="text" placeholder="Transit ID / Item / IMEI / User..."
+               [(ngModel)]="searchInput"
+               (keydown.enter)="applySearch()">
+      </div>
+
+      <div class="toolbar-actions">
+        <button class="btn-primary" (click)="applySearch()">
+          <i class="fa-solid fa-magnifying-glass"></i> Search
+        </button>
+        <button class="btn-secondary" (click)="clearFilters()" [disabled]="!hasActiveFilters">Clear</button>
+      </div>
     </div>
   </div>
 
-  <div class="search-container">
-    <div class="search-box">
-      <label>Search</label>
-      <input type="text" class="form-control" placeholder="Transit ID / Item / IMEI / User..." [(ngModel)]="searchText">
+  <!-- ===== Status Tabs (pill filter bar) — filters the table only, independent of KPI cards ===== -->
+  <div class="tabs-card" *ngIf="!loading && statusTabs.length > 0">
+    <div class="status-tabs">
+      <button type="button"
+              class="status-tab"
+              *ngFor="let tab of statusTabs"
+              [class.active]="statusFilter === tab.code"
+              (click)="selectStatusTab(tab.code)">
+        {{ tab.name }}
+        <span class="status-tab-count">{{ tab.count }}</span>
+      </button>
+    </div>
+    <div class="tabs-divider"></div>
+    <div class="tabs-count-banner">
+      <b>{{ totalTransits }}</b> Transit(s)
     </div>
   </div>
 

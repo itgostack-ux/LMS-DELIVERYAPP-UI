@@ -215,6 +215,9 @@
 .stage-time {
   font-size: 10.5px; color: #475569; line-height: 1.2; white-space: nowrap;
 }
+.stage-user {
+  font-size: 10px; color: #94a3b8; line-height: 1.2; white-space: nowrap;
+}
 
 /* Stage status backgrounds */
 .stage-completed { background: #f0fdf4; }
@@ -588,4 +591,229 @@
 
 .table-wrap::-webkit-scrollbar-track{
     background:#e5e7eb;
+}
+
+.manifest-tabs{
+    display:flex;
+    gap:12px;
+    padding:15px 20px;
+    border-bottom:1px solid #e5e7eb;
+    margin-bottom:15px;
+}
+
+.tab-btn{
+    border:none;
+    background:#f3f4f6;
+    padding:10px 20px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:600;
+    transition:.3s;
+}
+
+.tab-btn span{
+    margin-left:8px;
+    background:#2563eb;
+    color:#fff;
+    padding:2px 8px;
+    border-radius:20px;
+    font-size:12px;
+}
+
+.tab-btn.active{
+    background:#2563eb;
+    color:#fff;
+}
+
+.tab-btn.active span{
+    background:#fff;
+    color:#2563eb;
+}
+
+/* ================================================================= */
+/*  NEW: Clickable KPI cards (act as tab filters)                    */
+/* ================================================================= */
+.summary-card{
+    cursor:pointer;
+    user-select:none;
+}
+
+.summary-card.created.active{
+    box-shadow:0 0 0 2px #2563eb inset, 0 6px 18px rgba(37,99,235,.15);
+}
+.summary-card.progress.active{
+    box-shadow:0 0 0 2px #f59e0b inset, 0 6px 18px rgba(245,158,11,.15);
+}
+.summary-card.completed.active{
+    box-shadow:0 0 0 2px #16a34a inset, 0 6px 18px rgba(22,163,74,.15);
+}
+
+/* ================================================================= */
+/*  NEW: Expandable manifest rows + nested order table               */
+/* ================================================================= */
+
+/* Toggle (chevron) column */
+.mf-table .col-toggle{
+    width:44px;
+    text-align:center !important;
+}
+
+.chevron{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    color:#94a3b8;
+    transition:transform .18s ease;
+}
+.chevron.rot{
+    transform:rotate(90deg);
+    color:#2563eb;
+}
+
+/* Expandable summary row */
+.mf-table tbody tr.mf-row{
+    cursor:pointer;
+    height:46px;
+}
+.mf-table tbody tr.mf-row.open{
+    background:#eff6ff;
+}
+.mf-table tbody tr.mf-row.open:hover{
+    background:#e0f2fe;
+}
+
+/* Detail row — override the outer centered/bordered .mf-table rules */
+.mf-table tbody tr.mf-detail-row,
+.mf-table tbody tr.mf-detail-row:hover{
+    background:#f8fafc;
+    height:auto;
+}
+.mf-detail-cell{
+    padding:0 !important;
+    text-align:left !important;
+    border:1px solid #e5e7eb !important;
+    white-space:normal !important;
+    background:#f8fafc;
+}
+
+/*
+  The parent table is ~1800px wide and scrolls horizontally. Pin the drill-down
+  panel to the left edge of the visible scroll area (position:sticky; left:0) and
+  size it to its content, so every column stays readable without stretching to
+  1800px or scrolling off-screen.
+*/
+.order-detail-panel{
+    position:sticky;
+    left:0;
+    width:fit-content;
+    max-width:100%;
+    box-sizing:border-box;
+    padding:14px 18px 18px;
+}
+
+.order-detail-head{
+    font-size:13px;
+    color:#475569;
+    margin-bottom:10px;
+}
+.order-detail-head b{
+    color:#1d4ed8;
+}
+.order-detail-count{
+    margin-left:10px;
+    font-size:12px;
+    color:#94a3b8;
+    font-weight:600;
+}
+
+/* Nested order sub-table (reset inherited .mf-table styling) */
+.order-subtable{
+    width:auto;
+    min-width:780px;
+    border-collapse:collapse;
+    background:#fff;
+    border:1px solid #e2e8f0;
+    border-radius:8px;
+    overflow:hidden;
+    font-size:12.5px;
+}
+
+.order-item-cell{
+    max-width:260px;
+    white-space:normal;
+    line-height:1.35;
+}
+
+/* ================================================================= */
+/*  NEW: Per-status coloured pills (manifest / order / lifecycle)     */
+/* ================================================================= */
+.status-pill{
+    display:inline-block;
+    padding:4px 12px;
+    border-radius:999px;
+    font-size:11.5px;
+    font-weight:700;
+    letter-spacing:.01em;
+    white-space:nowrap;
+    line-height:1.2;
+}
+
+/* Open */
+.st-open{ background:#dbeafe; color:#1d4ed8; }
+/* Created */
+.st-created{ background:#e0e7ff; color:#4338ca; }
+/* Pickup Ready */
+.st-ready{ background:#cffafe; color:#0e7490; }
+/* Pickup Assigned */
+.st-assigned{ background:#fef3c7; color:#b45309; }
+/* Picked Up */
+.st-picked{ background:#ede9fe; color:#6d28d9; }
+/* In Progress */
+.st-progress{ background:#ffedd5; color:#c2410c; }
+/* Delivered */
+.st-delivered{ background:#dcfce7; color:#15803d; }
+/* Completed */
+.st-completed{ background:#dcfce7; color:#15803d; }
+/* Pending */
+.st-pending{ background:#f1f5f9; color:#475569; }
+/* Cancelled */
+.st-cancelled{ background:#fee2e2; color:#b91c1c; }
+/* Fallback / empty */
+.st-default{ background:#f1f5f9; color:#334155; }
+.st-none{ background:transparent; color:#94a3b8; font-weight:600; }
+
+.mf-table .order-subtable thead th{
+    position:static;
+    z-index:auto;
+    background:#f1f5f9;
+    color:#475569;
+    padding:8px 12px;
+    text-align:left;
+    border:none;
+    border-bottom:1px solid #e2e8f0;
+    white-space:nowrap;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.02em;
+    font-weight:700;
+}
+
+.mf-table .order-subtable tbody tr{
+    height:auto;
+    background:#fff;
+}
+.mf-table .order-subtable tbody tr:nth-child(even){
+    background:#fbfcfe;
+}
+.mf-table .order-subtable tbody tr:hover{
+    background:#f1f5f9;
+}
+
+.mf-table .order-subtable tbody td{
+    padding:8px 12px;
+    text-align:left;
+    border:none;
+    border-top:1px solid #f1f5f9;
+    white-space:nowrap;
+    vertical-align:middle;
 }

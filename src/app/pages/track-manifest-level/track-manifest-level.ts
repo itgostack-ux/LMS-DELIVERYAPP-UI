@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import jsPDF from 'jspdf';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 import { LogisticsService } from '../../services/logistics-service';
 import { UserDataService } from '../../service/user-data-service';
@@ -752,110 +754,95 @@ export class TrackManifestLevel implements OnInit {
   //  Export (grouped: manifest summary + its orders)
   // ============================================================
 
-  exportToExcel(): void {
+exportToExcel(): void {
 
-    const headers = [
-      'S.No',
-      'Manifest No',
-      'Manifest Date',
-      'Company',
-      'Assigned User',
-      'Receiver User',
-      'Source',
-      'Destination',
-      'Transfer Mode',
-      'Total Orders',
-      'Status',
-      'Open Time',
-      'Open By',
-      'Pickup Ready Time',
-      'Pickup Ready By',
-      'Pickup Assigned Time',
-      'Pickup Assigned By',
-      'Picked Up Time',
-      'Picked Up By',
-      'Delivered Time',
-      'Delivered By'
-    ];
+  const exportData = this.filteredManifestGroups;
 
-    const rows = this.manifestGroups.map((g, index) => [
+  const data = exportData.map((g, index) => ({
 
-      index + 1,
+    'S.No': index + 1,
 
-      g.manifestNo,
+    'Manifest No': g.manifestNo,
 
-      g.manifestDate
-        ? new Date(g.manifestDate).toLocaleString()
-        : '',
+    'Manifest Date': g.manifestDate
+      ? new Date(g.manifestDate).toLocaleString()
+      : '',
 
-      g.companyName,
+    'Company': g.companyName,
 
-      g.assignedUser,
+    'Assigned User': g.assignedUser,
 
-      g.receiverUser,
+    'Receiver User': g.receiverUser,
 
-      g.sources,
+    'Source': g.sources,
 
-      g.destinations,
+    'Destination': g.destinations,
 
-      g.transferModeName,
+    'Transfer Mode': g.transferModeName,
 
-      g.orders.length,
+    'Total Orders': g.orders.length,
 
-      this.getCurrentStageName(g),
+    'Current Status': this.getCurrentStageName(g),
 
-      this.getManifestStageTime(g, 'OPEN')
-        ? new Date(this.getManifestStageTime(g, 'OPEN')!).toLocaleString()
-        : '',
-      this.getManifestStageUser(g, 'OPEN') || '',
+    'Open Time': this.getManifestStageTime(g, 'OPEN')
+      ? new Date(this.getManifestStageTime(g, 'OPEN')!).toLocaleString()
+      : '',
 
-      this.getManifestStageTime(g, 'PICKUP_READY')
-        ? new Date(this.getManifestStageTime(g, 'PICKUP_READY')!).toLocaleString()
-        : '',
-      this.getManifestStageUser(g, 'PICKUP_READY') || '',
+    'Open By': this.getManifestStageUser(g, 'OPEN') || '',
 
-      this.getManifestStageTime(g, 'PICKUP_ASSIGNED')
-        ? new Date(this.getManifestStageTime(g, 'PICKUP_ASSIGNED')!).toLocaleString()
-        : '',
-      this.getManifestStageUser(g, 'PICKUP_ASSIGNED') || '',
+    'Pickup Ready Time': this.getManifestStageTime(g, 'PICKUP_READY')
+      ? new Date(this.getManifestStageTime(g, 'PICKUP_READY')!).toLocaleString()
+      : '',
 
-      this.getManifestStageTime(g, 'PICKED_UP')
-        ? new Date(this.getManifestStageTime(g, 'PICKED_UP')!).toLocaleString()
-        : '',
-      this.getManifestStageUser(g, 'PICKED_UP') || '',
+    'Pickup Ready By': this.getManifestStageUser(g, 'PICKUP_READY') || '',
 
-      this.getManifestStageTime(g, 'DELIVERED')
-        ? new Date(this.getManifestStageTime(g, 'DELIVERED')!).toLocaleString()
-        : '',
-      this.getManifestStageUser(g, 'DELIVERED') || ''
+    'Pickup Assigned Time': this.getManifestStageTime(g, 'PICKUP_ASSIGNED')
+      ? new Date(this.getManifestStageTime(g, 'PICKUP_ASSIGNED')!).toLocaleString()
+      : '',
 
-    ]);
+    'Pickup Assigned By': this.getManifestStageUser(g, 'PICKUP_ASSIGNED') || '',
 
-    const csv = [headers, ...rows]
-      .map(r =>
-        r.map(x => `"${String(x ?? '').replace(/"/g, '""')}"`).join(',')
-      )
-      .join('\n');
+    'Picked Up Time': this.getManifestStageTime(g, 'PICKED_UP')
+      ? new Date(this.getManifestStageTime(g, 'PICKED_UP')!).toLocaleString()
+      : '',
 
-    const blob = new Blob(
-      ['\uFEFF' + csv],
-      { type: 'text/csv;charset=utf-8;' }
-    );
+    'Picked Up By': this.getManifestStageUser(g, 'PICKED_UP') || '',
 
-    const url = URL.createObjectURL(blob);
+    'Delivered Time': this.getManifestStageTime(g, 'DELIVERED')
+      ? new Date(this.getManifestStageTime(g, 'DELIVERED')!).toLocaleString()
+      : '',
 
-    const link = document.createElement('a');
+    'Delivered By': this.getManifestStageUser(g, 'DELIVERED') || ''
 
-    link.href = url;
+  }));
 
-    link.download =
-      `Manifest_Level_Report_${new Date().toISOString().slice(0, 10)}.csv`;
+  const worksheet: XLSX.WorkSheet = XLSX.utils.json_to_sheet(data);
 
-    link.click();
+  const workbook: XLSX.WorkBook = {
+    Sheets: {
+      'Manifest Report': worksheet
+    },
+    SheetNames: ['Manifest Report']
+  };
 
-    URL.revokeObjectURL(url);
+  const excelBuffer: any = XLSX.write(workbook, {
+    bookType: 'xlsx',
+    type: 'array'
+  });
 
-  }
+  const blob = new Blob(
+    [excelBuffer],
+    {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    }
+  );
+
+  saveAs(
+    blob,
+    `Manifest_Level_Report_${new Date().toISOString().slice(0, 10)}.xlsx`
+  );
+
+}
 
   exportToPdf(): void {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });

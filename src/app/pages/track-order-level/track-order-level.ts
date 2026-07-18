@@ -93,10 +93,10 @@ interface TransitGroup {
 
   vehicleNo: string;
 
-currentSequence: number;
-currentStatus: string;
-currentStatusCode: string;
-colorCode: string;
+  currentSequence: number;
+  currentStatus: string;
+  currentStatusCode: string;
+  colorCode: string;
 
   transferOutTime?: Date;
 
@@ -107,6 +107,27 @@ colorCode: string;
 
   orderStatus: string;
   manifestStatus: string;
+
+
+  // Open
+  openUser?: string;
+  openTime?: Date;
+
+  // Pickup Ready
+  pickupReadyUser?: string;
+  pickupReadyTime?: Date;
+
+  // Pickup Assigned
+  pickupAssignedUser?: string;
+  pickupAssignedTime?: Date;
+
+  // Picked Up
+  pickedUpUser?: string;
+  pickedUpTime?: Date;
+
+  // Delivered
+  deliveredUser?: string;
+  deliveredTime?: Date;
 }
 @Component({
   selector: 'app-track-order-level',
@@ -119,7 +140,7 @@ export class TrackOrderLevel implements OnInit {
   selectedSource = '';
   selectedDestination = '';
   selectedStatus = '';
-
+  statusFilteredLogs: TransitGroup[] = [];
   sourceList: string[] = [];
   destinationList: string[] = [];
   rows: DeliveryOrderTimeline[] = [];
@@ -161,39 +182,55 @@ export class TrackOrderLevel implements OnInit {
     this.errorMessage = '';
 
     this.logisticsService.getDeliveryOrderTimeline().subscribe({
+
       next: (response) => {
 
-        //console.log('Delivery Order Timeline API Response');
-       // console.log(response);
-
         this.rows = response;
-        const transitMap = new Map<number, TransitGroup>();
-
+        //console.log('Delivery Order Timeline:', this.rows);
+        // Build Transit Groups
+        console.log(response.filter(x => x.transitID === 64871));
         this.groupedLogs = this.buildGroups(response);
+       // console.log('Grouped Logs:', this.groupedLogs);
 
-        this.filteredLogs = [...this.groupedLogs];
-        this.loadPage();
+       console.log(
+  this.groupedLogs.find(x => x.transitID === '64871')
+);
+        // Load Company Filter
         this.companyList = [
           ...new Set(this.groupedLogs.map(x => x.companyName))
         ];
 
-
+        // Load Source Filter
         this.sourceList = [
           ...new Set(this.groupedLogs.map(x => x.sourceLocationName))
         ];
 
+        // Load Destination Filter
         this.destinationList = [
           ...new Set(this.groupedLogs.map(x => x.destinationLocationName))
         ];
 
+        // Default From Date & To Date = Today
+        this.setTodayDate();
+
+        // Apply Filters (Company, Source, Destination,
+        // Current Status, Date)
+        this.applyFilter();
+
         this.loading = false;
 
       },
+
       error: (err) => {
+
         console.error(err);
+
         this.loading = false;
+
         this.errorMessage = 'Failed to load data';
+
       }
+
     });
 
   }
@@ -233,198 +270,278 @@ export class TrackOrderLevel implements OnInit {
     }
 
   }
-private buildGroups(data: DeliveryOrderTimeline[]): TransitGroup[] {
+  private buildGroups(data: DeliveryOrderTimeline[]): TransitGroup[] {
 
-  const transitMap = new Map<string, TransitGroup>();
+    const transitMap = new Map<string, TransitGroup>();
 
-  data.forEach(r => {
+    data.forEach(r => {
 
-    const transitId = String(r.transitID ?? 0);
-    const sequence = r.sequenceNo ?? 0;
+      const transitId = String(r.transitID ?? 0);
+      const sequence = r.sequenceNo ?? 0;
 
-    let group = transitMap.get(transitId);
+      let group = transitMap.get(transitId);
 
-    if (!group) {
+      if (!group) {
 
-      group = {
+        group = {
 
-        transitID: transitId,
+          transitID: transitId,
 
-        manifestNo: r.manifestNo ?? '',
-        deliveryNoteNo: r.deliveryNoteNo ?? '',
-        manifestDate: r.manifestDate,
+          manifestNo: r.manifestNo ?? '',
+          deliveryNoteNo: r.deliveryNoteNo ?? '',
+          manifestDate: r.manifestDate,
 
-        companyName: r.companyName ?? '',
-        sourceLocationName: r.sourceLocationName ?? '',
-        destinationLocationName: r.destinationLocationName ?? '',
+          companyName: r.companyName ?? '',
+          sourceLocationName: r.sourceLocationName ?? '',
+          destinationLocationName: r.destinationLocationName ?? '',
 
-        transferOutDate: r.transferOutDate,
-        transferOutTime: r.transferOutTime,
-        transferInTime: r.transferInTime,
+          transferOutDate: r.transferOutDate,
+          transferOutTime: r.transferOutTime,
+          transferInTime: r.transferInTime,
 
-        transferModeName: r.transferModeName ?? '',
-        assignedUserName: r.assignedUserName ?? '',
-        transferOutByName: r.transferOutByName ?? '',
-        receiverUserName: r.receiverUserName ?? '',
+          transferModeName: r.transferModeName ?? '',
+          assignedUserName: r.assignedUserName ?? '',
+          transferOutByName: r.transferOutByName ?? '',
+          receiverUserName: r.receiverUserName ?? '',
 
-        courierName: r.courierName ?? '',
-        awbBillNo: r.awbBillNo ?? '',
-        vehicleNo: r.vehicleNo ?? '',
+          courierName: r.courierName ?? '',
+          awbBillNo: r.awbBillNo ?? '',
+          vehicleNo: r.vehicleNo ?? '',
 
-        transferDuration: r.transferDuration ?? '',
+          transferDuration: r.transferDuration ?? '',
 
-        totalItems: 0,
-        totalQty: 0,
-        acceptedQty: 0,
-        pendingQty: 0,
+          totalItems: 0,
+          totalQty: 0,
+          acceptedQty: 0,
+          pendingQty: 0,
 
-      currentSequence: 0,
-currentStatus: '',
-currentStatusCode: '',
-colorCode: '',
+          currentSequence: 0,
+          currentStatus: '',
+          currentStatusCode: '',
+          colorCode: '',
 
-        orderStatus: '',
-        manifestStatus: '',
+          orderStatus: '',
+          manifestStatus: '',
 
-        details: []
 
-      };
+          openUser: '',
+          openTime: undefined,
 
-      transitMap.set(transitId, group);
-    }
+          pickupReadyUser: '',
+          pickupReadyTime: undefined,
 
-    /*------------------------------------
-      Current Transit Status
-      Use only lifecycle rows that started
-    -------------------------------------*/
+          pickupAssignedUser: '',
+          pickupAssignedTime: undefined,
 
-if (
-    r.orderLogId != null &&
-    r.orderStatusStartTime != null &&
-    sequence > group.currentSequence
-) {
+          pickedUpUser: '',
+          pickedUpTime: undefined,
 
-    group.currentSequence = sequence;
+          deliveredUser: '',
+          deliveredTime: undefined,
+          details: []
 
-    group.currentStatus = r.statusName ?? '';
+        };
 
-    group.currentStatusCode = r.statusCode ?? '';
+        transitMap.set(transitId, group);
+      }
 
-    group.colorCode = r.colorCode ?? '';
+      /*------------------------------------
+        Current Transit Status
+        Use only lifecycle rows that started
+      -------------------------------------*/
 
-    group.orderStatus = r.orderStatus ?? '';
+      if (
+        r.orderLogId != null &&
+        r.orderStatusStartTime != null &&
+        sequence > group.currentSequence
+      ) {
 
-    group.manifestStatus = r.manifestStatus ?? '';
+        group.currentSequence = sequence;
 
+        group.currentStatus = r.statusName ?? '';
+
+        group.currentStatusCode = r.statusCode ?? '';
+
+        group.colorCode = r.colorCode ?? '';
+
+        group.orderStatus = r.orderStatus ?? '';
+
+        group.manifestStatus = r.manifestStatus ?? '';
+
+      }
+
+      /*------------------------------------
+        Item Details
+      -------------------------------------*/
+
+      let detail = group.details.find(
+        x => x.transferOrderId === r.transferOrderId
+      );
+
+      if (!detail) {
+
+        detail = {
+
+          transferOrderId: r.transferOrderId,
+
+          itemCode: r.itemCode ?? '',
+
+          itemName: r.itemName ?? '',
+
+          imei: r.imei ?? '',
+
+          qty: 1,
+
+          currentStatus: '',
+
+          currentColor: '',
+
+          cells: {}
+
+        };
+
+        group.details.push(detail);
+
+        group.totalItems++;
+
+        group.totalQty++;
+
+      }
+
+
+      /*------------------------------------
+  Transit Lifecycle Details
+-------------------------------------*/
+/*------------------------------------
+  Transit Lifecycle Details
+-------------------------------------*/
+switch ((r.statusCode ?? '').toUpperCase()) {
+
+  case 'OPEN':
+
+    group.openUser = r.createdByName ?? '';
+
+    group.openTime = r.transferOutTime;
+
+    break;
+
+  case 'PICKUP_READY':
+
+    group.pickupReadyUser = r.orderChangedByName ?? '';
+
+    group.pickupReadyTime = r.orderStatusStartTime;
+
+    break;
+
+  case 'PICKUP_ASSIGNED':
+
+    group.pickupAssignedUser = r.orderChangedByName ?? '';
+
+    group.pickupAssignedTime = r.orderStatusStartTime;
+
+    break;
+
+  case 'PICKED_UP':
+
+    group.pickedUpUser = r.orderChangedByName ?? '';
+
+    group.pickedUpTime = r.orderStatusStartTime;
+
+    break;
+
+  case 'DELIVERED':
+
+    group.deliveredUser = r.orderChangedByName ?? '';
+
+    group.deliveredTime = r.orderStatusStartTime;
+
+    break;
 }
 
-    /*------------------------------------
-      Item Details
-    -------------------------------------*/
+      /*------------------------------------
+        Item Details
+      -------------------------------------*/
+      /*------------------------------------
+        Item Current Status
+      -------------------------------------*/
 
-    let detail = group.details.find(
-      x => x.transferOrderId === r.transferOrderId
-    );
-
-    if (!detail) {
-
-      detail = {
-
-        transferOrderId: r.transferOrderId,
-
-        itemCode: r.itemCode ?? '',
-
-        itemName: r.itemName ?? '',
-
-        imei: r.imei ?? '',
-
-        qty: 1,
-
-        currentStatus: '',
-
-        currentColor: '',
-
-        cells: {}
-
-      };
-
-      group.details.push(detail);
-
-      group.totalItems++;
-
-      group.totalQty++;
-
-    }
-
-    /*------------------------------------
-      Item Current Status
-    -------------------------------------*/
-
-    if (r.orderStatusStartTime != null &&
+      if (r.orderStatusStartTime != null &&
         sequence >= group.currentSequence) {
 
-      detail.currentStatus = r.statusName ?? '';
+        detail.currentStatus = r.statusName ?? '';
 
-      detail.currentColor = r.colorCode ?? '';
+        detail.currentColor = r.colorCode ?? '';
 
-    }
+      }
 
-    /*------------------------------------
-      Accepted Qty
-    -------------------------------------*/
+      /*------------------------------------
+        Accepted Qty
+      -------------------------------------*/
 
-    if ((r.statusCode ?? '').toUpperCase() === 'DELIVERED') {
+      if ((r.statusCode ?? '').toUpperCase() === 'DELIVERED') {
 
-      group.acceptedQty++;
+        group.acceptedQty++;
 
-    }
+      }
 
-  });
+    });
 
-  transitMap.forEach(g => {
+    transitMap.forEach(g => {
 
-    g.pendingQty = g.totalQty - g.acceptedQty;
+      g.pendingQty = g.totalQty - g.acceptedQty;
 
-    if (!g.currentStatus) {
+      if (!g.currentStatus) {
 
-      g.currentStatus = 'Pending';
+        g.currentStatus = 'Pending';
 
-    }
+      }
 
-  });
+    });
 
-  return [...transitMap.values()];
-
-}
-
-getStatusBackground(color: string): string {
-
-  switch (color?.toUpperCase()) {
-
-    case '#6B7280': // Open
-      return '#F3F4F6';
-
-    case '#F59E0B': // Pickup Ready
-      return '#FEF3C7';
-
-    case '#2563EB': // Pickup Assigned
-      return '#DBEAFE';
-
-    case '#7C3AED': // Picked Up
-      return '#EDE9FE';
-
-    case '#16A34A': // Delivered
-      return '#DCFCE7';
-
-    default:
-      return '#F8FAFC';
+    return [...transitMap.values()];
 
   }
 
-}
+  getStatusBackground(color: string): string {
+
+    switch (color?.toUpperCase()) {
+
+      case '#6B7280': // Open
+        return '#F3F4F6';
+
+      case '#F59E0B': // Pickup Ready
+        return '#FEF3C7';
+
+      case '#2563EB': // Pickup Assigned
+        return '#DBEAFE';
+
+      case '#7C3AED': // Picked Up
+        return '#EDE9FE';
+
+      case '#16A34A': // Delivered
+        return '#DCFCE7';
+
+      default:
+        return '#F8FAFC';
+
+    }
+
+  }
 
 
-exportToExcel(): void {
+ exportToExcel(): void {
+
+  const formatDateTime = (value: any): string => {
+    if (!value) return '';
+    return new Date(value).toLocaleString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  };
 
   const exportData = this.filteredLogs.map((t, index) => ({
 
@@ -432,11 +549,7 @@ exportToExcel(): void {
 
     'Transit ID': t.transitID,
 
-    'Manifest No': t.manifestNo,
 
-    'Manifest Date': t.manifestDate
-      ? new Date(t.manifestDate).toLocaleString()
-      : '',
 
     'Company': t.companyName,
 
@@ -448,7 +561,7 @@ exportToExcel(): void {
 
     'Assigned User': t.assignedUserName,
 
-    'Receiver': t.receiverUserName,
+    'Receiver User': t.receiverUserName,
 
     'Transfer Out By': t.transferOutByName,
 
@@ -470,15 +583,27 @@ exportToExcel(): void {
 
     'Current Status': t.currentStatus,
 
-    'Transfer Out Time': t.transferOutTime
-      ? new Date(t.transferOutTime).toLocaleString()
-      : '',
+    // Lifecycle Details
+    'Open User': t.openUser,
+    'Open Date & Time': formatDateTime(t.openTime),
 
-    'Transfer In Time': t.transferInTime
-      ? new Date(t.transferInTime).toLocaleString()
-      : '',
+    'Pickup Ready User': t.pickupReadyUser,
+    'Pickup Ready Date & Time': formatDateTime(t.pickupReadyTime),
 
-    'Duration': t.transferDuration
+    'Pickup Assigned User': t.pickupAssignedUser,
+    'Pickup Assigned Date & Time': formatDateTime(t.pickupAssignedTime),
+
+    'Picked Up User': t.pickedUpUser,
+    'Picked Up Date & Time': formatDateTime(t.pickedUpTime),
+
+    'Delivered User': t.deliveredUser,
+    'Delivered Date & Time': formatDateTime(t.deliveredTime),
+
+    'Transfer Out Time': formatDateTime(t.transferOutTime),
+
+    'Transfer In Time': formatDateTime(t.transferInTime),
+
+    'Transfer Duration': t.transferDuration
 
   }));
 
@@ -486,14 +611,16 @@ exportToExcel(): void {
 
   const workbook = XLSX.utils.book_new();
 
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Transit Report');
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Transit Level Report');
 
-  XLSX.writeFile(workbook, 'Transit_Level_Report.xlsx');
-
+  XLSX.writeFile(
+    workbook,
+    `Transit_Level_Report_${new Date().toISOString().slice(0,10)}.xlsx`
+  );
 }
 
 
-openTransit(transitId: number): void {
+  openTransit(transitId: number): void {
 
     this.selectedTransitId = transitId;
 
@@ -525,7 +652,7 @@ openTransit(transitId: number): void {
 
           orderEndTime: r.orderStatusEndTime,
 
-          changedBy: r.orderChangedByName ?? ''
+       changedBy: r.changedByName ?? ''
 
         });
 
@@ -542,7 +669,7 @@ openTransit(transitId: number): void {
 
         item.orderEndTime = r.orderStatusEndTime;
 
-        item.changedBy = r.orderChangedByName ?? item.changedBy;
+     item.changedBy = r.changedByName ?? item.changedBy;
 
       }
 
@@ -559,109 +686,129 @@ openTransit(transitId: number): void {
 
   getStatusCount(status: string): number {
 
-  return this.groupedLogs.filter(x =>
+    return this.statusFilteredLogs.filter(x =>
       x.currentStatus === status
-  ).length;
+    ).length;
 
-}
+  }
 
-setTodayDate(): void {
+  setTodayDate(): void {
 
-  const today = new Date();
+    const today = new Date();
 
-  const yyyy = today.getFullYear();
+    const yyyy = today.getFullYear();
 
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
 
-  const dd = String(today.getDate()).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
 
-  const currentDate = `${yyyy}-${mm}-${dd}`;
+    const currentDate = `${yyyy}-${mm}-${dd}`;
 
-  this.fromDate = currentDate;
+    this.fromDate = currentDate;
 
-  this.toDate = currentDate;
+    this.toDate = currentDate;
 
-}
-applyFilter(): void {
+  }
+  applyFilter(): void {
 
-  this.filteredLogs = this.groupedLogs.filter(x => {
+    // First filter without status
+    this.statusFilteredLogs = this.groupedLogs.filter(x => {
 
-    let match = true;
+      let match = true;
 
-    // Company
-    if (this.selectedCompany) {
-      match = match && x.companyName === this.selectedCompany;
-    }
+      if (this.selectedCompany) {
+        match = match && x.companyName === this.selectedCompany;
+      }
 
-    // Source
-    if (this.selectedSource) {
-      match = match && x.sourceLocationName === this.selectedSource;
-    }
+      if (this.selectedSource) {
+        match = match && x.sourceLocationName === this.selectedSource;
+      }
 
-    // Destination
-    if (this.selectedDestination) {
-      match = match && x.destinationLocationName === this.selectedDestination;
-    }
+      if (this.selectedDestination) {
+        match = match && x.destinationLocationName === this.selectedDestination;
+      }
 
-    // Current Status Filter
+      const transferDate = x.transferOutTime
+        ? new Date(x.transferOutTime)
+        : null;
+
+      if (transferDate) {
+
+        transferDate.setHours(0, 0, 0, 0);
+
+        if (this.fromDate) {
+
+          const from = new Date(this.fromDate);
+          from.setHours(0, 0, 0, 0);
+
+          match = match && transferDate >= from;
+
+        }
+
+        if (this.toDate) {
+
+          const to = new Date(this.toDate);
+          to.setHours(0, 0, 0, 0);
+
+          match = match && transferDate <= to;
+
+        }
+
+      }
+
+      return match;
+
+    });
+
+    // Apply Current Status Tab
+    this.filteredLogs = [...this.statusFilteredLogs];
+
     if (this.selectedStatus) {
-      match = match && x.currentStatus === this.selectedStatus;
+
+      this.filteredLogs = this.filteredLogs.filter(x =>
+        x.currentStatus === this.selectedStatus
+      );
+
     }
 
-    // Transfer Out Date Filter
-    const transferDate = x.transferOutTime
-      ? new Date(x.transferOutTime)
-      : null;
+    // Sort
+    this.filteredLogs.sort((a, b) =>
+      Number(b.transitID) - Number(a.transitID));
 
-    if (transferDate) {
+    this.currentPage = 1;
 
-      transferDate.setHours(0, 0, 0, 0);
+    this.loadPage();
 
-      if (this.fromDate) {
-        const from = new Date(this.fromDate);
-        from.setHours(0, 0, 0, 0);
-
-        match = match && transferDate >= from;
-      }
-
-      if (this.toDate) {
-        const to = new Date(this.toDate);
-        to.setHours(0, 0, 0, 0);
-
-        match = match && transferDate <= to;
-      }
-    }
-
-    return match;
-
-  });
-
-  // Latest Transit First
-  this.filteredLogs.sort((a, b) =>
-    Number(b.transitID) - Number(a.transitID)
-  );
-
-  this.currentPage = 1;
-
-  this.loadPage();
-
-}
+  }
   clearFilter(): void {
 
+    // Clear all filters
     this.selectedCompany = '';
 
-    this.fromDate = '';
+    this.selectedSource = '';
 
-    this.toDate = '';
+    this.selectedDestination = '';
 
-    this.filteredLogs = [...this.groupedLogs];
-    this.loadPage();
+    this.selectedStatus = '';
+
+    // Set today's date
+    this.setTodayDate();
+
+    // Apply filters
+    this.applyFilter();
+
   }
-filterByStatus(status: string): void {
+  filterByStatus(status: string): void {
 
-  this.selectedStatus = status;
+    this.selectedStatus = status;
 
-  this.applyFilter();
+    this.applyFilter();
 
-}
+  }
+
+  getAllCount(): number {
+
+    return this.statusFilteredLogs.length;
+
+  }
 }

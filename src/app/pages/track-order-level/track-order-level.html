@@ -89,10 +89,14 @@
   <div class="status-tabs">
 
     <div class="status-tab" [class.active]="selectedStatus==''" (click)="filterByStatus('')">
-      <div class="title">All</div>
-      <div class="count">{{ groupedLogs.length }}</div>
-    </div>
 
+      <div class="title">All</div>
+
+      <div class="count">
+        {{ statusFilteredLogs.length }}
+      </div>
+
+    </div>
     <div class="status-tab open" [class.active]="selectedStatus=='Open'" (click)="filterByStatus('Open')">
       <div class="title">Open</div>
       <div class="count">{{ getStatusCount('Open') }}</div>
@@ -173,7 +177,15 @@
           <th>Receiver Name</th>
           <!--  <th>Order Status</th>-->
           <th>Current Status</th>
+          <th>Open<br>User / Date & Time</th>
 
+          <th>Pickup Ready<br>User / Date & Time</th>
+
+          <th>Pickup Assigned<br>User / Date & Time</th>
+
+          <th>Picked Up<br>User / Date & Time</th>
+
+          <th>Delivered<br>User / Date & Time</th>
         </tr>
       </thead>
 
@@ -248,6 +260,56 @@
               [style.background-color]="getStatusBackground(transit.colorCode)">
               {{ transit.currentStatus }}
             </span>
+          </td>
+
+          <!-- Open -->
+          <td>
+            <div class="timeline-cell">
+              <div class="user">{{ transit.openUser || '-' }}</div>
+              <div class="time">
+                {{ transit.openTime | date:'dd/MM/yyyy HH:mm:ss' }}
+              </div>
+            </div>
+          </td>
+
+          <!-- Pickup Ready -->
+          <td>
+            <div class="timeline-cell">
+              <div class="user">{{ transit.pickupReadyUser || '-' }}</div>
+              <div class="time">
+                {{ transit.pickupReadyTime | date:'dd/MM/yyyy HH:mm:ss' }}
+              </div>
+            </div>
+          </td>
+
+          <!-- Pickup Assigned -->
+          <td>
+            <div class="timeline-cell">
+              <div class="user">{{ transit.pickupAssignedUser || '-' }}</div>
+              <div class="time">
+                {{ transit.pickupAssignedTime | date:'dd/MM/yyyy HH:mm:ss' }}
+              </div>
+            </div>
+          </td>
+
+          <!-- Picked Up -->
+          <td>
+            <div class="timeline-cell">
+              <div class="user">{{ transit.pickedUpUser || '-' }}</div>
+              <div class="time">
+                {{ transit.pickedUpTime | date:'dd/MM/yyyy HH:mm:ss' }}
+              </div>
+            </div>
+          </td>
+
+          <!-- Delivered -->
+          <td>
+            <div class="timeline-cell">
+              <div class="user">{{ transit.deliveredUser || '-' }}</div>
+              <div class="time">
+                {{ transit.deliveredTime | date:'dd/MM/yyyy HH:mm:ss' }}
+              </div>
+            </div>
           </td>
         </tr>
 

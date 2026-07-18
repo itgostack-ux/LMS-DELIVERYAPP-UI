@@ -604,3 +604,19 @@
     }
 
 }
+
+.timeline-cell {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.4;
+}
+
+.timeline-cell .user {
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.timeline-cell .time {
+    font-size: 12px;
+    color: #6b7280;
+}

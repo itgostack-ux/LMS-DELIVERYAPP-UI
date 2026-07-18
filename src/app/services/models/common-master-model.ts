@@ -734,6 +734,9 @@ export interface DeliveryOrderTimeline {
   orderModifiedByName?: string;
   orderModifiedDate?: Date;
 
+  changedByName?: string;
+
+
   //==================================================
   // Manifest Lifecycle Log
   //==================================================
